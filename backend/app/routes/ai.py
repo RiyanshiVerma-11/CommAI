@@ -1,0 +1,187 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, validator
+from typing import Optional, List
+
+from app.auth import require_communicator_or_higher
+from app.services.ai_service import (
+    generate_campaign_content,
+    optimize_content,
+    translate_content,
+    personalize_content,
+    check_compliance_and_quality,
+)
+
+router = APIRouter(prefix="/ai", tags=["AI Content Engine"])
+
+MAX_INPUT_CHARS = 6000
+
+
+# ---------------------------------------------------------------------------
+# Request / Response Schemas
+# ---------------------------------------------------------------------------
+class GenerateRequest(BaseModel):
+    prompt: str
+    category: Optional[str] = "awareness"
+    channel: Optional[str] = "email"
+    tone: Optional[str] = "formal"
+
+    @validator("prompt")
+    def prompt_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Prompt cannot be empty")
+        if len(v) > MAX_INPUT_CHARS:
+            raise ValueError(f"Prompt exceeds maximum length of {MAX_INPUT_CHARS} characters")
+        return v.strip()
+
+class GenerateResponse(BaseModel):
+    subject: Optional[str] = ""
+    body: Optional[str] = ""
+    error: Optional[str] = None
+
+
+class OptimizeRequest(BaseModel):
+    text: str
+    target_tone: Optional[str] = "formal"
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Text cannot be empty")
+        if len(v) > MAX_INPUT_CHARS:
+            raise ValueError(f"Text exceeds maximum length of {MAX_INPUT_CHARS} characters")
+        return v.strip()
+
+class OptimizeResponse(BaseModel):
+    optimized_text: Optional[str] = ""
+    error: Optional[str] = None
+
+
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str
+    source_language: Optional[str] = "English"
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Text cannot be empty")
+        if len(v) > MAX_INPUT_CHARS:
+            raise ValueError(f"Text exceeds maximum length of {MAX_INPUT_CHARS} characters")
+        return v.strip()
+
+class TranslateResponse(BaseModel):
+    translated_text: Optional[str] = ""
+    error: Optional[str] = None
+
+
+class PersonalizeRequest(BaseModel):
+    text: str
+    audience_profile: Optional[str] = "general"
+    communication_objective: Optional[str] = "awareness"
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Text cannot be empty")
+        if len(v) > MAX_INPUT_CHARS:
+            raise ValueError(f"Text exceeds maximum length of {MAX_INPUT_CHARS} characters")
+        return v.strip()
+
+class PersonalizeResponse(BaseModel):
+    personalized_text: Optional[str] = ""
+    error: Optional[str] = None
+
+
+class ComplianceIssue(BaseModel):
+    severity: str
+    message: str
+
+class ComplianceRequest(BaseModel):
+    text: str
+    category: Optional[str] = "awareness"
+
+    @validator("text")
+    def text_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Text cannot be empty")
+        return v.strip()
+
+class ComplianceResponse(BaseModel):
+    score: int = 100
+    char_count: Optional[int] = 0
+    word_count: Optional[int] = 0
+    placeholder_count: Optional[int] = 0
+    issues: List[ComplianceIssue] = []
+    error: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+@router.post("/generate", response_model=GenerateResponse)
+def ai_generate(
+    request: GenerateRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Generate campaign subject + body from a text prompt."""
+    result = generate_campaign_content(
+        prompt=request.prompt,
+        category=request.category,
+        channel=request.channel,
+        tone=request.tone,
+    )
+    return GenerateResponse(**result)
+
+
+@router.post("/optimize", response_model=OptimizeResponse)
+def ai_optimize(
+    request: OptimizeRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Rewrite text to match a target tone."""
+    result = optimize_content(
+        text=request.text,
+        target_tone=request.target_tone,
+    )
+    return OptimizeResponse(**result)
+
+
+@router.post("/translate", response_model=TranslateResponse)
+def ai_translate(
+    request: TranslateRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Translate text into a target language."""
+    result = translate_content(
+        text=request.text,
+        target_language=request.target_language,
+        source_language=request.source_language,
+    )
+    return TranslateResponse(**result)
+
+
+@router.post("/personalize", response_model=PersonalizeResponse)
+def ai_personalize(
+    request: PersonalizeRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Personalize text for a specific audience profile."""
+    result = personalize_content(
+        text=request.text,
+        audience_profile=request.audience_profile,
+        communication_objective=request.communication_objective,
+    )
+    return PersonalizeResponse(**result)
+
+
+@router.post("/check-compliance", response_model=ComplianceResponse)
+def ai_check_compliance(
+    request: ComplianceRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Run offline compliance and quality audit on message text."""
+    result = check_compliance_and_quality(
+        text=request.text,
+        category=request.category,
+    )
+    return ComplianceResponse(**result)

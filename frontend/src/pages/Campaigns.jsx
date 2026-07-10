@@ -1,0 +1,2131 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import GlassCard from '../components/GlassCard';
+
+const Campaigns = ({ user, backendUrl, headers }) => {
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'create'
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Lists fetched from DB for dropdown selection
+  const [segments, setSegments] = useState([]);
+  const [templates, setTemplates] = useState([]);
+
+  // --- WIZARD STATES ---
+  const [step, setStep] = useState(1);
+  const [formTitle, setFormTitle] = useState('');
+  const [formDesc, setFormDesc] = useState('');
+  const [formObjective, setFormObjective] = useState('');
+  const [formType, setFormType] = useState('awareness_drive');
+  const [selectedSegId, setSelectedSegId] = useState('');
+  const [selectedTplId, setSelectedTplId] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
+  const [customBody, setCustomBody] = useState('');
+  const [placeholders] = useState([
+    { label: 'Recipient Name', tag: '{{first_name}}' },
+    { label: 'Surname', tag: '{{last_name}}' },
+    { label: 'Location City', tag: '{{city}}' },
+    { label: 'Occupation', tag: '{{occupation}}' },
+    { label: 'Organization', tag: '{{organization}}' },
+    { label: 'Department', tag: '{{department}}' }
+  ]);
+  const bodyTextareaRef = useRef(null);
+
+  const [inlineTranslationLang, setInlineTranslationLang] = useState('Hindi');
+  const [inlineTranslationResult, setInlineTranslationResult] = useState('');
+  const [inlineTranslationSubjectResult, setInlineTranslationSubjectResult] = useState('');
+  const [inlineTranslationLoading, setInlineTranslationLoading] = useState(false);
+  const [inlineTranslationError, setInlineTranslationError] = useState('');
+
+  const [selectedChannels, setSelectedChannels] = useState(['email']);
+  const [wizardError, setWizardError] = useState('');
+  const [previewLang, setPreviewLang] = useState('English');
+  const [previewTranslatedText, setPreviewTranslatedText] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [evalReach, setEvalReach] = useState({ target: 0, reach: 0 });
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [segmentPreviewUsers, setSegmentPreviewUsers] = useState([]);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState('');
+
+  // --- NEW WORKFLOW STATES ---
+  const [listTab, setListTab] = useState('all'); // 'all' or 'drafts'
+  const [editingCampId, setEditingCampId] = useState(null);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [selectedCampaignForAudit, setSelectedCampaignForAudit] = useState(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  // Delivery Modal States
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [selectedCampaignForDelivery, setSelectedCampaignForDelivery] = useState(null);
+  const [deliverySummary, setDeliverySummary] = useState(null);
+  const [deliveryLogs, setDeliveryLogs] = useState([]);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
+
+  // AI Assist Panel State
+  const [campAiPanelOpen, setCampAiPanelOpen] = useState(false);
+  const [campAiTab, setCampAiTab] = useState('generate');
+  const [campAiLoading, setCampAiLoading] = useState(false);
+  const [campAiError, setCampAiError] = useState('');
+  const [campAiPrompt, setCampAiPrompt] = useState('');
+  const [campAiTone, setCampAiTone] = useState('formal');
+  const [campAiAudienceProfile, setCampAiAudienceProfile] = useState('general');
+  const [campAiObjective, setCampAiObjective] = useState('awareness');
+  const [campAiResult, setCampAiResult] = useState(null);
+  const [campAiComplianceResult, setCampAiComplianceResult] = useState(null);
+
+
+  const campaignTypes = [
+    { value: 'awareness_drive', label: 'Awareness Campaign' },
+    { value: 'emergency_alert', label: 'Emergency Alert' },
+    { value: 'educational_notification', label: 'Educational Bulletin' },
+    { value: 'organizational_announcement', label: 'Organizational Announcement' }
+  ];
+
+  const channelsList = ["email", "sms", "whatsapp", "push", "website"];
+
+  const aiTones = [
+    { value: 'formal', label: 'Formal' },
+    { value: 'urgent', label: 'Urgent' },
+    { value: 'empathetic', label: 'Empathetic' },
+    { value: 'simplified', label: 'Simplified' },
+  ];
+  const aiAudienceProfiles = [
+    { value: 'general', label: 'General Public' },
+    { value: 'healthcare_worker', label: 'Healthcare Workers' },
+    { value: 'student', label: 'Students' },
+    { value: 'rural_audience', label: 'Rural Audience' },
+    { value: 'senior_citizen', label: 'Senior Citizens' },
+  ];
+  const aiCategories = ["emergency", "awareness", "education", "announcement"];
+
+  const fetchCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${backendUrl}/api/campaigns`, { headers });
+      if (!response.ok) throw new Error('Failed to load campaigns');
+      const data = await response.json();
+      setCampaigns(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [backendUrl, headers]);
+
+  const fetchSegmentsAndTemplates = useCallback(async () => {
+    try {
+      const segRes = await fetch(`${backendUrl}/api/segments`, { headers });
+      const tplRes = await fetch(`${backendUrl}/api/templates`, { headers });
+      if (segRes.ok && tplRes.ok) {
+        setSegments(await segRes.json());
+        setTemplates(await tplRes.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [backendUrl, headers]);
+
+  useEffect(() => {
+    if (viewMode === 'list') {
+      fetchCampaigns();
+    } else {
+      fetchSegmentsAndTemplates();
+      if (!editingCampId) {
+        setStep(1);
+        setFormTitle('');
+        setFormDesc('');
+        setFormObjective('');
+        setFormType('awareness_drive');
+        setSelectedSegId('');
+        setSelectedTplId('');
+        setSelectedChannels(['email']);
+        setWizardError('');
+        setEvalReach({ target: 0, reach: 0 });
+        setSegmentPreviewUsers([]);
+        setIsScheduled(false);
+        setScheduledTime('');
+      }
+    }
+  }, [viewMode, backendUrl, editingCampId, fetchCampaigns, fetchSegmentsAndTemplates]);
+
+  const configLanguages = ["English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"];
+
+  // Insert placeholder at cursor position
+  const handleInsertPlaceholder = (tag) => {
+    const el = bodyTextareaRef.current;
+    if (!el) {
+      setCustomBody(prev => prev + tag);
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    setCustomBody(before + tag + after);
+    
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + tag.length, start + tag.length);
+    }, 0);
+  };
+
+  const handleCustomTranslate = async () => {
+    if (!customBody) return;
+    setInlineTranslationLoading(true);
+    setInlineTranslationError('');
+    setInlineTranslationResult('');
+    setInlineTranslationSubjectResult('');
+    
+    try {
+      const response = await fetch(`${backendUrl}/api/translate`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: customBody,
+          target_language: inlineTranslationLang,
+          source_language: 'English'
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Body translation failed');
+      
+      setInlineTranslationResult(data.translated_text);
+      
+      const isEmail = selectedChannels.includes('email');
+      if (isEmail && customSubject) {
+        const subResponse = await fetch(`${backendUrl}/api/translate`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: customSubject,
+            target_language: inlineTranslationLang,
+            source_language: 'English'
+          })
+        });
+        const subData = await subResponse.json();
+        if (subResponse.ok) {
+          setInlineTranslationSubjectResult(subData.translated_text);
+        }
+      }
+    } catch (err) {
+      setInlineTranslationError(err.message);
+    } finally {
+      setInlineTranslationLoading(false);
+    }
+  };
+
+  const handleApplyCustomTranslation = () => {
+    if (inlineTranslationResult) {
+      setCustomBody(inlineTranslationResult);
+    }
+    if (inlineTranslationSubjectResult) {
+      setCustomSubject(inlineTranslationSubjectResult);
+    }
+    setPreviewLang(inlineTranslationLang);
+    setInlineTranslationResult('');
+    setInlineTranslationSubjectResult('');
+  };
+
+  // Reset preview language whenever template changes
+  useEffect(() => {
+    if (selectedTplId === 'custom') {
+      setPreviewLang('English');
+      setPreviewTranslatedText('');
+      return;
+    }
+    const activeTpl = templates.find(t => t.id === selectedTplId);
+    if (activeTpl) {
+      setPreviewLang(activeTpl.default_language);
+      setPreviewTranslatedText('');
+    }
+  }, [selectedTplId, templates]);
+
+  // Load template translation in real-time
+  useEffect(() => {
+    const fetchPreviewTranslation = async () => {
+      if (selectedTplId === 'custom') {
+        if (previewLang === 'English' || !customBody) {
+          setPreviewTranslatedText('');
+          return;
+        }
+        setPreviewLoading(true);
+        try {
+          const response = await fetch(`${backendUrl}/api/translate`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: customBody,
+              target_language: previewLang,
+              source_language: 'English'
+            })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setPreviewTranslatedText(data.translated_text);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setPreviewLoading(false);
+        }
+        return;
+      }
+
+      const activeTpl = templates.find(t => t.id === selectedTplId);
+      if (!activeTpl) {
+        setPreviewTranslatedText('');
+        return;
+      }
+      
+      // Default to template's default language first
+      if (previewLang === activeTpl.default_language) {
+        setPreviewTranslatedText('');
+        return;
+      }
+      
+      // Check if translation is cached in database
+      let parsed = {};
+      try {
+        parsed = typeof activeTpl.translations === 'string' ? JSON.parse(activeTpl.translations || '{}') : (activeTpl.translations || {});
+      } catch {
+        parsed = {};
+      }
+      
+      if (parsed[previewLang] && parsed[previewLang].body) {
+        setPreviewTranslatedText(parsed[previewLang].body);
+        return;
+      }
+      
+      // Not cached, fetch on-the-fly via API
+      setPreviewLoading(true);
+      try {
+        const response = await fetch(`${backendUrl}/api/translate`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: activeTpl.body_template,
+            target_language: previewLang,
+            source_language: activeTpl.default_language
+          })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setPreviewTranslatedText(data.translated_text);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+    
+    fetchPreviewTranslation();
+  }, [previewLang, selectedTplId, templates, backendUrl, customBody, headers]);
+
+  const evaluateReachMetrics = useCallback(async () => {
+    if (!selectedSegId) return;
+    setEvalLoading(true);
+    try {
+      const response = await fetch(`${backendUrl}/api/segments/${selectedSegId}/preview?limit=5`, { headers });
+      if (!response.ok) throw new Error('Failed to preview reach');
+      const data = await response.json();
+      
+      const targetCount = data.estimated_size;
+      setSegmentPreviewUsers(data.preview || []);
+      
+      let reachFactor = 1.0;
+      if (selectedChannels.length === 1) {
+        if (selectedChannels[0] === 'email') reachFactor = 0.65;
+        else if (selectedChannels[0] === 'sms') reachFactor = 0.85;
+        else reachFactor = 0.50;
+      } else if (selectedChannels.length === 2) {
+        reachFactor = 0.92;
+      }
+      
+      const estimatedReach = Math.round(targetCount * reachFactor);
+      setEvalReach({ target: targetCount, reach: Math.min(targetCount, estimatedReach) });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setEvalLoading(false);
+    }
+  }, [backendUrl, headers, selectedSegId, selectedChannels]);
+
+  useEffect(() => {
+    if (step === 2 && selectedSegId) {
+      evaluateReachMetrics();
+    }
+  }, [selectedSegId, selectedChannels, step, evaluateReachMetrics]);
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (!formTitle || !formObjective) {
+        setWizardError('Campaign Title and Objective are mandatory fields');
+        return;
+      }
+      if (isScheduled) {
+        if (!scheduledTime) {
+          setWizardError('Please select a valid future date and time for the schedule');
+          return;
+        }
+        const schedDate = new Date(scheduledTime);
+        if (schedDate <= new Date()) {
+          setWizardError('Scheduled time must be in the future');
+          return;
+        }
+      }
+      setWizardError('');
+      setStep(2);
+    } else if (step === 2) {
+      if (!selectedSegId) {
+        setWizardError('Please select a target segment');
+        return;
+      }
+      if (selectedChannels.length === 0) {
+        setWizardError('Select at least one delivery channel');
+        return;
+      }
+      setWizardError('');
+      setStep(3);
+    } else if (step === 3) {
+      if (!selectedTplId) {
+        setWizardError('Please select or write a message template');
+        return;
+      }
+      if (selectedTplId === 'custom' && !customBody) {
+        setWizardError('Please write a custom message body');
+        return;
+      }
+      setWizardError('');
+      setStep(4);
+    }
+  };
+
+  const handleSaveCampaignDraft = async () => {
+    const payload = {
+      title: formTitle,
+      description: formDesc || null,
+      objective: formObjective,
+      campaign_type: formType,
+      segment_id: selectedSegId || null,
+      template_id: selectedTplId === 'custom' ? null : (selectedTplId || null),
+      custom_subject: selectedTplId === 'custom' ? customSubject : null,
+      custom_body: selectedTplId === 'custom' ? customBody : null,
+      channel_preferences: selectedChannels,
+      scheduled_at: null
+    };
+
+    try {
+      const url = editingCampId 
+        ? `${backendUrl}/api/campaigns/${editingCampId}`
+        : `${backendUrl}/api/campaigns`;
+      const method = editingCampId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to save campaign');
+      }
+
+      setEditingCampId(null);
+      setViewMode('list');
+    } catch (err) {
+      setWizardError(err.message);
+    }
+  };
+
+  const handlePublishCampaign = async () => {
+    const targetStatus = isScheduled ? 'scheduled' : 'active';
+    const scheduleDateStr = isScheduled && scheduledTime ? new Date(scheduledTime).toLocaleString() : '';
+    
+    const confirmMessage = isScheduled
+      ? `⚠️ WARNING: This will SCHEDULE this campaign to trigger deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()} at ${scheduleDateStr}.\n\nDo you want to proceed?`
+      : `⚠️ WARNING: Launching this campaign will trigger REAL deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()}.\n\nDo you want to proceed?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    const payload = {
+      title: formTitle,
+      description: formDesc || null,
+      objective: formObjective,
+      campaign_type: formType,
+      segment_id: selectedSegId,
+      template_id: selectedTplId === 'custom' ? null : (selectedTplId || null),
+      custom_subject: selectedTplId === 'custom' ? customSubject : null,
+      custom_body: selectedTplId === 'custom' ? customBody : null,
+      channel_preferences: selectedChannels,
+      status: targetStatus,
+      scheduled_at: isScheduled && scheduledTime ? new Date(scheduledTime).toISOString() : null
+    };
+
+    try {
+      let targetId = editingCampId;
+
+      if (!targetId) {
+        const createRes = await fetch(`${backendUrl}/api/campaigns`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, status: 'draft' })
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok) {
+          throw new Error(createData.detail || 'Failed to save initial draft');
+        }
+        targetId = createData.id;
+      }
+
+      const publishRes = await fetch(`${backendUrl}/api/campaigns/${targetId}`, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const publishData = await publishRes.json();
+      if (!publishRes.ok) {
+        throw new Error(publishData.detail || 'Publishing failed');
+      }
+
+      setEditingCampId(null);
+      setViewMode('list');
+    } catch (err) {
+      setWizardError(err.message);
+    }
+  };
+
+  const handleResumeEditCampaign = (camp) => {
+    setFormTitle(camp.title);
+    setFormDesc(camp.description || '');
+    setFormObjective(camp.objective || '');
+    setFormType(camp.campaign_type);
+    setSelectedSegId(camp.segment_id || '');
+    
+    if (camp.custom_body) {
+      setSelectedTplId('custom');
+      setUseCustomMsg(true);
+      setCustomSubject(camp.custom_subject || '');
+      setCustomBody(camp.custom_body || '');
+    } else {
+      setSelectedTplId(camp.template_id || '');
+      setUseCustomMsg(false);
+      setCustomSubject('');
+      setCustomBody('');
+    }
+    
+    setSelectedChannels(camp.channel_preferences || ['email']);
+    setEditingCampId(camp.id);
+    setIsScheduled(!!camp.scheduled_at);
+    setScheduledTime(camp.scheduled_at ? camp.scheduled_at.substring(0, 16) : '');
+    setViewMode('create');
+
+    if (!camp.title || !camp.objective) {
+      setStep(1);
+    } else if (!camp.segment_id || !camp.channel_preferences || camp.channel_preferences.length === 0) {
+      setStep(2);
+    } else if (!camp.template_id) {
+      setStep(3);
+    } else {
+      setStep(4);
+    }
+  };
+
+  const handleOpenAuditModal = async (camp) => {
+    setSelectedCampaignForAudit(camp);
+    setShowAuditModal(true);
+    setAuditLoading(true);
+    try {
+      const response = await fetch(`${backendUrl}/api/campaigns/${camp.id}/audit-logs`, { headers });
+      if (!response.ok) throw new Error('Failed to fetch audit logs');
+      const data = await response.json();
+      setAuditLogs(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const handleOpenDeliveryModal = async (camp) => {
+    setSelectedCampaignForDelivery(camp);
+    setShowDeliveryModal(true);
+    setDeliveryLoading(true);
+    
+    const fetchDeliveryData = async () => {
+      try {
+        const sumRes = await fetch(`${backendUrl}/api/campaigns/${camp.id}/delivery-summary`, { headers });
+        const logRes = await fetch(`${backendUrl}/api/campaigns/${camp.id}/delivery-logs`, { headers });
+        if (sumRes.ok && logRes.ok) {
+          const sumData = await sumRes.json();
+          const logData = await logRes.json();
+          setDeliverySummary(sumData);
+          setDeliveryLogs(logData);
+          
+          if (sumData.status === 'active') {
+            return true; // Keep polling
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching delivery report:', err);
+      }
+      return false; // Stop polling
+    };
+
+    const isSending = await fetchDeliveryData();
+    setDeliveryLoading(false);
+
+    if (isSending) {
+      if (window.activeDeliveryInterval) {
+        clearInterval(window.activeDeliveryInterval);
+      }
+      const interval = setInterval(async () => {
+        const keepPolling = await fetchDeliveryData();
+        if (!keepPolling) {
+          clearInterval(interval);
+          window.activeDeliveryInterval = null;
+          fetchCampaigns();
+        }
+      }, 2500);
+      window.activeDeliveryInterval = interval;
+    }
+  };
+
+  const handleCloseDeliveryModal = () => {
+    setShowDeliveryModal(false);
+    setSelectedCampaignForDelivery(null);
+    setDeliverySummary(null);
+    setDeliveryLogs([]);
+    if (window.activeDeliveryInterval) {
+      clearInterval(window.activeDeliveryInterval);
+      window.activeDeliveryInterval = null;
+    }
+    fetchCampaigns();
+  };
+
+
+  const renderAuditChanges = (changesStr) => {
+    if (!changesStr) return null;
+    try {
+      const changes = JSON.parse(changesStr);
+      return (
+        <div style={{ marginTop: '6px', fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', background: 'rgba(0,0,0,0.15)', padding: '6px 10px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.02)' }}>
+          {Object.keys(changes).map(field => {
+            const val = changes[field];
+            return (
+              <div key={field} style={{ marginBottom: '2px' }}>
+                <span style={{ fontFamily: 'monospace', color: 'hsl(var(--primary))' }}>{field}</span>: {' '}
+                <span style={{ textDecoration: 'line-through', opacity: 0.6 }}>{String(val.old)}</span>{' '}
+                ➜ <strong>{String(val.new)}</strong>
+              </div>
+            );
+          })}
+        </div>
+      );
+    } catch {
+      return <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>{changesStr}</span>;
+    }
+  };
+
+  const handleDeleteCampaign = async (id) => {
+    if (!window.confirm('Are you sure you want to soft delete this campaign?')) return;
+    try {
+      const response = await fetch(`${backendUrl}/api/campaigns/${id}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (!response.ok) throw new Error('Failed to delete campaign');
+      fetchCampaigns();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleChannelSelection = (ch) => {
+    setSelectedChannels(prev => 
+      prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]
+    );
+  };
+
+  const interpolateTemplate = (templateText, audience) => {
+    if (!templateText) return "";
+    const replacements = audience ? {
+      "first_name": audience.first_name || "",
+      "last_name": audience.last_name || "",
+      "email": audience.email || "",
+      "phone": audience.phone || "",
+      "city": audience.city || "",
+      "district": audience.district || "",
+      "state": audience.state || "",
+      "occupation": audience.occupation || "",
+      "age": String(audience.age || ""),
+      "gender": audience.gender || "",
+      "organization": audience.organization || "National Informatics Centre",
+      "department": audience.department || "Information Technology",
+      "designation": audience.designation || "",
+    } : {
+      "first_name": "Suresh",
+      "last_name": "Patil",
+      "email": "suresh.patil@ruralmail.in",
+      "phone": "9900112233",
+      "city": "Varanasi",
+      "district": "Varanasi",
+      "state": "Uttar Pradesh",
+      "occupation": "Farmer",
+      "age": "45",
+      "gender": "Male",
+      "organization": "Rural Welfare Cooperative",
+      "department": "Agriculture Advisory",
+      "designation": "Regional Advisor"
+    };
+
+    let result = templateText;
+    Object.keys(replacements).forEach(key => {
+      const val = replacements[key];
+      result = result.split(`{{${key}}}`).join(val);
+      result = result.split(`{${key}}`).join(val);
+    });
+    return result;
+  };
+
+  const renderCampaignMockup = () => {
+    const activeTpl = templates.find(t => t.id === selectedTplId);
+    if (!activeTpl && selectedTplId !== 'custom') return <p style={{ color: 'hsl(var(--text-muted))', padding: '16px 0', fontWeight: '500' }}>Select a template to view preview.</p>;
+
+    const previewUser = segmentPreviewUsers.length > 0 ? segmentPreviewUsers[0] : null;
+    
+    let rawBody = "";
+    let rawSubject = "";
+    
+    if (selectedTplId === 'custom') {
+      rawBody = previewTranslatedText || customBody;
+      rawSubject = customSubject || "";
+    } else {
+      rawBody = previewTranslatedText || activeTpl.body_template;
+      rawSubject = activeTpl.subject_template || '';
+      if (previewTranslatedText) {
+        let parsed = {};
+        try {
+          parsed = typeof activeTpl.translations === 'string' ? JSON.parse(activeTpl.translations || '{}') : (activeTpl.translations || {});
+        } catch {
+          parsed = {};
+        }
+        if (parsed[previewLang] && parsed[previewLang].subject) {
+          rawSubject = parsed[previewLang].subject;
+        }
+      }
+    }
+    
+    const body = interpolateTemplate(rawBody, previewUser);
+    const subject = interpolateTemplate(rawSubject, previewUser);
+    const recipientEmail = previewUser?.email || "suresh.patil@ruralmail.in";
+
+    const chType = selectedTplId === 'custom' 
+      ? (selectedChannels.length > 0 ? selectedChannels[0] : 'email')
+      : activeTpl.channel;
+
+    const isMobileChannel = ['sms', 'whatsapp', 'push'].includes(chType);
+
+    if (chType === 'email') {
+      return (
+        <div className="email-mockup animate-fade-in" style={{ flexGrow: 1, minHeight: '220px', borderRadius: '16px', border: '1px solid var(--border-color-glass)' }}>
+          <div className="email-browser-bar" style={{ padding: '12px 20px' }}>
+            <div className="email-dots">
+              <div className="email-dot red" style={{ width: '10px', height: '10px' }}></div>
+              <div className="email-dot yellow" style={{ width: '10px', height: '10px' }}></div>
+              <div className="email-dot green" style={{ width: '10px', height: '10px' }}></div>
+            </div>
+            <div className="email-address-bar" style={{ padding: '5px 14px', borderRadius: '8px', maxWidth: '500px' }}>
+              <svg className="svg-icon" style={{ width: '13px', height: '13px', marginRight: '8px', color: 'hsl(var(--primary))' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              {recipientEmail}
+            </div>
+          </div>
+          <div className="email-content-wrapper" style={{ padding: '24px' }}>
+            <div className="email-headers" style={{ gap: '10px', paddingBottom: '16px' }}>
+              {rawSubject && (
+                <div className="email-header-line">
+                  <span className="email-header-label" style={{ width: '70px', fontWeight: '700' }}>Subject:</span>
+                  <span className="email-header-val" style={{ fontWeight: '700', color: 'hsl(var(--text-primary))' }}>{subject}</span>
+                </div>
+              )}
+              <div className="email-header-line">
+                <span className="email-header-label" style={{ width: '70px', fontWeight: '700' }}>From:</span>
+                <span className="email-header-val">Alert Portal &lt;announcements@comm.gov.in&gt;</span>
+              </div>
+            </div>
+            <div className="email-body-text" style={{ whiteSpace: 'pre-wrap', padding: '16px', background: 'rgba(255,255,255,0.01)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.03)', color: 'hsl(var(--text-secondary))', lineHeight: '1.6' }}>{body}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isMobileChannel) {
+      if (chType === 'push') {
+        return (
+          <div className="phone-mockup animate-fade-in" style={{ height: '220px', width: '100%', minHeight: 'auto', borderBottomWidth: '11px', borderRadius: '24px' }}>
+            <div className="phone-status-bar" style={{ background: 'transparent', height: '26px', padding: '8px 20px 0 20px' }}>
+              <span style={{ fontWeight: '700' }}>10:42 AM</span>
+              <span>📶 🔋</span>
+            </div>
+            <div className="phone-lockscreen" style={{ background: 'linear-gradient(180deg, #0a0b12 0%, #030407 100%)', padding: '20px 16px' }}>
+              <div className="push-notification-card" style={{ padding: '12px 14px', borderRadius: '14px' }}>
+                <div className="push-icon" style={{ borderRadius: '8px', width: '22px', height: '22px' }}>
+                  <svg className="svg-icon" style={{ width: '13px', height: '13px', color: '#fff' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                </div>
+                <div className="push-details">
+                  <div className="push-header">
+                    <span style={{ fontWeight: '800', letterSpacing: '0.04em' }}>COMMUNICATIONS SYSTEM</span>
+                    <span>now</span>
+                  </div>
+                  <div className="push-title" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#fff' }}>{formTitle || "Awareness advisory"}</div>
+                  <div className="push-body" style={{ fontSize: '0.75rem', lineHeight: '1.4', color: 'rgba(255,255,255,0.85)' }}>{body}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const isWA = chType === 'whatsapp';
+      const bubbleClass = isWA ? 'whatsapp-style' : 'sms-style';
+      const senderName = isWA ? 'CommAI alert System' : 'Gov-Alert';
+
+      return (
+        <div className="phone-mockup animate-fade-in" style={{ height: '260px', width: '100%', minHeight: 'auto', borderBottomWidth: '11px', borderRadius: '24px' }}>
+          <div className="phone-status-bar" style={{ height: '26px', padding: '8px 20px 0 20px' }}>
+            <span style={{ fontWeight: '700' }}>10:42 AM</span>
+            <span>📶 🔋</span>
+          </div>
+          <div className="phone-screen">
+            <div className="phone-app-header" style={{ height: '42px', padding: '0 16px', gap: '10px' }}>
+              <div className="phone-avatar" style={{ width: '24px', height: '24px', background: isWA ? 'hsl(var(--accent))' : 'hsl(var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {isWA ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '13px', height: '13px', color: '#fff' }}>
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '13px', height: '13px', color: '#fff' }}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                )}
+              </div>
+              <div className="phone-contact-name">
+                <span style={{ fontWeight: '700', fontSize: '0.78rem' }}>{senderName}</span>
+                {isWA && <span className="phone-contact-status" style={{ fontSize: '0.6rem' }}>Online</span>}
+              </div>
+            </div>
+            <div className={`phone-body ${isWA ? 'whatsapp' : ''}`} style={{ justifyContent: 'flex-start', padding: '12px' }}>
+              <div className={`phone-bubble ${bubbleClass}`} style={{ padding: '8px 12px', fontSize: '0.78rem', borderTopLeftRadius: '0px', borderTopRightRadius: '12px', borderBottomRightRadius: '12px', borderBottomLeftRadius: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.45' }}>{body}</div>
+                <div className="phone-bubble-time" style={{ fontSize: '0.6rem', textAlign: 'right', marginTop: '4px', opacity: 0.7 }}>10:42 AM</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Website toast mockup
+    return (
+      <div className="email-mockup animate-fade-in" style={{ flexGrow: 1, minHeight: '180px', borderRadius: '16px', border: '1px solid var(--border-color-glass)' }}>
+        <div className="email-browser-bar" style={{ padding: '12px 20px' }}>
+          <div className="email-dots">
+            <div className="email-dot red" style={{ width: '10px', height: '10px' }}></div>
+            <div className="email-dot yellow" style={{ width: '10px', height: '10px' }}></div>
+            <div className="email-dot green" style={{ width: '10px', height: '10px' }}></div>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>https://citizen.portal.gov.in</span>
+        </div>
+        <div className="email-content-wrapper" style={{ background: 'rgba(5, 7, 15, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div className="website-toast-mockup" style={{ margin: 0, width: '100%', border: '1px solid hsl(var(--primary) / 25%)', padding: '16px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '6px' }}>
+              <svg className="svg-icon" style={{ width: '14px', height: '14px', color: 'hsl(var(--primary))' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <strong style={{ fontSize: '0.7rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Public Security Advisory</strong>
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#f1f5f9', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{body}</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTemplatePreview = () => {
+    return renderCampaignMockup();
+  };
+
+  const getCampaignTypeLabel = (val) => {
+    const item = campaignTypes.find(c => c.value === val);
+    return item ? item.label : val;
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'draft':
+        return <span className="badge badge-manager">Draft</span>;
+      case 'completed':
+        return <span className="badge badge-communicator">Completed</span>;
+      case 'active':
+        return <span className="badge badge-admin" style={{ background: 'hsl(142, 60%, 45%)', color: '#fff' }}>Active</span>;
+      case 'scheduled':
+        return <span className="badge" style={{ background: 'hsl(271, 76%, 53%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Scheduled</span>;
+      case 'pending_approval':
+        return <span className="badge" style={{ background: 'hsl(35, 92%, 50%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Pending Approval</span>;
+      case 'cancelled':
+        return <span className="badge" style={{ background: 'hsl(0, 0%, 40%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Cancelled</span>;
+      default:
+        return <span className="badge badge-admin">{status}</span>;
+    }
+  };
+
+  const filteredCampaigns = listTab === 'all'
+    ? campaigns
+    : campaigns.filter(c => c.status === 'draft');
+
+  return (
+    <div className="animate-fade-in">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Campaign Planner</h1>
+          <p style={{ color: 'hsl(var(--text-secondary))' }}>Create, target, and monitor public awareness and emergency announcements.</p>
+        </div>
+        <div>
+          {viewMode === 'list' ? (
+            <button className="btn btn-primary" onClick={() => { setEditingCampId(null); setViewMode('create'); }}>
+              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Plan New Campaign
+            </button>
+          ) : (
+            <button className="btn btn-dark" onClick={() => setViewMode('list')}>
+              Cancel Wizard
+            </button>
+          )}
+        </div>
+      </div>
+
+      {viewMode === 'list' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Tabs Filter Header */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px' }}>
+            <button 
+              className={`btn ${listTab === 'all' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('all')}
+            >
+              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.95rem', height: '0.95rem' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              All Campaigns ({campaigns.length})
+            </button>
+            <button 
+              className={`btn ${listTab === 'drafts' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('drafts')}
+            >
+              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.95rem', height: '0.95rem' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+              Drafts Board ({campaigns.filter(c => c.status === 'draft').length})
+            </button>
+          </div>
+
+          <GlassCard>
+            <div className="table-container">
+              {loading ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>
+                  Fetching campaign database...
+                </div>
+              ) : campaigns.length === 0 ? (
+                <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '32px' }}>
+                  No active or draft campaigns planned. Create one above!
+                </p>
+              ) : (
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign Info</th>
+                      <th>Audience Metrics</th>
+                      <th>Channels</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Created At</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCampaigns.map(camp => (
+                      <tr key={camp.id}>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong style={{ fontSize: '1.05rem', color: 'hsl(var(--primary))' }}>{camp.title}</strong>
+                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>{camp.objective}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+                            <span>Target: <strong>{camp.target_audience_count}</strong></span>
+                            <span style={{ color: 'hsl(var(--text-muted))' }}>Est. Reach: {camp.estimated_reach}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {camp.channel_preferences.map(ch => (
+                              <span key={ch} style={{ fontSize: '0.8rem', padding: '2px 8px', background: 'var(--border-color-glass)', borderRadius: '100px', textTransform: 'uppercase', color: 'hsl(var(--text-secondary))' }}>
+                                {ch}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.9rem' }}>{getCampaignTypeLabel(camp.campaign_type)}</span>
+                        </td>
+                        <td>{getStatusBadge(camp.status)}</td>
+                        <td style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
+                          {new Date(camp.created_at).toLocaleString()}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {camp.status === 'draft' && (
+                              <button 
+                                className="btn btn-primary" 
+                                style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                                onClick={() => handleResumeEditCampaign(camp)}
+                                title="Resume Stepper Wizard"
+                              >
+                                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.9rem', height: '0.9rem' }}>
+                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                                <span style={{ fontSize: '0.8rem' }}>Resume</span>
+                              </button>
+                            )}
+                            {camp.status === 'scheduled' && (
+                              <button 
+                                className="btn btn-dark" 
+                                style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                                onClick={async () => {
+                                  if (window.confirm("Are you sure you want to cancel this scheduled campaign and return it to draft status?")) {
+                                    try {
+                                      const res = await fetch(`${backendUrl}/api/campaigns/${camp.id}`, {
+                                        method: 'PUT',
+                                        headers: { ...headers, 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ status: 'draft' })
+                                      });
+                                      if (res.ok) {
+                                        fetchCampaigns();
+                                      } else {
+                                        const err = await res.json();
+                                        alert(err.detail || "Failed to unschedule campaign");
+                                      }
+                                    } catch (err) {
+                                      alert(err.message);
+                                    }
+                                  }
+                                }}
+                                title="Cancel schedule and edit draft"
+                              >
+                                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.9rem', height: '0.9rem' }}>
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="8" y1="12" x2="16" y2="12" />
+                                </svg>
+                                <span style={{ fontSize: '0.8rem' }}>Unschedule</span>
+                              </button>
+                            )}
+                            {camp.status === 'pending_approval' && (
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                {user.role === 'admin' ? (
+                                  <>
+                                    <button 
+                                      className="btn btn-primary" 
+                                      style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#10b981' }} 
+                                      onClick={async () => {
+                                        if (window.confirm("Approve this campaign for immediate launch or scheduling?")) {
+                                          try {
+                                            const res = await fetch(`${backendUrl}/api/campaigns/${camp.id}/approve`, {
+                                              method: 'POST',
+                                              headers
+                                            });
+                                            if (res.ok) {
+                                              fetchCampaigns();
+                                            } else {
+                                              const err = await res.json();
+                                              alert(err.detail || "Approval failed");
+                                            }
+                                          } catch (err) {
+                                            alert(err.message);
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      className="btn btn-danger" 
+                                      style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444' }} 
+                                      onClick={async () => {
+                                        const reason = window.prompt("Enter rejection reason:");
+                                        if (reason !== null) {
+                                          try {
+                                            const res = await fetch(`${backendUrl}/api/campaigns/${camp.id}/reject`, {
+                                              method: 'POST',
+                                              headers: { ...headers, 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ reason })
+                                            });
+                                            if (res.ok) {
+                                              fetchCampaigns();
+                                            } else {
+                                              const err = await res.json();
+                                              alert(err.detail || "Rejection failed");
+                                            }
+                                          } catch (err) {
+                                            alert(err.message);
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', padding: '6px', fontStyle: 'italic' }}>
+                                    Awaiting Admin
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <button 
+                              className="btn btn-dark" 
+                              style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                              onClick={() => handleOpenAuditModal(camp)}
+                              title="View Audit History Logs"
+                            >
+                              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.9rem', height: '0.9rem' }}>
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <span style={{ fontSize: '0.8rem' }}>Logs</span>
+                            </button>
+                            {(camp.status === 'active' || camp.status === 'completed') && (
+                              <button 
+                                className="btn btn-primary" 
+                                style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }} 
+                                onClick={() => handleOpenDeliveryModal(camp)}
+                                title="View Real-Time Delivery Report & Logs"
+                              >
+                                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.9rem', height: '0.9rem' }}>
+                                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                </svg>
+                                <span style={{ fontSize: '0.8rem' }}>Report</span>
+                              </button>
+                            )}
+                            <button 
+
+                              className="btn btn-danger" 
+                              style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', background: 'hsl(var(--danger) / 10%)' }} 
+                              onClick={() => handleDeleteCampaign(camp.id)}
+                              title="Delete Campaign"
+                            >
+                              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.9rem', height: '0.9rem', color: 'hsl(var(--danger))' }}>
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      ) : (
+        <GlassCard style={{ maxWidth: '780px', margin: '0 auto' }}>
+          
+          {/* Wizard Steps Visual tracker */}
+          <div className="wizard-steps" style={{ position: 'relative' }}>
+            <div className="wizard-progress-bar">
+              <div className="wizard-progress-fill" style={{ width: `${((step - 1) / 3) * 100}%` }}></div>
+            </div>
+            <div className={`wizard-step ${step === 1 ? 'active' : step > 1 ? 'completed' : ''}`}>
+              <div className="step-circle">1</div>
+              <span className="step-label">Details</span>
+            </div>
+            <div className={`wizard-step ${step === 2 ? 'active' : step > 2 ? 'completed' : ''}`}>
+              <div className="step-circle">2</div>
+              <span className="step-label">Audience Target</span>
+            </div>
+            <div className={`wizard-step ${step === 3 ? 'active' : step > 3 ? 'completed' : ''}`}>
+              <div className="step-circle">3</div>
+              <span className="step-label">Template Bind</span>
+            </div>
+            <div className={`wizard-step ${step === 4 ? 'active' : ''}`}>
+              <div className="step-circle">4</div>
+              <span className="step-label">Review & Save</span>
+            </div>
+          </div>
+
+          {wizardError && (
+            <div className="glass-card danger-text" style={{ padding: '10px 14px', marginBottom: '20px', fontSize: '0.85rem', background: 'rgba(244, 63, 94, 0.1)', borderColor: 'rgba(244, 63, 94, 0.2)' }}>
+              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1.1rem', height: '1.1rem', marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {wizardError}
+            </div>
+          )}
+
+          {/* STEP 1: CAMPAIGN DETAILS */}
+          {step === 1 && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Campaign Title *</label>
+                <input type="text" className="form-control" placeholder="e.g. Swachh Bharat Ludhiana Awareness 2026" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Campaign Objective *</label>
+                <input type="text" className="form-control" placeholder="e.g. Educate farmers on stubble burning alternatives" value={formObjective} onChange={(e) => setFormObjective(e.target.value)} required />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Campaign Category Type</label>
+                  <select className="form-control" value={formType} onChange={(e) => setFormType(e.target.value)}>
+                    {campaignTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Detailed Notes / Description (Optional)</label>
+                <textarea className="form-control" style={{ minHeight: '80px', resize: 'vertical' }} placeholder="Targeting rural blocks inside Punjab during monsoon onset." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
+              </div>
+
+              {/* Campaign Schedule Configuration */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '4px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Dispatch Schedule Option</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className={`btn ${!isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                      style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
+                      onClick={() => {
+                        setIsScheduled(false);
+                        setScheduledTime('');
+                      }}
+                    >
+                      🚀 Send Immediately
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                      style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
+                      onClick={() => {
+                        setIsScheduled(true);
+                        if (!scheduledTime) {
+                          const now = new Date();
+                          now.setMinutes(now.getMinutes() + 5); // default to 5 minutes from now
+                          const iso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+                          setScheduledTime(iso.substring(0, 16));
+                        }
+                      }}
+                    >
+                      📅 Schedule Future
+                    </button>
+                  </div>
+                </div>
+
+                {isScheduled && (
+                  <div className="form-group animate-fade-in">
+                    <label className="form-label">Select Date & Time (Local Time) *</label>
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={scheduledTime}
+                      min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 16)}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: CHOOSE AUDIENCE SEGMENT */}
+          {step === 2 && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="form-group">
+                <label className="form-label">Select Saved Dynamic Target Segment *</label>
+                <select className="form-control" value={selectedSegId} onChange={(e) => setSelectedSegId(e.target.value)} required>
+                  <option value="">-- Choose Segment --</option>
+                  {segments.map(seg => (
+                    <option key={seg.id} value={seg.id}>
+                      {seg.name} ({seg.estimated_size} members)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Choose Active Communication Channels</label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  {channelsList.map(ch => (
+                    <label key={ch} style={{ display: 'flex', gap: '6px', cursor: 'pointer', alignItems: 'center', textTransform: 'capitalize' }}>
+                      <input type="checkbox" checked={selectedChannels.includes(ch)} onChange={() => toggleChannelSelection(ch)} />
+                      {ch}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {selectedSegId && (
+                <GlassCard style={{ background: 'transparent', padding: '24px', display: 'grid', gridTemplateColumns: '1fr 180px', alignItems: 'center', gap: '20px', borderColor: 'var(--border-color-glass)' }}>
+                  <div>
+                    <h4 style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))', marginBottom: '6px', fontWeight: '500' }}>Target Segment Reach Analysis</h4>
+                    <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.5' }}>
+                      Citizen contact overlap validation based on preferred channel details (phone and email indexes).
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid var(--border-color-glass)', paddingLeft: '20px' }}>
+                    {evalLoading ? (
+                      <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Re-evaluating reach...</span>
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>EST. IMPACT REACH</span>
+                        <span className="reach-card-value">{evalReach.reach}</span>
+                        <span style={{ display: 'block', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>of {evalReach.target} members</span>
+                      </div>
+                    )}
+                  </div>
+                </GlassCard>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3: TEMPLATE BINDING & PLACEHOLDERS PREVIEW */}
+          {step === 3 && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="form-group">
+                <label className="form-label">Bind Reusable Message Template *</label>
+                <select className="form-control" value={selectedTplId} onChange={(e) => { setSelectedTplId(e.target.value); setUseCustomMsg(e.target.value === 'custom'); }} required>
+                  <option value="">-- Choose Template --</option>
+                  <option value="custom">-- Write Custom Message (Direct) --</option>
+                  {templates.map(tpl => (
+                    <option key={tpl.id} value={tpl.id}>
+                      [{tpl.channel.toUpperCase()}] {tpl.title} ({tpl.default_language})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedTplId === 'custom' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255,255,255,0.01)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color-glass)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Compose Custom Campaign Message</h4>
+                  
+                  {selectedChannels.includes('email') && (
+                    <div className="form-group">
+                      <label className="form-label">Email Subject</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Emergency alert: heavy rain advisory for {{city}} region"
+                        value={customSubject}
+                        onChange={(e) => setCustomSubject(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="form-group" style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label className="form-label">Message Body *</label>
+                      <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Insert Placeholders:</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', padding: '8px', background: 'var(--border-color-glass)', borderRadius: '10px' }}>
+                      {placeholders.map(p => (
+                        <button
+                          key={p.tag}
+                          type="button"
+                          className="pill-chip"
+                          onClick={() => handleInsertPlaceholder(p.tag)}
+                        >
+                          +{p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      ref={bodyTextareaRef}
+                      className="form-control"
+                      style={{ width: '100%', minHeight: '120px', fontFamily: 'monospace', fontSize: '0.9rem', resize: 'vertical' }}
+                      placeholder="Type your message here. E.g. Dear {{first_name}}, please note that heavy rains are forecasted in {{city}}..."
+                      value={customBody}
+                      onChange={(e) => setCustomBody(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {/* 🤖 AI Assist Panel Toggle */}
+                  <button
+                    type="button"
+                    className="btn btn-dark"
+                    style={{ marginTop: '10px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 14px', background: campAiPanelOpen ? 'hsl(var(--primary) / 15%)' : undefined, border: campAiPanelOpen ? '1px solid hsl(var(--primary) / 30%)' : undefined }}
+                    onClick={() => { setCampAiPanelOpen(!campAiPanelOpen); setCampAiError(''); setCampAiResult(null); setCampAiComplianceResult(null); }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>🤖</span>
+                    {campAiPanelOpen ? 'Close AI Assist' : 'AI Assist'}
+                  </button>
+
+                  {campAiPanelOpen && (
+                    <div style={{ marginBottom: '10px', padding: '14px', background: 'rgba(37,99,235,0.04)', border: '1px solid hsl(var(--primary) / 15%)', borderRadius: '12px' }}>
+                      {/* Tab Bar */}
+                      <div style={{ display: 'flex', gap: '4px', marginBottom: '12px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px', flexWrap: 'wrap' }}>
+                        {[
+                          { id: 'generate', label: '✨ Generate' },
+                          { id: 'optimize', label: '🎯 Optimize' },
+                          { id: 'personalize', label: '👥 Personalize' },
+                          { id: 'compliance', label: '🛡️ Compliance' },
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            style={{
+                              padding: '5px 12px', fontSize: '0.78rem', borderRadius: '6px', cursor: 'pointer',
+                              background: campAiTab === tab.id ? 'hsl(var(--primary) / 20%)' : 'transparent',
+                              color: campAiTab === tab.id ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
+                              border: campAiTab === tab.id ? '1px solid hsl(var(--primary) / 30%)' : '1px solid transparent',
+                              fontWeight: campAiTab === tab.id ? 600 : 400,
+                              transition: 'all 0.15s ease',
+                            }}
+                            onClick={() => { setCampAiTab(tab.id); setCampAiError(''); setCampAiResult(null); setCampAiComplianceResult(null); }}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Generate Tab */}
+                      {campAiTab === 'generate' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.78rem' }}>Describe what you want to communicate</label>
+                            <textarea
+                              className="form-control"
+                              style={{ minHeight: '60px', fontSize: '0.85rem', resize: 'vertical' }}
+                              placeholder="e.g. Alert rural farmers about upcoming drought in Rajasthan with water conservation tips"
+                              value={campAiPrompt}
+                              onChange={(e) => setCampAiPrompt(e.target.value)}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                            <div className="form-group" style={{ marginBottom: 0, flex: '1 1 120px' }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem' }}>Tone</label>
+                              <select className="form-control" style={{ fontSize: '0.8rem', height: 'auto', minHeight: 'auto', padding: '4px 8px' }} value={campAiTone} onChange={(e) => setCampAiTone(e.target.value)}>
+                                {aiTones.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '6px 16px', fontSize: '0.8rem', height: 'auto', whiteSpace: 'nowrap' }}
+                              disabled={campAiLoading || !campAiPrompt.trim()}
+                              onClick={async () => {
+                                setCampAiLoading(true); setCampAiError(''); setCampAiResult(null);
+                                const ch = selectedChannels.length > 0 ? selectedChannels[0] : 'email';
+                                try {
+                                  const resp = await fetch(`${backendUrl}/api/ai/generate`, {
+                                    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ prompt: campAiPrompt, category: aiCategories.includes(formType.split('_')[0]) ? formType.split('_')[0] : 'awareness', channel: ch, tone: campAiTone })
+                                  });
+                                  const data = await resp.json();
+                                  if (!resp.ok) throw new Error(data.detail || 'Generation failed');
+                                  if (data.error) throw new Error(data.error);
+                                  setCampAiResult({ type: 'generate', subject: data.subject, body: data.body });
+                                } catch (err) { setCampAiError(err.message); }
+                                finally { setCampAiLoading(false); }
+                              }}
+                            >
+                              {campAiLoading ? 'Generating...' : '✨ Generate'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Optimize Tab */}
+                      {campAiTab === 'optimize' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <p style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', margin: 0 }}>Rewrite your current message body in a different tone. Placeholders will be preserved.</p>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            <div className="form-group" style={{ marginBottom: 0, flex: '1 1 120px' }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem' }}>Target Tone</label>
+                              <select className="form-control" style={{ fontSize: '0.8rem', height: 'auto', minHeight: 'auto', padding: '4px 8px' }} value={campAiTone} onChange={(e) => setCampAiTone(e.target.value)}>
+                                {aiTones.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '6px 16px', fontSize: '0.8rem', height: 'auto', whiteSpace: 'nowrap' }}
+                              disabled={campAiLoading || !customBody.trim()}
+                              onClick={async () => {
+                                setCampAiLoading(true); setCampAiError(''); setCampAiResult(null);
+                                try {
+                                  const resp = await fetch(`${backendUrl}/api/ai/optimize`, {
+                                    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ text: customBody, target_tone: campAiTone })
+                                  });
+                                  const data = await resp.json();
+                                  if (!resp.ok) throw new Error(data.detail || 'Optimization failed');
+                                  if (data.error) throw new Error(data.error);
+                                  setCampAiResult({ type: 'optimize', text: data.optimized_text });
+                                } catch (err) { setCampAiError(err.message); }
+                                finally { setCampAiLoading(false); }
+                              }}
+                            >
+                              {campAiLoading ? 'Optimizing...' : '🎯 Optimize'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Personalize Tab */}
+                      {campAiTab === 'personalize' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <p style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', margin: 0 }}>Adapt your message for a specific audience and objective.</p>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            <div className="form-group" style={{ marginBottom: 0, flex: '1 1 140px' }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem' }}>Target Audience</label>
+                              <select className="form-control" style={{ fontSize: '0.8rem', height: 'auto', minHeight: 'auto', padding: '4px 8px' }} value={campAiAudienceProfile} onChange={(e) => setCampAiAudienceProfile(e.target.value)}>
+                                {aiAudienceProfiles.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                              </select>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0, flex: '1 1 140px' }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem' }}>Objective</label>
+                              <select className="form-control" style={{ fontSize: '0.8rem', height: 'auto', minHeight: 'auto', padding: '4px 8px' }} value={campAiObjective} onChange={(e) => setCampAiObjective(e.target.value)}>
+                                {aiCategories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '6px 16px', fontSize: '0.8rem', height: 'auto', whiteSpace: 'nowrap' }}
+                              disabled={campAiLoading || !customBody.trim()}
+                              onClick={async () => {
+                                setCampAiLoading(true); setCampAiError(''); setCampAiResult(null);
+                                try {
+                                  const resp = await fetch(`${backendUrl}/api/ai/personalize`, {
+                                    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ text: customBody, audience_profile: campAiAudienceProfile, communication_objective: campAiObjective })
+                                  });
+                                  const data = await resp.json();
+                                  if (!resp.ok) throw new Error(data.detail || 'Personalization failed');
+                                  if (data.error) throw new Error(data.error);
+                                  setCampAiResult({ type: 'personalize', text: data.personalized_text });
+                                } catch (err) { setCampAiError(err.message); }
+                                finally { setCampAiLoading(false); }
+                              }}
+                            >
+                              {campAiLoading ? 'Personalizing...' : '👥 Personalize'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Compliance Tab */}
+                      {campAiTab === 'compliance' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <p style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', margin: 0 }}>Audit your message for compliance, readability, spam risks, and placeholder integrity.</p>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{ padding: '6px 16px', fontSize: '0.8rem', height: 'auto', alignSelf: 'flex-start' }}
+                            disabled={campAiLoading || !customBody.trim()}
+                            onClick={async () => {
+                              setCampAiLoading(true); setCampAiError(''); setCampAiComplianceResult(null);
+                              try {
+                                const resp = await fetch(`${backendUrl}/api/ai/check-compliance`, {
+                                  method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ text: customBody, category: aiCategories.includes(formType.split('_')[0]) ? formType.split('_')[0] : 'awareness' })
+                                });
+                                const data = await resp.json();
+                                if (!resp.ok) throw new Error(data.detail || 'Compliance check failed');
+                                setCampAiComplianceResult(data);
+                              } catch (err) { setCampAiError(err.message); }
+                              finally { setCampAiLoading(false); }
+                            }}
+                          >
+                            {campAiLoading ? 'Checking...' : '🛡️ Run Compliance Audit'}
+                          </button>
+
+                          {campAiComplianceResult && (
+                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color-glass)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'hsl(var(--text-primary))' }}>Quality Score</span>
+                                <span style={{
+                                  fontSize: '1.3rem', fontWeight: 700,
+                                  color: campAiComplianceResult.score >= 80 ? 'hsl(var(--accent))' : campAiComplianceResult.score >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--danger))'
+                                }}>
+                                  {campAiComplianceResult.score}/100
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginBottom: '10px', flexWrap: 'wrap' }}>
+                                <span>📝 {campAiComplianceResult.word_count} words</span>
+                                <span>📄 {campAiComplianceResult.char_count} chars</span>
+                                <span>🔗 {campAiComplianceResult.placeholder_count} placeholders</span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {campAiComplianceResult.issues.map((issue, idx) => (
+                                  <div key={idx} style={{
+                                    display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem',
+                                    background: issue.severity === 'error' ? 'hsl(var(--danger) / 8%)' : issue.severity === 'warning' ? 'hsl(var(--warning) / 8%)' : issue.severity === 'success' ? 'hsl(var(--accent) / 8%)' : 'rgba(255,255,255,0.03)',
+                                    color: issue.severity === 'error' ? 'hsl(var(--danger))' : issue.severity === 'warning' ? 'hsl(var(--warning))' : issue.severity === 'success' ? 'hsl(var(--accent))' : 'hsl(var(--text-secondary))',
+                                  }}>
+                                    <span>{issue.severity === 'error' ? '🚫' : issue.severity === 'warning' ? '⚠️' : issue.severity === 'success' ? '✅' : 'ℹ️'}</span>
+                                    <span>{issue.message}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* AI Error */}
+                      {campAiError && (
+                        <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '6px', background: 'hsl(var(--danger) / 8%)', color: 'hsl(var(--danger))', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          ⚠️ {campAiError}
+                        </div>
+                      )}
+
+                      {/* AI Result Preview */}
+                      {campAiResult && (
+                        <div style={{ marginTop: '10px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color-glass)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--primary))', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            {campAiResult.type === 'generate' ? '✨ Generated Content' : campAiResult.type === 'optimize' ? '🎯 Optimized Text' : '👥 Personalized Text'}
+                          </div>
+                          {campAiResult.subject && (
+                            <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                              <strong>Subject:</strong> {campAiResult.subject}
+                            </div>
+                          )}
+                          <div style={{
+                            padding: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color-glass)',
+                            fontSize: '0.85rem', color: 'hsl(var(--text-primary))', lineHeight: '1.45', whiteSpace: 'pre-wrap', maxHeight: '200px', overflowY: 'auto'
+                          }}>
+                            {campAiResult.body || campAiResult.text}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '5px 12px', fontSize: '0.75rem', height: 'auto' }}
+                              onClick={() => {
+                                if (campAiResult.type === 'generate') {
+                                  if (campAiResult.subject) setCustomSubject(campAiResult.subject);
+                                  setCustomBody(campAiResult.body);
+                                } else {
+                                  setCustomBody(campAiResult.text);
+                                }
+                                setCampAiResult(null);
+                              }}
+                            >
+                              ✅ Apply to Editor
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-dark"
+                              style={{ padding: '5px 12px', fontSize: '0.75rem', height: 'auto' }}
+                              onClick={() => setCampAiResult(null)}
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Inline Translation Helper */}
+                  <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color-glass)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>🤖</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))' }}>Groq AI Translation Helper</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          className="form-control"
+                          style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto', height: 'auto', minHeight: 'auto' }}
+                          value={inlineTranslationLang}
+                          onChange={(e) => setInlineTranslationLang(e.target.value)}
+                        >
+                          {configLanguages.map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-dark"
+                          style={{ padding: '4px 10px', fontSize: '0.78rem', height: 'auto' }}
+                          onClick={handleCustomTranslate}
+                          disabled={inlineTranslationLoading || !customBody}
+                        >
+                          {inlineTranslationLoading ? 'Translating...' : 'Translate'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {inlineTranslationError && (
+                      <div style={{ color: 'hsl(var(--danger))', fontSize: '0.78rem', marginTop: '8px' }}>
+                        ⚠️ {inlineTranslationError}
+                      </div>
+                    )}
+
+                    {inlineTranslationResult && (
+                      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {inlineTranslationSubjectResult && (
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color-glass)', fontSize: '0.85rem' }}>
+                            <strong>Subject:</strong> {inlineTranslationSubjectResult}
+                          </div>
+                        )}
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color-glass)', fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>
+                          {inlineTranslationResult}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 'auto' }}
+                            onClick={handleApplyCustomTranslation}
+                          >
+                            Use Translated Content
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-dark"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 'auto' }}
+                            onClick={() => { setInlineTranslationResult(''); setInlineTranslationSubjectResult(''); }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedTplId && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>
+                      🔍 Live Placeholder Preview (Demo sample profile)
+                    </label>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Preview Language:</span>
+                      <select
+                        className="form-control"
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto', height: 'auto', minHeight: 'auto', display: 'inline-block' }}
+                        value={previewLang}
+                        onChange={(e) => setPreviewLang(e.target.value)}
+                      >
+                        {configLanguages.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {previewLoading ? (
+                    <div style={{ padding: '36px', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed var(--border-color-glass)', color: 'hsl(var(--text-muted))', fontSize: '0.85rem' }}>
+                      Translating preview dynamically...
+                    </div>
+                  ) : (
+                    renderTemplatePreview()
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 4: REVIEW & SAVE DRAFT */}
+          {step === 4 && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="campaign-receipt">
+                <div style={{ borderBottom: '1px dashed var(--border-color-glass)', paddingBottom: '16px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'hsl(var(--primary))', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CAMPAIGN SPECIFICATION SHEET</span>
+                  <h3 style={{ fontSize: '1.3rem', color: 'hsl(var(--text-primary))', marginTop: '4px', fontWeight: '500' }}>
+                    {formTitle}
+                  </h3>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div className="receipt-item">
+                    <span className="receipt-label">Objective</span>
+                    <span className="receipt-value" style={{ maxWidth: '60%', textAlign: 'right' }}>{formObjective}</span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Advisory Type</span>
+                    <span className="receipt-value">{getCampaignTypeLabel(formType)}</span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Target Dynamic Segment</span>
+                    <span className="receipt-value" style={{ color: 'hsl(var(--secondary))' }}>
+                      {segments.find(s => s.id === selectedSegId)?.name || 'Custom criteria query'}
+                    </span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Active Channel Mix</span>
+                    <span className="receipt-value" style={{ textTransform: 'uppercase', fontSize: '0.85rem', color: 'hsl(var(--primary))' }}>
+                      {selectedChannels.join(' • ')}
+                    </span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Citizen Impact Count</span>
+                    <span className="receipt-value" style={{ color: 'hsl(var(--accent))', fontWeight: '800' }}>
+                      {evalReach.reach} Citizens
+                    </span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Estimated Channel Budget</span>
+                    <span className="receipt-value" style={{ color: 'hsl(var(--accent))', fontWeight: '800' }}>
+                      ₹{(() => {
+                        let cost = 0;
+                        selectedChannels.forEach(ch => {
+                          if (ch === 'sms') cost += evalReach.reach * 0.02 * 83;
+                          else if (ch === 'whatsapp') cost += evalReach.reach * 0.04 * 83;
+                        });
+                        return cost.toFixed(2);
+                      })()}
+                    </span>
+                  </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Execution Schedule</span>
+                    <span className="receipt-value" style={{ color: isScheduled ? 'hsl(var(--warning))' : 'hsl(var(--accent))', fontWeight: 'bold' }}>
+                      {isScheduled ? `📅 Scheduled: ${new Date(scheduledTime).toLocaleString()}` : '🚀 Send Immediately'}
+                    </span>
+                  </div>
+                </div>
+
+                {segmentPreviewUsers.length > 0 && (
+                  <div style={{ marginTop: '16px', borderTop: '1px dashed var(--border-color-glass)', paddingTop: '12px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+                      👥 Target Recipients Preview:
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255,255,255,0.02)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      {segmentPreviewUsers.map(u => (
+                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
+                          <span style={{ fontWeight: '500', color: 'hsl(var(--text-primary))' }}>{u.first_name} {u.last_name}</span>
+                          <span style={{ color: 'hsl(var(--text-secondary))', fontFamily: 'monospace' }}>
+                            {u.email || u.phone}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formDesc && (
+                  <div style={{ fontSize: '0.9rem', borderTop: '1px solid var(--border-color-glass)', paddingTop: '12px', marginTop: '4px' }}>
+                    <strong style={{ color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '4px', fontWeight: '500' }}>Staff Notes:</strong>
+                    <p style={{ color: 'hsl(var(--text-secondary))', lineHeight: '1.4' }}>{formDesc}</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: 'block', marginBottom: '10px', fontWeight: '700' }}>
+                  Live Variable Interpolation Preview
+                </label>
+                {renderCampaignMockup()}
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', justifyItems: 'center', marginTop: '32px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '20px' }}>
+            <button type="button" className="btn btn-dark" onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} style={{ marginRight: 'auto' }}>
+              Previous
+            </button>
+            
+            {step < 4 ? (
+              <button type="button" className="btn btn-primary" onClick={handleNextStep}>
+                Next Step
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" className="btn btn-secondary" onClick={handleSaveCampaignDraft}>
+                  <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Save Campaign Draft
+                </button>
+                {user && (user.role === 'admin' || user.role === 'campaign_manager') ? (
+                  <button type="button" className="btn btn-primary" onClick={handlePublishCampaign}>
+                    <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    {isScheduled ? 'Schedule Campaign' : 'Launch Campaign (Active)'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Only Campaign Managers can launch campaigns">
+                    <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    {isScheduled ? 'Schedule Campaign' : 'Launch Campaign (Active)'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+        </GlassCard>
+      )}
+
+      {/* --- AUDIT TIMELINE MODAL OVERLAY --- */}
+      {showAuditModal && selectedCampaignForAudit && (
+        <div className="modal-overlay">
+          <GlassCard className="modal-content animate-fade-in" style={{ width: '100%', maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '500', color: 'hsl(var(--primary))', margin: 0 }}>Campaign Audit History</h3>
+                <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>
+                  Campaign: <strong style={{ fontWeight: '500' }}>{selectedCampaignForAudit.title}</strong>
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }} 
+                  onClick={() => {
+                    window.open(`${backendUrl}/api/campaigns/audit-logs/export/all?campaign_id=${selectedCampaignForAudit.id}`, '_blank');
+                  }}
+                  title="Export this campaign's audit logs to CSV"
+                >
+                  📥 Export CSV
+                </button>
+                <button className="btn btn-dark" style={{ padding: '6px 12px' }} onClick={() => setShowAuditModal(false)}>
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {auditLoading ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>
+                Loading audit logs...
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
+                No change history found for this campaign.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderLeft: '2px solid var(--border-color-glass)', paddingLeft: '16px', marginLeft: '8px', position: 'relative' }}>
+                {auditLogs.map(log => (
+                  <div key={log.id} style={{ position: 'relative', paddingBottom: '8px' }}>
+                    {/* Timeline dot */}
+                    <div style={{
+                      position: 'absolute',
+                      left: '-23px',
+                      top: '4px',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      background: log.action === 'CREATE' ? 'hsl(var(--primary))' : log.action === 'STATUS_CHANGE' ? 'hsl(var(--accent))' : 'hsl(var(--warning))'
+                    }} />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.85rem' }}>
+                      <span style={{ fontWeight: '600', textTransform: 'uppercase', color: 'hsl(var(--primary))' }}>
+                        {log.action.replace('_', ' ')}
+                      </span>
+                      <span style={{ color: 'hsl(var(--text-muted))', fontSize: '0.8rem' }}>
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+                      Performed by: <strong>{log.user_name}</strong>
+                    </div>
+
+                    {log.action === 'STATUS_CHANGE' && (
+                      <div style={{ marginTop: '4px', fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>
+                        Status transitioned from <span style={{ textTransform: 'capitalize', color: 'hsl(var(--text-muted))' }}>{log.old_status}</span> ➜ <strong style={{ color: 'hsl(var(--text-primary))', textTransform: 'capitalize', fontWeight: '500' }}>{log.new_status}</strong>
+                      </div>
+                    )}
+
+                    {log.changes && renderAuditChanges(log.changes)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+      )}
+
+      {/* --- DELIVERY PROGRESS & REPORT MODAL OVERLAY --- */}
+      {showDeliveryModal && selectedCampaignForDelivery && (
+        <div className="modal-overlay">
+          <GlassCard className="modal-content animate-fade-in" style={{ width: '100%', maxWidth: '750px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '600', color: '#00e5ff', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <span>📢</span> Campaign Delivery Report
+                </h3>
+                <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>
+                  Campaign: <strong style={{ fontWeight: '500', color: '#fff' }}>{selectedCampaignForDelivery.title}</strong>
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {deliverySummary && (
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }} 
+                    onClick={() => {
+                      window.open(`${backendUrl}/api/campaigns/${selectedCampaignForDelivery.id}/export-delivery-logs`, '_blank');
+                    }}
+                    title="Export all recipient logs to CSV file"
+                  >
+                    📥 Export CSV
+                  </button>
+                )}
+                <button className="btn btn-dark" style={{ padding: '6px 12px' }} onClick={handleCloseDeliveryModal}>
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {deliveryLoading ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>
+                Fetching live delivery report...
+              </div>
+            ) : !deliverySummary ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
+                No delivery metrics available for this campaign.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', paddingRight: '4px' }}>
+                
+                {/* Status and Progress Bar */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'hsl(var(--text-secondary))' }}>
+                      Delivery status: <strong style={{ 
+                        color: deliverySummary.status === 'completed' ? '#00e676' : deliverySummary.status === 'active' ? '#00e5ff' : '#ff9100',
+                        textTransform: 'uppercase'
+                      }}>{deliverySummary.status === 'active' ? 'Delivering...' : deliverySummary.status}</strong>
+                    </span>
+                    {deliverySummary.dispatched_at && (
+                      <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+                        Sent at: {new Date(deliverySummary.dispatched_at).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  {(() => {
+                    const total = deliverySummary.target_count || 0;
+                    const processed = (deliverySummary.sent_count || 0) + (deliverySummary.failed_count || 0);
+                    const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginBottom: '6px' }}>
+                          <span>Dispatch progress: {pct}%</span>
+                          <span>{processed} of {total} recipients processed</span>
+                        </div>
+                        <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '100px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            height: '100%', 
+                            width: `${pct}%`, 
+                            background: deliverySummary.status === 'completed' ? 'linear-gradient(90deg, #00b0ff, #00e676)' : 'linear-gradient(90deg, #00b0ff, #00e5ff)',
+                            borderRadius: '100px',
+                            transition: 'width 0.4s ease'
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Counters grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                  <div style={{ background: 'rgba(0, 176, 255, 0.05)', border: '1px solid rgba(0, 176, 255, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>TARGET RECIPIENTS</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00b0ff' }}>{deliverySummary.target_count}</span>
+                  </div>
+                  <div style={{ background: 'rgba(0, 230, 118, 0.05)', border: '1px solid rgba(0, 230, 118, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>SUCCESSFULLY SENT</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00e676' }}>{deliverySummary.sent_count}</span>
+                  </div>
+                  <div style={{ background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>FAILED / REFUSED</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#ff1744' }}>{deliverySummary.failed_count}</span>
+                  </div>
+                </div>
+
+                {/* Logs table */}
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: '600', marginBottom: '10px', color: 'hsl(var(--text-primary))' }}>Recipient Dispatch Log Details</h4>
+                  
+                  <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border-color-glass)', borderRadius: '6px' }}>
+                    <table className="custom-table" style={{ margin: 0, fontSize: '0.85rem' }}>
+                      <thead style={{ position: 'sticky', top: 0, background: '#0d111d', zIndex: 1 }}>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Channel</th>
+                          <th>Status</th>
+                          <th>Address/Phone</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deliveryLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', color: 'hsl(var(--text-muted))', padding: '16px' }}>
+                              No log entries found.
+                            </td>
+                          </tr>
+                        ) : (
+                          deliveryLogs.map(log => (
+                            <tr key={log.id}>
+                              <td style={{ fontWeight: '500' }}>{log.audience_name}</td>
+                              <td style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                                <span style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px' }}>{log.channel}</span>
+                              </td>
+                              <td>
+                                <span style={{ 
+                                  color: log.status === 'sent' ? '#00e676' : '#ff1744', 
+                                  fontWeight: 'bold',
+                                  fontSize: '0.8rem'
+                                }}>
+                                  {log.status === 'sent' ? '✓ SENT' : '✗ FAILED'}
+                                </span>
+                                {log.error_message && (
+                                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>
+                                    {log.error_message}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ fontFamily: 'monospace', color: 'hsl(var(--text-secondary))' }}>
+                                {log.recipient_info || 'N/A'}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </GlassCard>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Campaigns;
+

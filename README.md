@@ -200,45 +200,71 @@ erDiagram
 
 ---
 
-## 🚀 Key Implemented Features
+## 📅 Week-by-Week Implementation & Screenshots
 
-### 1. AI Content Generation & Optimization Engine (Weeks 3-4)
-- **Drafting & Structured Prompts**: Generate campaign subject lines and messages using structured, category-specific prompts (Awareness, Emergency, Educational, Announcement).
-- **Tone presets**: Toggle between *Urgent*, *Empathetic*, *Formal*, and *Simplified* tones.
-- **Audience Personalizer**: Dynamically adapts drafts for *Healthcare Workers*, *Students*, *Rural Audiences*, and *Senior Citizens* based on communication goals.
-- **Strict Placeholder Safeguards**: System instructions strictly enforce the preservation of brackets tokens (`{{first_name}}`, `{{city}}`) across all AI optimizations.
-- **Offline Compliance & Quality Audit**: Evaluates copy locally against rules (unclosed braces, spam keywords, readability index, sentence length warnings, shouting, duplicates) to output a quality score (0-100) and error/warning flags.
-- **Unified Side Panel**: Features a tabbed AI Assist panel in both the Template library and Campaign Wizard. Includes fallback loading indicators and error states.
+### Weeks 1–2: Audience Management & Campaign Planning Module
 
-### 2. Multilingual Pre-Translation Caching & Previews
-- **AI Bulk Pre-translations**: One-click command to translate templates into all 22 official regional Indian languages in the background. Caches results into the SQL column for fast dispatches.
-- **Pre-translation badges**: Displays pre-generated language flags on template cards in the library.
-- **Intelligent Dispatcher Caching**: When broadcasting campaigns, the dispatcher checks the templates cache first. If a match exists, it dispatches immediately without external LLM API dependencies, saving network calls and preventing runtime timeouts.
-- **Dynamic Preview Mockups**: Interactive browser and phone screens render previews in 22 regional Indian languages on the fly during campaign setups.
+During the first two weeks, the core database models, authentication layer, and interface for managing target citizen segments and communication campaigns were developed:
 
-### 3. Direct Campaign Composing & Caret-Position Insertion
-- **Direct message option**: Select `-- Write Custom Message (Direct) --` to compose drafts immediately inside the Campaigns Wizard without template binding constraints.
-- **Caret Position Tag Insertion**: Click placeholders chips (+Name, +City) to append brackets variables precisely at the current text area cursor/focus caret index.
-- **Shadow Templates CRUD**: Writing custom messages automatically creates hidden templates database logs linked to the campaign. Modifying custom drafts updates them, and soft-deleting campaigns or changing template bindings cleans them up automatically.
+* **Public Landing Page**: The public-facing entry portal welcoming users and showing general platform features.
+  
+  ![Public Landing Page](docs/screenshots/landing.png)
 
-### 4. Audience Management & Dynamic Segment Builder
-- **Dynamic Segment Builder**: Build segment rules with logical AND/OR evaluations.
-- **Demographics Breakdowns**: Calculates and displays Language, State, and Occupation distributions within the target segment using visual CSS progress bars.
-- **CSV Bulk Importer**: Validates incoming audience imports for duplicates and formats. Automatically stores unrecognized columns in custom JSON metadata.
+* **Authentication & Role-Based Access Control (RBAC)**: Secure operator sign-in with a mock JWT verification scheme. Features a multi-tiered role model including Administrators, Campaign Managers, and Communicators (Staff).
+  
+  ![Login Screen](docs/screenshots/login.png)
 
-### 5. Multi-Channel Dispatch Engine & Logs
-- **Campaign Background Dispatcher**: Periodically runs campaigns scheduled at a target timestamp.
-- **Email Service**: Transmits plain/HTML emails to citizens via SMTP (Gmail or custom).
-- **WhatsApp Service**: Transmits notifications via CallMeBot gateway.
-- **Delivery Audit Logs**: Tracks sent/failed logs in detail, showing channel, target language, and API error codes.
+* **Overview Dashboard**: A high-level center showcasing active campaigns, estimated public reach, user directory counts, database segment size, and live integration latency.
+  
+  ![Overview Dashboard](docs/screenshots/dashboard.png)
 
-### 6. Enterprise Governance, Safety Guardrails & Diagnostics (New)
-- **Maker-Checker Workflows (Four-Eye Principle)**: Mitigates public relations disasters or panic from typo-ridden emergency alerts. Campaigns targeting $\ge 100$ citizens or categorized as Emergency automatically escalate to `pending_approval` when launched by non-admins, requiring explicit Administrator approval or rejection with documented reason.
-- **Opt-Out Suppression Registry (Blacklist)**: Added database schema and CRUD APIs to blacklist unsubscribed emails or phone numbers. The background worker checks this suppressor list automatically to exclude citizens from campaigns.
-- **Daily Send Caps**: Configured maximum daily channel send thresholds (`DAILY_CAP_EMAIL`, etc.) to prevent runaway API billing and accidental drainage.
-- **Live Integration Diagnostics**: Handshake connectivity check APIs evaluate SMTP handshake health, WhatsApp API keys, and Groq LLM latency (in ms) to map platform parameters on a live dashboard.
-- **CSV Data Exporters**: Allows operators to download complete campaign delivery logs and global change history trails into structured CSV spreadsheets directly from the console.
-- **Operator User Directory**: Complete management screen for Administrators to create accounts, update roles, reset operator passwords, and revoke access instantly.
+* **Audience Management & Segmentation**: Build targeted groups using a dynamic segment builder with logical query filter criteria (e.g. state, occupation, age group). It displays visual demographic breakdowns (language, state, occupation) using progress indicators.
+  
+  ![Audience Management](docs/screenshots/audiences.png)
+
+* **Template Library**: A central manager to create, view, edit, and categorize communication templates for various delivery channels (Email, WhatsApp, SMS) and categories (Emergency, Awareness, Education).
+  
+  ![Template Library](docs/screenshots/templates.png)
+
+* **Campaign Planner**: A consolidated grid where operators can manage mass communication workflows. Displays the scheduled status, estimated reach, and delivery audits.
+  
+  ![Campaign Planner](docs/screenshots/campaigns.png)
+
+* **Maker-Checker Governance (Four-Eye Principle)**: A safety guardrail that blocks unauthorized or panic-inducing emergency broadcasts. Any campaign targeting $\ge 100$ citizens or marked as `Emergency` requires an Administrator's explicit approval or rejection before dispatching.
+  
+  ![Approvals Queue](docs/screenshots/approvals.png)
+
+---
+
+### Weeks 3–4: AI Content Generation & Multilingual Communication Engine
+
+In Weeks 3 and 4, we integrated generative artificial intelligence and localization capabilities:
+
+* **Generative AI Side Panel**: Accessible within the Campaign Wizard and Template Library. Utilizes Groq API (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant`) to draft and optimize subjects and bodies.
+* **Tone Presets & Audience Personalizer**: Tone overrides (Urgent, Empathetic, Formal, Simplified) and tailored messaging styles for specific demographics (Healthcare Workers, Students, Rural, Seniors).
+* **Caret-Position Chip Insertion**: Inserts placeholder variables (`{{first_name}}`, `{{city}}`) at the user's cursor caret position inside text inputs.
+* **Multilingual Translation & Previews**: Pre-translates templates into all 22 official regional Indian languages. Dynamic previews render mock mobile and desktop screens in any language on the fly.
+* **Offline Compliance & Quality Audit**: Evaluates draft copy locally for sentence length warnings, shouting (excessive caps), duplicate sentences, unclosed brackets, and spam keywords, calculating an overall quality score (0-100).
+  
+  ![Campaign Wizard & AI Assistant](docs/screenshots/campaign_wizard.png)
+
+* **System Integration Diagnostics**: A diagnostic dashboard checking connection status and latency (ms) for Groq LLMs, SMTP server handshake, and the CallMeBot WhatsApp API gateway.
+  
+  ![System Diagnostics Dashboard](docs/screenshots/settings.png)
+
+---
+
+### Weeks 5–6: Multi-Channel Distribution & Engagement Analytics Platform
+* **Channel Dispatch Service**: Handles SMTP email transmission and CallMeBot WhatsApp message delivery.
+* **Automated Background Dispatcher**: Processes and sends scheduled campaigns in the background using a lightweight polling loop.
+* **Delivery tracking & Logs**: Detailed logs tracking channel status (sent/failed), recipient language, and error logs.
+
+---
+
+### Weeks 7–8: System Integration, Testing & Project Finalization
+* **End-to-End Testing**: Validates segment calculation, AI translation, Maker-Checker locks, and channel dispatch.
+* **Suppression Registry**: A global blacklist preventing communication to citizens who opted out.
+* **Daily Billing Send Caps**: Enforces absolute daily send caps per channel to prevent runaway API fees.
 
 ---
 

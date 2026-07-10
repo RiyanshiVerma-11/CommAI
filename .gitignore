@@ -8,6 +8,8 @@ env/
 .env
 .env.local
 .env.*.local
+settings.json
+backend/settings.json
 
 # SQLite Database files
 *.db

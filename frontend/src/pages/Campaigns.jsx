@@ -74,6 +74,99 @@ const Campaigns = ({ user, backendUrl, headers }) => {
   const [campAiResult, setCampAiResult] = useState(null);
   const [campAiComplianceResult, setCampAiComplianceResult] = useState(null);
 
+  // --- ENTERPRISE AI CO-PILOT STATES ---
+  const [coPilotOpen, setCoPilotOpen] = useState(false);
+  const [coPilotPrompt, setCoPilotPrompt] = useState('');
+  const [coPilotCategory, setCoPilotCategory] = useState('awareness_drive');
+  const [coPilotLoading, setCoPilotLoading] = useState(false);
+  const [coPilotError, setCoPilotError] = useState('');
+  const [currentAiPlan, setCurrentAiPlan] = useState(null);
+  const [coPilotHistory, setCoPilotHistory] = useState([]);
+  const [refineInstruction, setRefineInstruction] = useState('');
+  const [refineLoading, setRefineLoading] = useState(false);
+
+  const applyAiPlanToForm = (plan) => {
+    setCurrentAiPlan(plan);
+    if (plan.campaign) {
+      if (plan.campaign.title) setFormTitle(plan.campaign.title);
+      if (plan.campaign.objective) setFormObjective(plan.campaign.objective);
+      if (plan.campaign.campaign_type) setFormType(plan.campaign.campaign_type);
+      if (plan.campaign.description) setFormDesc(plan.campaign.description);
+    }
+    if (plan.delivery && plan.delivery.channels) {
+      const validChs = plan.delivery.channels.filter(ch => channelsList.includes(ch));
+      if (validChs.length > 0) setSelectedChannels(validChs);
+    }
+    if (plan.message) {
+      if (plan.message.subject) setCustomSubject(plan.message.subject);
+      if (plan.message.body) setCustomBody(plan.message.body);
+      setSelectedTplId('custom');
+    }
+  };
+
+  const handleGenerateCampaignPlan = async () => {
+    if (!coPilotPrompt.trim()) return;
+    setCoPilotLoading(true);
+    setCoPilotError('');
+    try {
+      const response = await fetch(`${backendUrl}/api/ai/plan`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: coPilotPrompt,
+          category: coPilotCategory
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Failed to auto-plan campaign');
+      if (data.error) throw new Error(data.error);
+
+      setCoPilotHistory(prev => [
+        {
+          brief: coPilotPrompt,
+          category: coPilotCategory,
+          plan: data,
+          timestamp: new Date().toISOString()
+        },
+        ...prev
+      ]);
+
+      applyAiPlanToForm(data);
+    } catch (err) {
+      console.error(err);
+      setCoPilotError(err.message);
+    } finally {
+      setCoPilotLoading(false);
+    }
+  };
+
+  const handleRefineCampaignPlan = async (instructionText) => {
+    if (!currentAiPlan || !instructionText.trim()) return;
+    setRefineLoading(true);
+    setCoPilotError('');
+    try {
+      const response = await fetch(`${backendUrl}/api/ai/plan/refine`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_plan: currentAiPlan,
+          instruction: instructionText
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Failed to refine campaign plan');
+      if (data.error) throw new Error(data.error);
+
+      applyAiPlanToForm(data);
+      setRefineInstruction('');
+    } catch (err) {
+      console.error(err);
+      setCoPilotError(err.message);
+    } finally {
+      setRefineLoading(false);
+    }
+  };
+
 
   const campaignTypes = [
     { value: 'awareness_drive', label: 'Awareness Campaign' },
@@ -145,6 +238,15 @@ const Campaigns = ({ user, backendUrl, headers }) => {
         setSegmentPreviewUsers([]);
         setIsScheduled(false);
         setScheduledTime('');
+        
+        // Clear Co-pilot states
+        setCoPilotOpen(false);
+        setCoPilotPrompt('');
+        setCoPilotCategory('awareness_drive');
+        setCoPilotLoading(false);
+        setCoPilotError('');
+        setCurrentAiPlan(null);
+        setRefineInstruction('');
       }
     }
   }, [viewMode, backendUrl, editingCampId, fetchCampaigns, fetchSegmentsAndTemplates]);
@@ -1152,7 +1254,7 @@ const Campaigns = ({ user, backendUrl, headers }) => {
           </GlassCard>
         </div>
       ) : (
-        <GlassCard style={{ maxWidth: '780px', margin: '0 auto' }}>
+        <GlassCard style={{ maxWidth: currentAiPlan ? '1140px' : '780px', margin: '0 auto', transition: 'max-width 0.3s ease' }}>
           
           {/* Wizard Steps Visual tracker */}
           <div className="wizard-steps" style={{ position: 'relative' }}>
@@ -1186,77 +1288,504 @@ const Campaigns = ({ user, backendUrl, headers }) => {
 
           {/* STEP 1: CAMPAIGN DETAILS */}
           {step === 1 && (
-            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="form-group">
-                <label className="form-label">Campaign Title *</label>
-                <input type="text" className="form-control" placeholder="e.g. Swachh Bharat Ludhiana Awareness 2026" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Campaign Objective *</label>
-                <input type="text" className="form-control" placeholder="e.g. Educate farmers on stubble burning alternatives" value={formObjective} onChange={(e) => setFormObjective(e.target.value)} required />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Campaign Category Type</label>
-                  <select className="form-control" value={formType} onChange={(e) => setFormType(e.target.value)}>
-                    {campaignTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Detailed Notes / Description (Optional)</label>
-                <textarea className="form-control" style={{ minHeight: '80px', resize: 'vertical' }} placeholder="Targeting rural blocks inside Punjab during monsoon onset." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
-              </div>
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* 🤖 Enterprise AI Co-Pilot Interceptor */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(124, 58, 237, 0.05) 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.25)',
+                borderRadius: '16px',
+                padding: '20px',
+                boxShadow: '0 8px 32px rgba(37, 99, 235, 0.05)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  position: 'absolute', top: -50, right: -50, width: 150, height: 150,
+                  background: 'rgba(37, 99, 235, 0.15)', borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none'
+                }}></div>
 
-              {/* Campaign Schedule Configuration */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '4px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label">Dispatch Schedule Option</label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      type="button"
-                      className={`btn ${!isScheduled ? 'btn-primary' : 'btn-dark'}`}
-                      style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
-                      onClick={() => {
-                        setIsScheduled(false);
-                        setScheduledTime('');
-                      }}
-                    >
-                      🚀 Send Immediately
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${isScheduled ? 'btn-primary' : 'btn-dark'}`}
-                      style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
-                      onClick={() => {
-                        setIsScheduled(true);
-                        if (!scheduledTime) {
-                          const now = new Date();
-                          now.setMinutes(now.getMinutes() + 5); // default to 5 minutes from now
-                          const iso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
-                          setScheduledTime(iso.substring(0, 16));
-                        }
-                      }}
-                    >
-                      📅 Schedule Future
-                    </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.6rem' }}>🤖</span>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'hsl(var(--primary))' }}>Enterprise Campaign Co-Pilot</h3>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Describe your communication goal. AI will plan, write, audit, and estimate KPIs instantly.</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-dark"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                    onClick={() => setCoPilotOpen(!coPilotOpen)}
+                  >
+                    {coPilotOpen ? 'Collapse Co-Pilot' : 'Open Co-Pilot'}
+                  </button>
                 </div>
 
-                {isScheduled && (
-                  <div className="form-group animate-fade-in">
-                    <label className="form-label">Select Date & Time (Local Time) *</label>
-                    <input
-                      type="datetime-local"
-                      className="form-control"
-                      value={scheduledTime}
-                      min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 16)}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      required
-                    />
+                {coPilotOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>Describe what you want to communicate (2-3 sentences) *</label>
+                        <textarea
+                          className="form-control"
+                          style={{ minHeight: '80px', fontSize: '0.88rem', resize: 'vertical', background: 'rgba(0,0,0,0.2)' }}
+                          placeholder="e.g. Draft an awareness campaign about a dengue vaccine drive in Ludhiana for students, advising parents to check school logs..."
+                          value={coPilotPrompt}
+                          onChange={(e) => setCoPilotPrompt(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>Category Hint</label>
+                        <select 
+                          className="form-control" 
+                          style={{ background: 'rgba(0,0,0,0.2)' }} 
+                          value={coPilotCategory} 
+                          onChange={(e) => setCoPilotCategory(e.target.value)}
+                        >
+                          {campaignTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      {coPilotHistory.length > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>History:</span>
+                          <select 
+                            className="form-control" 
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', minHeight: 'auto', width: '180px' }}
+                            onChange={(e) => {
+                              const histIdx = parseInt(e.target.value);
+                              if (!isNaN(histIdx) && coPilotHistory[histIdx]) {
+                                const selected = coPilotHistory[histIdx];
+                                setCoPilotPrompt(selected.brief);
+                                setCoPilotCategory(selected.category);
+                                applyAiPlanToForm(selected.plan);
+                              }
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="" disabled>-- Duplicate Previous --</option>
+                            {coPilotHistory.map((h, i) => (
+                              <option key={i} value={i}>
+                                {h.plan.campaign?.title || `Plan ${i + 1}`} ({new Date(h.timestamp).toLocaleTimeString()})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : <div></div>}
+
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+                        disabled={coPilotLoading || !coPilotPrompt.trim()}
+                        onClick={handleGenerateCampaignPlan}
+                      >
+                        {coPilotLoading ? (
+                          <>
+                            <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                            <span>Analyzing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>🤖</span>
+                            <span>Auto-Generate Campaign Plan</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {coPilotError && (
+                      <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', fontSize: '0.82rem' }}>
+                        ⚠️ {coPilotError}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+
+              {currentAiPlan ? (
+                /* ══════════════════════ SPLIT-SCREEN WORKSPACE ══════════════════════ */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  
+                  {/* Refinement Toolbar Bar */}
+                  <div style={{
+                    padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color-glass)',
+                    borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ background: 'rgba(0,0,0,0.15)' }}
+                        placeholder="Instruct AI to refine this plan (e.g. 'shorten body', 'make subject catchier', 'translate to Hindi')"
+                        value={refineInstruction}
+                        onChange={(e) => setRefineInstruction(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && refineInstruction.trim() && !refineLoading) {
+                            handleRefineCampaignPlan(refineInstruction);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '0 20px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                        disabled={refineLoading || !refineInstruction.trim()}
+                        onClick={() => handleRefineCampaignPlan(refineInstruction)}
+                      >
+                        {refineLoading ? 'Refining...' : 'Refine Plan'}
+                      </button>
+                    </div>
+
+                    {/* Quick refinement presets */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>Quick Actions:</span>
+                      {[
+                        { label: '✂️ Shorten Copy', prompt: 'Shorten the message body copy considerably.' },
+                        { label: '🚨 Make Urgent', prompt: 'Make the tone of the message highly urgent and action-oriented.' },
+                        { label: '🤝 Make Empathetic', prompt: 'Make the tone of the message warm, reassuring, and empathetic.' },
+                        { label: '🇮🇳 Translate to Hindi', prompt: 'Translate both the subject and the body to Hindi, preserving all placeholder tags like {{first_name}}.' },
+                        { label: '🌾 Translate to Punjabi', prompt: 'Translate both the subject and the body to Punjabi, preserving all placeholder tags like {{first_name}}.' },
+                      ].map(preset => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          className="pill-chip"
+                          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          disabled={refineLoading}
+                          onClick={() => handleRefineCampaignPlan(preset.prompt)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+                    
+                    {/* LEFT COLUMN: PARAMETERS & METRICS */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 14px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Campaign Parameters</h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Campaign Title *</label>
+                            <input type="text" className="form-control" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Campaign Objective *</label>
+                            <input type="text" className="form-control" value={formObjective} onChange={(e) => setFormObjective(e.target.value)} required />
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem' }}>Category Type</label>
+                              <select className="form-control" value={formType} onChange={(e) => setFormType(e.target.value)}>
+                                {campaignTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                              </select>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem' }}>AI Confidence Score</label>
+                              <div style={{
+                                padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color-glass)',
+                                borderRadius: '10px', fontSize: '0.9rem', fontWeight: 'bold', color: currentAiPlan.metadata?.confidence >= 0.85 ? '#10b981' : '#f59e0b',
+                                display: 'flex', alignItems: 'center', gap: '6px'
+                              }}>
+                                🎯 {(currentAiPlan.metadata?.confidence * 100).toFixed(0)}% Confidence
+                              </div>
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Detailed Notes / Description (Optional)</label>
+                            <textarea className="form-control" style={{ minHeight: '60px', resize: 'vertical' }} value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KPI Performance Metrics */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 14px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Estimated Success KPIs</h4>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color-glass)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>EXPECTED REACH</span>
+                            <span style={{ display: 'block', fontSize: '1.25rem', fontWeight: 800, marginTop: '4px', color: '#3b82f6' }}>{currentAiPlan.kpis?.expected_reach_pct}%</span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color-glass)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>CTR TARGET</span>
+                            <span style={{ display: 'block', fontSize: '1.25rem', fontWeight: 800, marginTop: '4px', color: '#10b981' }}>{currentAiPlan.kpis?.ctr_goal_pct}%</span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color-glass)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>DELIVERY RATE</span>
+                            <span style={{ display: 'block', fontSize: '1.25rem', fontWeight: 800, marginTop: '4px', color: '#8b5cf6' }}>{currentAiPlan.kpis?.delivery_goal_pct}%</span>
+                          </div>
+                        </div>
+
+                        {currentAiPlan.kpis?.awareness_goal_description && (
+                          <div style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                            <strong>Measurable Goal:</strong> {currentAiPlan.kpis.awareness_goal_description}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Suggested Targets & Dispatch Schedule */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 14px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Suggested Audience & Send Schedule</h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Recommended Audience Demographics:</span>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {currentAiPlan.delivery?.audiences?.map(aud => (
+                                <span key={aud} style={{
+                                  fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', background: 'rgba(37,99,235,0.08)',
+                                  color: '#3b82f6', border: '1px solid rgba(37,99,235,0.15)', fontWeight: 600
+                                }}>
+                                  ✓ {aud}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>Recommended Dispatch:</span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e5c07b' }}>
+                                📅 {currentAiPlan.delivery?.schedule?.day || 'Tomorrow'} @ {currentAiPlan.delivery?.schedule?.time || '09:00 AM'}
+                              </span>
+                            </div>
+                            {currentAiPlan.delivery?.schedule?.reason && (
+                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                💡 {currentAiPlan.delivery.schedule.reason}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Manual Dispatch Time Override */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Schedule Configuration</h4>
+                        
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: isScheduled ? '10px' : 0 }}>
+                          <button
+                            type="button"
+                            className={`btn ${!isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                            style={{ flexGrow: 1, borderRadius: '8px', padding: '8px', fontSize: '0.8rem' }}
+                            onClick={() => { setIsScheduled(false); setScheduledTime(''); }}
+                          >
+                            🚀 Send Immediately
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn ${isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                            style={{ flexGrow: 1, borderRadius: '8px', padding: '8px', fontSize: '0.8rem' }}
+                            onClick={() => {
+                              setIsScheduled(true);
+                              if (!scheduledTime) {
+                                const now = new Date();
+                                now.setMinutes(now.getMinutes() + 5);
+                                const iso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+                                setScheduledTime(iso.substring(0, 16));
+                              }
+                            }}
+                          >
+                            📅 Schedule Future
+                          </button>
+                        </div>
+                        {isScheduled && (
+                          <input
+                            type="datetime-local"
+                            className="form-control"
+                            value={scheduledTime}
+                            min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 16)}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            required
+                          />
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* RIGHT COLUMN: MESSAGE EDITING & CO-PILOT AUDITING */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 14px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Message Copy Editor</h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {selectedChannels.includes('email') && (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem' }}>Email Subject</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={customSubject}
+                                onChange={(e) => setCustomSubject(e.target.value)}
+                              />
+                            </div>
+                          )}
+                          
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 0 }}>Message Body *</label>
+                              <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))' }}>Double braces variable tags</span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.15)', borderRadius: '8px' }}>
+                              {placeholders.map(p => (
+                                <button
+                                  key={p.tag}
+                                  type="button"
+                                  className="pill-chip"
+                                  style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                                  onClick={() => handleInsertPlaceholder(p.tag)}
+                                >
+                                  +{p.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            <textarea
+                              ref={bodyTextareaRef}
+                              className="form-control"
+                              style={{ width: '100%', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.88rem', resize: 'vertical' }}
+                              value={customBody}
+                              onChange={(e) => setCustomBody(e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* AI Risk Radar */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>AI Risk Radar</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {currentAiPlan.risks && currentAiPlan.risks.length > 0 ? (
+                            currentAiPlan.risks.map((risk, index) => (
+                              <div key={index} style={{
+                                padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', gap: '8px', alignItems: 'flex-start',
+                                background: risk.severity === 'error' ? 'rgba(239, 68, 68, 0.08)' : risk.severity === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255,255,255,0.03)',
+                                border: `1px solid ${risk.severity === 'error' ? 'rgba(239, 68, 68, 0.2)' : risk.severity === 'warning' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.06)'}`,
+                                color: risk.severity === 'error' ? '#ef4444' : risk.severity === 'warning' ? '#f59e0b' : 'hsl(var(--text-secondary))'
+                              }}>
+                                <span>{risk.severity === 'error' ? '🚫' : risk.severity === 'warning' ? '⚠️' : 'ℹ️'}</span>
+                                <span>{risk.message}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '0.8rem' }}>
+                              ✅ Risk Radar clean: No formatting, spam word, or delivery length errors found.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AI Suggestions & Insights Panel */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Proactive AI Suggestions</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {currentAiPlan.metadata?.suggestions && currentAiPlan.metadata.suggestions.length > 0 ? (
+                            currentAiPlan.metadata.suggestions.map((suggestion, index) => (
+                              <div key={index} style={{
+                                padding: '6px 12px', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: '8px',
+                                fontSize: '0.78rem', color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', gap: '8px'
+                              }}>
+                                <span style={{ color: '#3b82f6' }}>💡</span>
+                                <span>{suggestion}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>No suggestions available.</span>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                </div>
+              ) : (
+                /* ══════════════════════ NORMAL MANUAL FORM ══════════════════════ */
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Campaign Title *</label>
+                    <input type="text" className="form-control" placeholder="e.g. Swachh Bharat Ludhiana Awareness 2026" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Campaign Objective *</label>
+                    <input type="text" className="form-control" placeholder="e.g. Educate farmers on stubble burning alternatives" value={formObjective} onChange={(e) => setFormObjective(e.target.value)} required />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Campaign Category Type</label>
+                      <select className="form-control" value={formType} onChange={(e) => setFormType(e.target.value)}>
+                        {campaignTypes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Detailed Notes / Description (Optional)</label>
+                    <textarea className="form-control" style={{ minHeight: '80px', resize: 'vertical' }} placeholder="Targeting rural blocks inside Punjab during monsoon onset." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
+                  </div>
+
+                  {/* Campaign Schedule Configuration */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '4px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Dispatch Schedule Option</label>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          type="button"
+                          className={`btn ${!isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                          style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
+                          onClick={() => {
+                            setIsScheduled(false);
+                            setScheduledTime('');
+                          }}
+                        >
+                          🚀 Send Immediately
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${isScheduled ? 'btn-primary' : 'btn-dark'}`}
+                          style={{ flexGrow: 1, borderRadius: '10px', padding: '10px' }}
+                          onClick={() => {
+                            setIsScheduled(true);
+                            if (!scheduledTime) {
+                              const now = new Date();
+                              now.setMinutes(now.getMinutes() + 5); // default to 5 minutes from now
+                              const iso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+                              setScheduledTime(iso.substring(0, 16));
+                            }
+                          }}
+                        >
+                          📅 Schedule Future
+                        </button>
+                      </div>
+                    </div>
+
+                    {isScheduled && (
+                      <div className="form-group animate-fade-in">
+                        <label className="form-label">Select Date & Time (Local Time) *</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control"
+                          value={scheduledTime}
+                          min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 16)}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

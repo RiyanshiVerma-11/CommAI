@@ -219,10 +219,6 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
             Manage staff credentials, platform roles, and authorization policies.
           </p>
         </div>
-        <button className="primary-btn" onClick={handleOpenCreate}>
-          <span style={{ fontSize: '1.2rem', marginRight: '6px' }}>+</span>
-          Invite Operator
-        </button>
       </div>
 
       {message && (

@@ -180,7 +180,17 @@ def _dispatch_campaign_worker(campaign_id: str):
             return
 
         # 3. Resolve audience
+        print(f"[DISPATCHER-DEBUG] Campaign ID: {campaign_id}")
+        print(f"[DISPATCHER-DEBUG] Segment ID: {campaign.segment_id}")
+        segment = db.query(Segment).filter(Segment.id == campaign.segment_id).first()
+        if segment:
+            print(f"[DISPATCHER-DEBUG] Segment Name: {segment.name}")
+            print(f"[DISPATCHER-DEBUG] Segment Criteria: {segment.filter_criteria}")
+        else:
+            print(f"[DISPATCHER-DEBUG] Segment NOT found in database!")
+
         audience_members = resolve_audience_members(db, campaign.segment_id)
+        print(f"[DISPATCHER-DEBUG] Resolved audience members count: {len(audience_members)}")
         if not audience_members:
             logger.warning(f"[DISPATCHER] No audience members found for campaign {campaign_id}")
             campaign.dispatched_at = datetime.datetime.utcnow()

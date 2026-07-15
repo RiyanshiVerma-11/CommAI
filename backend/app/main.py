@@ -117,26 +117,6 @@ def get_dashboard_stats(
     total_delivered = db.query(DeliveryLog).filter(DeliveryLog.status == "sent").count()
     total_failed = db.query(DeliveryLog).filter(DeliveryLog.status == "failed").count()
 
-    # Calculate actual budget spent (SMS = $0.02, WhatsApp = $0.04)
-    sms_sent_count = db.query(DeliveryLog).filter(DeliveryLog.status == "sent", DeliveryLog.channel == "sms").count()
-    whatsapp_sent_count = db.query(DeliveryLog).filter(DeliveryLog.status == "sent", DeliveryLog.channel == "whatsapp").count()
-    total_spent_usd = (sms_sent_count * 0.02) + (whatsapp_sent_count * 0.04)
-
-    # Calculate projected future expenditure for scheduled or pending_approval campaigns
-    future_campaigns = db.query(Campaign).filter(
-        Campaign.is_deleted == False,
-        Campaign.status.in_(["pending_approval", "scheduled"])
-    ).all()
-    projected_spent_usd = 0.0
-    for camp in future_campaigns:
-        count = camp.target_audience_count or 0
-        channels = camp.channel_preferences or []
-        for ch in channels:
-            if ch == "sms":
-                projected_spent_usd += count * 0.02
-            elif ch == "whatsapp":
-                projected_spent_usd += count * 0.04
-
     # Sort activities by timestamp descending
     recent_activities.sort(key=lambda x: x["timestamp"], reverse=True)
     
@@ -149,8 +129,6 @@ def get_dashboard_stats(
         "total_templates": total_templates,
         "total_delivered": total_delivered,
         "total_failed": total_failed,
-        "total_spent_usd": round(total_spent_usd, 2),
-        "projected_spent_usd": round(projected_spent_usd, 2),
         "recent_activities": recent_activities[:7]  # return top 7
     }
 

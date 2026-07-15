@@ -1,10 +1,22 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
+
+class CustomBaseModel(BaseModel):
+    @field_validator(
+        "created_at", "updated_at", "scheduled_at", "dispatched_at",
+        "timestamp", "sent_at", "last_refreshed",
+        check_fields=False
+    )
+    @classmethod
+    def serialize_naive_datetime(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 # --- AUTH SCHEMAS ---
 
-class UserBase(BaseModel):
+class UserBase(CustomBaseModel):
     email: EmailStr
     full_name: str
     role: str
@@ -14,7 +26,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
 
-class UserUpdate(BaseModel):
+class UserUpdate(CustomBaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None
     organization: Optional[str] = None
@@ -31,24 +43,24 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-class Token(BaseModel):
+class Token(CustomBaseModel):
     access_token: str
     token_type: str
     user: UserResponse
 
-class TokenData(BaseModel):
+class TokenData(CustomBaseModel):
     email: Optional[str] = None
     role: Optional[str] = None
     user_id: Optional[str] = None
 
-class OTPVerify(BaseModel):
+class OTPVerify(CustomBaseModel):
     email: EmailStr
     otp: str
 
 
 # --- AUDIENCE SCHEMAS ---
 
-class AudienceBase(BaseModel):
+class AudienceBase(CustomBaseModel):
     first_name: str
     last_name: str
     email: Optional[EmailStr] = None
@@ -76,7 +88,7 @@ class AudienceCreate(AudienceBase):
             raise ValueError("Phone number must contain between 10 and 15 digits")
         return v
 
-class AudienceUpdate(BaseModel):
+class AudienceUpdate(CustomBaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -106,7 +118,7 @@ class AudienceResponse(AudienceBase):
 
 # --- SEGMENT SCHEMAS ---
 
-class SegmentBase(BaseModel):
+class SegmentBase(CustomBaseModel):
     name: str
     description: Optional[str] = None
     filter_criteria: Dict[str, Any]  # Dictionary representing the filter logic (e.g. {"state": "UP", "age_gte": 40})
@@ -115,7 +127,7 @@ class SegmentBase(BaseModel):
 class SegmentCreate(SegmentBase):
     pass
 
-class SegmentUpdate(BaseModel):
+class SegmentUpdate(CustomBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     filter_criteria: Optional[Dict[str, Any]] = None
@@ -133,7 +145,7 @@ class SegmentResponse(SegmentBase):
 
 # --- TEMPLATE SCHEMAS ---
 
-class TemplateBase(BaseModel):
+class TemplateBase(CustomBaseModel):
     title: str
     description: Optional[str] = None
     category: str  # emergency, awareness, education, announcement
@@ -146,7 +158,7 @@ class TemplateBase(BaseModel):
 class TemplateCreate(TemplateBase):
     pass
 
-class TemplateUpdate(BaseModel):
+class TemplateUpdate(CustomBaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
@@ -170,7 +182,7 @@ class TemplateResponse(TemplateBase):
 
 # --- CAMPAIGN SCHEMAS ---
 
-class CampaignBase(BaseModel):
+class CampaignBase(CustomBaseModel):
     title: str
     description: Optional[str] = None
     objective: Optional[str] = None
@@ -185,7 +197,7 @@ class CampaignBase(BaseModel):
 class CampaignCreate(CampaignBase):
     pass
 
-class CampaignUpdate(BaseModel):
+class CampaignUpdate(CustomBaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     objective: Optional[str] = None
@@ -215,7 +227,7 @@ class CampaignResponse(CampaignBase):
 
 # --- STATS/DASHBOARD SCHEMAS ---
 
-class DashboardStats(BaseModel):
+class DashboardStats(CustomBaseModel):
     total_audiences: int
     active_audiences: int
     total_segments: int
@@ -227,7 +239,7 @@ class DashboardStats(BaseModel):
 
 # --- AUDIT LOG SCHEMAS ---
 
-class AuditLogResponse(BaseModel):
+class AuditLogResponse(CustomBaseModel):
     id: str
     user_id: str
     user_name: str
@@ -244,7 +256,7 @@ class AuditLogResponse(BaseModel):
 
 # --- DELIVERY LOG SCHEMAS ---
 
-class DeliveryLogResponse(BaseModel):
+class DeliveryLogResponse(CustomBaseModel):
     id: str
     campaign_id: str
     audience_id: str
@@ -258,7 +270,7 @@ class DeliveryLogResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class CampaignDeliverySummary(BaseModel):
+class CampaignDeliverySummary(CustomBaseModel):
     id: str
     title: str
     status: str
@@ -270,11 +282,11 @@ class CampaignDeliverySummary(BaseModel):
 
 # --- BLACKLIST SCHEMAS ---
 
-class BlacklistCreate(BaseModel):
+class BlacklistCreate(CustomBaseModel):
     type: str  # "email" or "phone"
     value: str
 
-class BlacklistResponse(BaseModel):
+class BlacklistResponse(CustomBaseModel):
     id: str
     type: str
     value: str

@@ -133,6 +133,29 @@ def _clean_output(text: str) -> str:
     return text
 
 
+def _clean_json_string(text: str) -> str:
+    """Clean and repair common LLM JSON errors, especially unicode typos like \\u093i."""
+    cleaned = text.strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+    
+    # Replace common LLM Devanagari unicode escape typos (like \u093i instead of \u093f)
+    cleaned = cleaned.replace(r"\u093i", r"\u093f")
+    cleaned = cleaned.replace(r"\u093I", r"\u093f")
+    
+    # Generic regex cleanup for other invalid \uXXXX where the 4th char is 'i' or 'I' (common typos)
+    # e.g., \u093i -> \u093f, or any \u[0-9a-fA-F]{3}i -> \u[0-9a-fA-F]{3}f
+    cleaned = re.sub(r'\\u([0-9a-fA-F]{3})i', r'\\u\1f', cleaned)
+    cleaned = re.sub(r'\\u([0-9a-fA-F]{3})I', r'\\u\1f', cleaned)
+    
+    return cleaned
+
+
 # ---------------------------------------------------------------------------
 # 1. generate_campaign_content
 # ---------------------------------------------------------------------------
@@ -377,3 +400,151 @@ def check_compliance_and_quality(text: str, category: str = "awareness") -> dict
         "placeholder_count": len(placeholders),
         "issues": issues,
     }
+
+
+# ---------------------------------------------------------------------------
+# 6. plan_complete_campaign
+# ---------------------------------------------------------------------------
+def plan_complete_campaign(brief: str, category_hint: str = "awareness_drive") -> dict:
+    """
+    Generate a complete campaign plan from a user prompt using Groq.
+    Returns a structured dictionary matching our JSON schema.
+    """
+    import json
+
+    valid_types = [
+        "awareness_drive",
+        "emergency_alert",
+        "educational_notification",
+        "organizational_announcement"
+    ]
+
+    category_mapped = "awareness_drive"
+    for vt in valid_types:
+        if vt in category_hint or category_hint in vt:
+            category_mapped = vt
+            break
+
+    system_prompt = (
+        "You are an expert Government Campaign Planner and Mass Communication strategist.\n"
+        "Your task is to plan, write, audit, and estimate success metrics for a citizen communication campaign.\n"
+        "You MUST return a JSON object ONLY. Do not wrap in markdown fences (like ```json), write notes, or introduce your text.\n"
+        "\n"
+        "CRITICAL: Output Devanagari / Hindi text as RAW UTF-8 CHARACTERS (e.g., 'साफ', 'स्थिति', 'स्थानीय'). Do NOT escape them as unicode sequences (do NOT use \\uXXXX or backslashes). Writing unicode escapes leads to spelling errors.\n"
+        "\n"
+        "JSON SCHEMA RULES:\n"
+        "{\n"
+        "  \"campaign\": {\n"
+        "    \"title\": \"String (<60 chars) - Clear, catchy campaign title (e.g. Ludhiana Swachh Water 2026)\",\n"
+        "    \"objective\": \"String (<150 chars) - Campaign goal\",\n"
+        "    \"campaign_type\": \"One of: awareness_drive, emergency_alert, educational_notification, organizational_announcement\",\n"
+        "    \"description\": \"String - Detailed campaign contextual description\"\n"
+        "  },\n"
+        "  \"message\": {\n"
+        "    \"subject\": \"String - A concise message subject (for emails or push notifications)\",\n"
+        "    \"body\": \"String - The main communication body copy. Include personalization placeholders (e.g., {{first_name}}, {{city}}, {{district}}) where appropriate.\"\n"
+        "  },\n"
+        "  \"delivery\": {\n"
+        "    \"channels\": \"Array of strings (at least 2 from: email, sms, whatsapp, push, website)\",\n"
+        "    \"audiences\": \"Array of strings (e.g. ['School Parents', 'Healthcare Workers', 'Farmers', 'General Public'] representing target demographics)\",\n"
+        "    \"schedule\": {\n"
+        "      \"time\": \"String (e.g. 09:00 AM, 02:30 PM)\",\n"
+        "      \"day\": \"String (e.g. Tomorrow, Wednesday, Next Monday)\",\n"
+        "      \"reason\": \"String - Briefly explain why this sending time is recommended for this demographic\"\n"
+        "    }\n"
+        "  },\n"
+        "  \"kpis\": {\n"
+        "    \"expected_reach_pct\": \"Integer between 1 and 100 - Estimated percentage of reachable members in segment\",\n"
+        "    \"ctr_goal_pct\": \"Integer between 1 and 100 - Targeted Click-Through Rate or action response rate\",\n"
+        "    \"delivery_goal_pct\": \"Integer between 1 and 100 - Targeted successful delivery percentage\",\n"
+        "    \"awareness_goal_description\": \"String - Measurable goal statement\"\n"
+        "  },\n"
+        "  \"risks\": \"Array of objects. Each object has: {'severity': 'warning' | 'info' | 'error', 'message': 'String'}. Audit the drafted copy for length, missing emergency details, lack of local translation hints, or spelling/formatting issues.\",\n"
+        "  \"metadata\": {\n"
+        "    \"confidence\": \"Float between 0.0 and 1.0 (e.g. 0.95)\",\n"
+        "    \"reasoning\": {\n"
+        "      \"campaign_type\": \"Why this category was chosen\",\n"
+        "      \"channels\": \"Why these delivery channels are recommended\"\n"
+        "    },\n"
+        "    \"suggestions\": \"Array of strings - Actionable advice (e.g. 'Translate to Punjabi', 'Add helpline phone number')\"\n"
+        "  }\n"
+        "}\n"
+        "CRITICAL REQUIREMENT: Preserving Placeholders\n"
+        "Do NOT translate, modify, or remove placeholder tags in double braces like {{first_name}} or {{city}}.\n"
+        "Do NOT escape non-English characters with unicode escapes (like \\u093f). Output raw UTF-8 characters (e.g. write 'प्रिय' and 'स्थिति' directly in Hindi) inside the JSON string."
+    )
+
+    user_content = f"Campaign Brief: {brief}\nCategory Hint: {category_mapped}"
+
+    result = _call_groq(system_prompt, user_content, temperature=0.25, max_tokens=1800)
+
+    if not result:
+        return {"error": "AI service is currently unavailable. Please try again later."}
+
+    try:
+        cleaned = _clean_json_string(result)
+
+        parsed = json.loads(cleaned)
+        if "campaign" in parsed and "campaign_type" in parsed["campaign"]:
+            ctype = parsed["campaign"]["campaign_type"]
+            if ctype not in valid_types:
+                parsed["campaign"]["campaign_type"] = category_mapped
+        else:
+            if "campaign" not in parsed:
+                parsed["campaign"] = {}
+            parsed["campaign"]["campaign_type"] = category_mapped
+
+        return parsed
+    except Exception as e:
+        logger.error(f"[AI] Error parsing JSON campaign plan: {e}. Output was: {result}")
+        return {
+            "error": "Failed to parse AI response as valid campaign JSON structure. Please try again.",
+            "raw_output": result
+        }
+
+
+# ---------------------------------------------------------------------------
+# 7. refine_campaign_plan
+# ---------------------------------------------------------------------------
+def refine_campaign_plan(current_plan_str: str, instruction: str) -> dict:
+    """
+    Refine an existing campaign plan based on an instruction (e.g., shorten body, change tone, translate).
+    Returns a modified structured JSON campaign plan.
+    """
+    import json
+
+    system_prompt = (
+        "You are an expert Government Campaign Planner and Copywriter.\n"
+        "You are given a current campaign plan in JSON format, and a refinement instruction.\n"
+        "Your task is to modify the relevant parts of the JSON object (e.g. shortening the body text, changing its tone, adjusting KPIs, or altering suggested channels) to fulfill the instruction.\n"
+        "Keep other fields unchanged unless they are contextually affected by the instruction.\n"
+        "You MUST return a JSON object ONLY matching the same structure. Do not wrap in markdown fences (like ```json), write notes, or introduce your text.\n"
+        "\n"
+        "CRITICAL: Output Devanagari / Hindi text as RAW UTF-8 CHARACTERS (e.g., 'साफ', 'स्थिति', 'स्थानीय'). Do NOT escape them as unicode sequences (do NOT use \\uXXXX or backslashes). Writing unicode escapes leads to spelling errors.\n"
+        "\n"
+        "Rules:\n"
+        "1. campaign_type must remain one of: awareness_drive, emergency_alert, educational_notification, organizational_announcement.\n"
+        "2. Do NOT touch, translate, or remove placeholder tags in double braces like {{first_name}} or {{city}}.\n"
+        "3. Do NOT escape non-English characters with unicode escapes (like \\u093f). Output raw UTF-8 characters directly in the JSON object."
+    )
+
+    user_content = f"Current Plan JSON:\n{current_plan_str}\n\nRefinement Instruction: {instruction}"
+
+    result = _call_groq(system_prompt, user_content, temperature=0.2, max_tokens=1800)
+
+    if not result:
+        return {"error": "AI service is currently unavailable. Please try again later."}
+
+    print(f"[AI] Raw Groq response: {result}")
+    try:
+        cleaned = _clean_json_string(result)
+        print(f"[AI] Cleaned response: {cleaned}")
+
+        parsed = json.loads(cleaned)
+        return parsed
+    except Exception as e:
+        logger.error(f"[AI] Error parsing refined JSON plan: {e}. Output was: {result}")
+        return {
+            "error": "Failed to parse refined AI response as a valid campaign JSON structure.",
+            "raw_output": result
+        }

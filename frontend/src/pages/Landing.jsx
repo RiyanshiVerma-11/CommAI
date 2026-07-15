@@ -511,7 +511,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
             <span style={{ fontSize: '0.78rem', fontWeight: 800, color: T.blue, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
               Trusted Framework
             </span>
-            <div style={{ fontSize: '0.85rem', color: T.textMuted, fontWeight: 550, marginTop: 4 }}>
+            <div style={{ fontSize: '0.85rem', color: T.textSec, fontWeight: 550, marginTop: 4 }}>
               Designed in alignment with national communication standardizations
             </div>
           </div>
@@ -524,13 +524,13 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               { label: 'SDMA', sub: 'Disaster Management', icon: '🚨' },
               { label: 'Digital India', sub: 'e-Governance Partner', icon: '🇮🇳' }
             ].map(b => (
-              <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: 0.65, transition: 'opacity 0.2s' }}
+              <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: 0.85, transition: 'opacity 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                onMouseLeave={e => e.currentTarget.style.opacity = 0.65}>
+                onMouseLeave={e => e.currentTarget.style.opacity = 0.85}>
                 <div style={{ fontSize: '1.6rem' }}>{b.icon}</div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 800, color: T.text, fontSize: '0.92rem', letterSpacing: '-0.01em' }}>{b.label}</div>
-                  <div style={{ fontSize: '0.72rem', color: T.textMuted, fontWeight: 500 }}>{b.sub}</div>
+                  <div style={{ fontSize: '0.72rem', color: T.textSec, fontWeight: 500 }}>{b.sub}</div>
                 </div>
               </div>
             ))}
@@ -551,10 +551,10 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
           }}>
             <div style={{ fontSize: '2.5rem', color: T.blue, opacity: 0.25, fontFamily: 'Georgia, serif', lineHeight: 1, height: 20, transform: 'translateY(-10px)' }}>“</div>
             <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: '0.88rem', color: T.textSec, lineHeight: 1.5, fontStyle: 'italic', fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: T.text, lineHeight: 1.5, fontStyle: 'italic', fontWeight: 500 }}>
                 CommAI has cut our broadcast preparation times down from 4 hours to just 10 minutes. Translating critical emergency advisories into regional dialects is now incredibly fast and reliable.
               </p>
-              <div style={{ fontSize: '0.78rem', color: T.textMuted, marginTop: 8, fontWeight: 700 }}>
+              <div style={{ fontSize: '0.78rem', color: T.textSec, marginTop: 8, fontWeight: 700 }}>
                 — Regional Campaign Director, Disaster Management Division
               </div>
             </div>

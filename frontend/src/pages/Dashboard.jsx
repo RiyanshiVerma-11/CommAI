@@ -188,63 +188,6 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
         </GlassCard>
       </div>
 
-      {/* Financial Analytics & Projections Dashboard Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-        <GlassCard style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <span style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enterprise Actuals</span>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '700', margin: '4px 0 0 0', color: 'hsl(var(--text-primary))' }}>Spent Communication Budget</h3>
-            </div>
-            <span style={{ fontSize: '1.6rem' }}>💵</span>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: '800', color: 'hsl(var(--primary))' }}>₹{((s.total_spent_usd || 0) * 83).toFixed(2)}</span>
-            <span style={{ fontSize: '0.9rem', color: 'hsl(var(--text-muted))' }}>INR spent</span>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span>✉️ Email Broadcasts</span>
-              <strong style={{ color: 'hsl(var(--accent))' }}>Free (₹0.00)</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span>📱 SMS Direct</span>
-              <strong style={{ color: 'hsl(var(--text-primary))' }}>₹1.66 ($0.02) / msg</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span>💬 WhatsApp Business</span>
-              <strong style={{ color: 'hsl(var(--text-primary))' }}>₹3.32 ($0.04) / msg</strong>
-            </div>
-          </div>
-        </GlassCard>
-
-        <GlassCard style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div>
-              <span style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Pipeline</span>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '700', margin: '4px 0 0 0', color: 'hsl(var(--text-primary))' }}>Projected Dispatch Cost</h3>
-            </div>
-            <span style={{ fontSize: '1.6rem' }}>📊</span>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '2.2rem', fontWeight: '800', color: 'hsl(var(--accent))' }}>₹{((s.projected_spent_usd || 0) * 83).toFixed(2)}</span>
-            <span style={{ fontSize: '0.9rem', color: 'hsl(var(--text-muted))' }}>INR committed</span>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-              <span>Awaiting Approval / Date</span>
-              <span style={{ color: 'hsl(var(--accent))', fontWeight: '600' }}>Pipeline Active</span>
-            </div>
-            <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '100px', overflow: 'hidden' }}>
-              <div style={{ width: s.projected_spent_usd > 0 ? '100%' : '0%', height: '100%', background: 'hsl(var(--accent))' }} />
-            </div>
-          </div>
-        </GlassCard>
-      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '32px' }}>
         <GlassCard style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '28px' }}>

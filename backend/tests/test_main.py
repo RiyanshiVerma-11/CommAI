@@ -879,3 +879,93 @@ class TestMFAAndOTP:
         assert response_success.status_code == 200
         assert response_success.json()["message"] == "Settings updated successfully"
 
+
+# ========================================================================
+# 11. AI CAMPAIGN PLANNER CO-PILOT TESTS
+# ========================================================================
+
+class TestAICampaignPlanner:
+    def test_plan_campaign_unauthorized(self):
+        response = client.post("/api/ai/plan", json={"prompt": "Water drive", "category": "awareness_drive"})
+        assert response.status_code == 401
+
+    def test_plan_campaign_with_mocked_ai(self, monkeypatch):
+        from app.routes import ai
+        
+        mock_plan = {
+            "campaign": {
+                "title": "Clean Water Ludhiana 2026",
+                "objective": "Prevent waterborne diseases",
+                "campaign_type": "awareness_drive",
+                "description": "Targeting rural districts of Ludhiana"
+            },
+            "message": {
+                "subject": "Swachh Ludhiana",
+                "body": "Dear {{first_name}}, please boil water in {{city}}."
+            },
+            "delivery": {
+                "channels": ["email", "sms"],
+                "audiences": ["Rural Residents"],
+                "schedule": {
+                    "time": "09:00 AM",
+                    "day": "Tomorrow",
+                    "reason": "Mornings have high read rates."
+                }
+            },
+            "kpis": {
+                "expected_reach_pct": 90,
+                "ctr_goal_pct": 12,
+                "delivery_goal_pct": 98,
+                "awareness_goal_description": "Educate residents"
+            },
+            "risks": [],
+            "metadata": {
+                "confidence": 0.95,
+                "reasoning": {},
+                "suggestions": []
+            }
+        }
+        
+        monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint: mock_plan)
+        
+        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+        response = client.post(
+            "/api/ai/plan",
+            json={"prompt": "Plan a clean water drive for Ludhiana farmers during monsoon.", "category": "awareness_drive"},
+            headers=comm_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["campaign"]["title"] == "Clean Water Ludhiana 2026"
+        assert data["metadata"]["confidence"] == 0.95
+
+    def test_refine_campaign_unauthorized(self):
+        response = client.post("/api/ai/plan/refine", json={"current_plan": {}, "instruction": "Make it short"})
+        assert response.status_code == 401
+
+    def test_refine_campaign_with_mocked_ai(self, monkeypatch):
+        from app.routes import ai
+        
+        mock_refine = {
+            "campaign": {
+                "title": "Clean Water Ludhiana 2026 (Urgent)",
+                "campaign_type": "awareness_drive"
+            },
+            "message": {
+                "subject": "URGENT: boil water",
+                "body": "boil water in {{city}}"
+            }
+        }
+        
+        monkeypatch.setattr(ai, "refine_campaign_plan", lambda current_plan_str, instruction: mock_refine)
+        
+        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+        response = client.post(
+            "/api/ai/plan/refine",
+            json={"current_plan": {"title": "Clean Water"}, "instruction": "Make it urgent"},
+            headers=comm_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["campaign"]["title"] == "Clean Water Ludhiana 2026 (Urgent)"
+

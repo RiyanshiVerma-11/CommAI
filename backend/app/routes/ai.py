@@ -9,6 +9,8 @@ from app.services.ai_service import (
     translate_content,
     personalize_content,
     check_compliance_and_quality,
+    plan_complete_campaign,
+    refine_campaign_plan,
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Content Engine"])
@@ -185,3 +187,58 @@ def ai_check_compliance(
         category=request.category,
     )
     return ComplianceResponse(**result)
+
+
+# --- Plan & Refine Request Schemas ---
+
+class PlanRequest(BaseModel):
+    prompt: str
+    category: Optional[str] = "awareness_drive"
+
+    @validator("prompt")
+    def prompt_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Prompt cannot be empty")
+        return v.strip()
+
+class PlanRefineRequest(BaseModel):
+    current_plan: dict
+    instruction: str
+
+    @validator("instruction")
+    def instruction_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Instruction cannot be empty")
+        return v.strip()
+
+
+@router.post("/plan")
+def ai_plan_campaign(
+    request: PlanRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Generate a complete structured campaign plan from a brief prompt."""
+    result = plan_complete_campaign(
+        brief=request.prompt,
+        category_hint=request.category,
+    )
+    return result
+
+
+@router.post("/plan/refine")
+def ai_refine_campaign(
+    request: PlanRefineRequest,
+    current_user=Depends(require_communicator_or_higher),
+):
+    """Refine an existing campaign plan JSON object based on prompt instructions."""
+    import json
+    try:
+        plan_str = json.dumps(request.current_plan)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid current plan object")
+
+    result = refine_campaign_plan(
+        current_plan_str=plan_str,
+        instruction=request.instruction,
+    )
+    return result

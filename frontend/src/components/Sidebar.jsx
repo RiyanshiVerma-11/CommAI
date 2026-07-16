@@ -222,7 +222,15 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
         ))}
       </ul>
       
-      <div className="sidebar-user">
+      <div 
+        className="sidebar-user" 
+        onClick={(e) => {
+          if (e.target.closest('.logout-btn')) return;
+          setActiveTab('settings');
+          if (closeMobileSidebar) closeMobileSidebar();
+        }}
+        style={{ cursor: 'pointer', transition: 'background 0.2s ease' }}
+      >
         <div className="user-avatar" title={user.full_name}>
           {getInitials(user.full_name)}
         </div>

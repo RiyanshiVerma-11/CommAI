@@ -28,6 +28,11 @@ const Settings = ({ user, backendUrl, headers }) => {
   const [preferredChannels, setPreferredChannels] = useState([]);
   const [newPassword, setNewPassword] = useState('');
 
+  // Manager States
+  const [managerFullName, setManagerFullName] = useState(user?.full_name || '');
+  const [managerOrganization, setManagerOrganization] = useState(user?.organization || '');
+  const [managerDesignation, setManagerDesignation] = useState(user?.designation || '');
+
   // MFA States
   const [mfaModalOpen, setMfaModalOpen] = useState(false);
   const [mfaOtpCode, setMfaOtpCode] = useState('');
@@ -197,6 +202,45 @@ const Settings = ({ user, backendUrl, headers }) => {
       fetchBlacklist();
     }
   }, [user, fetchSettings, fetchDiagnostics, fetchBlacklist, fetchAudienceProfile]);
+
+  const handleSaveManagerProfile = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage({ text: '', type: '' });
+    
+    try {
+      const payload = {
+        full_name: managerFullName,
+        organization: managerOrganization,
+        designation: managerDesignation,
+      };
+      
+      if (newPassword.trim()) {
+        payload.password = newPassword;
+      }
+      
+      const response = await fetch(`${backendUrl}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to update profile settings');
+      }
+      
+      setMessage({ text: 'Your profile has been updated! Changes will fully reflect on next login/refresh.', type: 'success' });
+      setNewPassword('');
+    } catch (err) {
+      setMessage({ text: err.message, type: 'danger' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async (e) => {
     if (e) e.preventDefault();
@@ -619,6 +663,75 @@ const Settings = ({ user, backendUrl, headers }) => {
           {message.text}
         </div>
       )}
+
+      {/* Operator Personal Profile Settings */}
+      <div style={{ marginBottom: '32px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: '0 0 16px 0' }}>👤 Operator Profile Settings</h3>
+        <form onSubmit={handleSaveManagerProfile}>
+          <GlassCard style={{ padding: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  className="form-control"
+                  value={managerFullName}
+                  onChange={(e) => setManagerFullName(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address (Read-Only)</label>
+                <input
+                  type="email"
+                  disabled
+                  className="form-control"
+                  value={user?.email || ''}
+                  style={{ opacity: 0.6 }}
+                />
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Organization / Agency</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={managerOrganization}
+                  onChange={(e) => setManagerOrganization(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Designation / Role</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={managerDesignation}
+                  onChange={(e) => setManagerDesignation(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Update Password (Leave blank to keep current)</label>
+              <input
+                type="password"
+                className="form-control"
+                placeholder="Min 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="primary-btn" disabled={saving} style={{ padding: '8px 24px', fontSize: '0.9rem' }}>
+                {saving ? 'Updating...' : 'Update Profile'}
+              </button>
+            </div>
+          </GlassCard>
+        </form>
+      </div>
 
       {/* 🚦 Real-Time Integration Diagnostics dashboard */}
       <div style={{ marginBottom: '24px' }}>

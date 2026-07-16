@@ -15,6 +15,19 @@ const Settings = ({ user, backendUrl, headers }) => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   
+  // Audience States
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('Male');
+  const [stateName, setStateName] = useState('');
+  const [districtName, setDistrictName] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [preferredChannels, setPreferredChannels] = useState([]);
+  const [newPassword, setNewPassword] = useState('');
+
   // MFA States
   const [mfaModalOpen, setMfaModalOpen] = useState(false);
   const [mfaOtpCode, setMfaOtpCode] = useState('');
@@ -104,11 +117,86 @@ const Settings = ({ user, backendUrl, headers }) => {
     }
   }, [backendUrl, headers]);
 
+  const fetchAudienceProfile = useCallback(async () => {
+    if (user && user.role === 'audience') {
+      try {
+        const response = await fetch(`${backendUrl}/api/auth/profile/audience`, { headers });
+        if (response.ok) {
+          const data = await response.json();
+          setFirstName(data.first_name || '');
+          setLastName(data.last_name || '');
+          setPhone(data.phone || '');
+          setOccupation(data.occupation || '');
+          setAge(data.age || '');
+          setGender(data.gender || 'Male');
+          setStateName(data.state || '');
+          setDistrictName(data.district || '');
+          setCityName(data.city || '');
+          setPreferredChannels(data.preferred_channels || []);
+        }
+      } catch (err) {
+        console.error('Failed to load audience profile:', err);
+      }
+    }
+  }, [backendUrl, headers, user]);
+
+  const handleSaveAudienceProfile = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage({ text: '', type: '' });
+    
+    try {
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        occupation,
+        age: parseInt(age) || null,
+        gender,
+        state: stateName,
+        district: districtName,
+        city: cityName,
+        preferred_channels: preferredChannels,
+        preferred_languages: user.preferred_languages || []
+      };
+      
+      if (newPassword.trim()) {
+        payload.password = newPassword;
+      }
+      
+      const response = await fetch(`${backendUrl}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to update profile settings');
+      }
+      
+      setMessage({ text: 'Your profile settings have been updated in real-time!', type: 'success' });
+      setNewPassword('');
+      fetchAudienceProfile();
+    } catch (err) {
+      setMessage({ text: err.message, type: 'danger' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
-    fetchSettings();
-    fetchDiagnostics();
-    fetchBlacklist();
-  }, [fetchSettings, fetchDiagnostics, fetchBlacklist]);
+    if (user && user.role === 'audience') {
+      fetchAudienceProfile();
+    } else {
+      fetchSettings();
+      fetchDiagnostics();
+      fetchBlacklist();
+    }
+  }, [user, fetchSettings, fetchDiagnostics, fetchBlacklist, fetchAudienceProfile]);
 
   const handleSave = async (e) => {
     if (e) e.preventDefault();
@@ -287,6 +375,224 @@ const Settings = ({ user, backendUrl, headers }) => {
       setTestWaLoading(false);
     }
   };
+
+  if (user && user.role === 'audience') {
+    return (
+      <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '40px' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Personal Profile & Preferences Settings</h1>
+          <p style={{ color: 'hsl(var(--text-secondary))' }}>Configure your regional languages, demographics, and notification delivery channel choices.</p>
+        </div>
+
+        {message.text && (
+          <div className={`glass-card ${message.type}-text`} style={{
+            padding: '12px 16px',
+            marginBottom: '24px',
+            fontSize: '0.9rem',
+            background: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)',
+            border: '1px solid',
+            borderColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {message.type === 'success' ? <span>✅</span> : <span>❌</span>}
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveAudienceProfile}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <GlassCard>
+              <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0 }}>👤 Personal Details</h3>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    className="form-control"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last Name</label>
+                  <input
+                    type="text"
+                    required
+                    className="form-control"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Email Address (Read-Only)</label>
+                  <input
+                    type="email"
+                    disabled
+                    className="form-control"
+                    value={user.email}
+                    style={{ opacity: 0.6 }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    className="form-control"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Update Password (Leave blank to keep current)</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Min 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0 }}>📊 Demographic Profiling (For Targeting)</h3>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Occupation</label>
+                  <select
+                    className="form-control"
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                  >
+                    <option value="Farmer">Farmer 🌾</option>
+                    <option value="Student">Student 🎓</option>
+                    <option value="Healthcare Worker">Healthcare Worker 🏥</option>
+                    <option value="Teacher">Teacher 🏫</option>
+                    <option value="Business Owner">Business Owner 💼</option>
+                    <option value="Other">Other 🧑‍💻</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Age</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Gender</label>
+                  <select
+                    className="form-control"
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">State</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">District</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={districtName}
+                    onChange={(e) => setDistrictName(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">City</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={cityName}
+                    onChange={(e) => setCityName(e.target.value)}
+                  />
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0 }}>⚙️ Preferences</h3>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600', marginBottom: '8px' }}>Preferred Delivery Channels</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {['email', 'sms', 'whatsapp', 'push', 'website'].map(channel => {
+                    const isSelected = preferredChannels.includes(channel);
+                    return (
+                      <div
+                        key={channel}
+                        onClick={() => {
+                          if (isSelected) {
+                            setPreferredChannels(preferredChannels.filter(c => c !== channel));
+                          } else {
+                            setPreferredChannels([...preferredChannels, channel]);
+                          }
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          border: `1.5px solid ${isSelected ? 'hsl(var(--primary))' : 'rgba(255, 255, 255, 0.05)'}`,
+                          background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                          color: isSelected ? 'hsl(var(--text-primary))' : 'hsl(var(--text-secondary))',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          fontWeight: isSelected ? '700' : '500',
+                          textTransform: 'uppercase',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {channel}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </GlassCard>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <button type="submit" className="primary-btn" disabled={saving} style={{ padding: '12px 32px', fontSize: '0.95rem' }}>
+                {saving ? 'Saving...' : 'Update Settings'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '40px' }}>

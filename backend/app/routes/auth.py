@@ -28,6 +28,27 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
         )
     
     import json
+    if user_in.role == "audience":
+        if not user_in.phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number is required for Audience registration"
+            )
+        from app.models import Audience
+        db_aud_phone = db.query(Audience).filter(Audience.phone == user_in.phone, Audience.is_deleted == False).first()
+        if db_aud_phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number already registered on another profile"
+            )
+        if user_in.email:
+            db_aud_email = db.query(Audience).filter(Audience.email == user_in.email, Audience.is_deleted == False).first()
+            if db_aud_email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered on another profile"
+                )
+
     hashed_pw = get_password_hash(user_in.password)
     user = User(
         email=user_in.email,
@@ -40,6 +61,26 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
         is_active=True
     )
     db.add(user)
+
+    if user_in.role == "audience":
+        from app.models import Audience
+        aud = Audience(
+            first_name=user_in.first_name or (user_in.full_name.split()[0] if user_in.full_name else "First"),
+            last_name=user_in.last_name or (user_in.full_name.split()[1] if user_in.full_name and len(user_in.full_name.split()) > 1 else ""),
+            email=user_in.email,
+            phone=user_in.phone,
+            preferred_languages=json.dumps(user_in.preferred_languages) if user_in.preferred_languages else json.dumps([]),
+            occupation=user_in.occupation or "General",
+            age=user_in.age or 30,
+            gender=user_in.gender or "Male",
+            state=user_in.state or "Maharashtra",
+            district=user_in.district or "Mumbai",
+            city=user_in.city or "Mumbai",
+            preferred_channels=json.dumps(user_in.preferred_channels) if user_in.preferred_channels else json.dumps([]),
+            is_active=True
+        )
+        db.add(aud)
+
     db.commit()
     db.refresh(user)
     return user
@@ -169,6 +210,41 @@ def verify_otp(verify_in: OTPVerify, db: Session = Depends(get_db)):
 def read_current_user(current_user: User = Depends(get_current_user)) -> Any:
     return current_user
 
+@router.get("/profile/audience", response_model=Dict[str, Any])
+def get_my_audience_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """Fetch matching audience profiling details for the current user."""
+    if current_user.role != "audience":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current user is not an audience member"
+        )
+    from app.models import Audience
+    from app.routes.audience import deserialize_list
+    aud = db.query(Audience).filter(Audience.email == current_user.email).first()
+    if not aud:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audience profile record not found"
+        )
+    return {
+        "id": aud.id,
+        "first_name": aud.first_name,
+        "last_name": aud.last_name,
+        "email": aud.email,
+        "phone": aud.phone,
+        "preferred_languages": deserialize_list(aud.preferred_languages),
+        "occupation": aud.occupation,
+        "age": aud.age,
+        "gender": aud.gender,
+        "state": aud.state,
+        "district": aud.district,
+        "city": aud.city,
+        "preferred_channels": deserialize_list(aud.preferred_channels)
+    }
+
 
 @router.put("/profile", response_model=UserResponse)
 def update_profile(
@@ -188,6 +264,39 @@ def update_profile(
         current_user.preferred_languages = json.dumps(profile_in.preferred_languages)
     if profile_in.password is not None and profile_in.password.strip():
         current_user.hashed_password = get_password_hash(profile_in.password)
+    
+    # Sync with Audience table if role is audience
+    if current_user.role == "audience":
+        from app.models import Audience
+        aud = db.query(Audience).filter(Audience.email == current_user.email).first()
+        if aud:
+            if profile_in.first_name is not None:
+                aud.first_name = profile_in.first_name
+            if profile_in.last_name is not None:
+                aud.last_name = profile_in.last_name
+            if profile_in.phone is not None:
+                aud.phone = profile_in.phone
+            if profile_in.occupation is not None:
+                aud.occupation = profile_in.occupation
+            if profile_in.age is not None:
+                aud.age = profile_in.age
+            if profile_in.gender is not None:
+                aud.gender = profile_in.gender
+            if profile_in.state is not None:
+                aud.state = profile_in.state
+            if profile_in.district is not None:
+                aud.district = profile_in.district
+            if profile_in.city is not None:
+                aud.city = profile_in.city
+            if profile_in.preferred_channels is not None:
+                aud.preferred_channels = json.dumps(profile_in.preferred_channels)
+            if profile_in.preferred_languages is not None:
+                aud.preferred_languages = json.dumps(profile_in.preferred_languages)
+                
+            # Keep names in sync
+            full_name = f"{aud.first_name} {aud.last_name}".strip()
+            if full_name:
+                current_user.full_name = full_name
     
     current_user.updated_at = datetime.datetime.utcnow()
     db.commit()

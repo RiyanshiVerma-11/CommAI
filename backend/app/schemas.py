@@ -37,6 +37,16 @@ class UserBase(CustomBaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    occupation: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    preferred_channels: Optional[List[str]] = Field(default_factory=list)
 
 class UserUpdate(CustomBaseModel):
     full_name: Optional[str] = None
@@ -46,6 +56,16 @@ class UserUpdate(CustomBaseModel):
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=6, description="New password (min 6 chars)")
     preferred_languages: Optional[List[str]] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    occupation: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    preferred_channels: Optional[List[str]] = None
 
 class UserResponse(UserBase):
     id: str

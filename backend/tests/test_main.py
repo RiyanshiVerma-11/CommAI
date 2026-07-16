@@ -158,6 +158,7 @@ class TestAuthentication:
             "password": "TestPass123!",
             "full_name": "New Test User",
             "role": "audience",
+            "phone": "9876543209",
             "organization": "Test Org",
             "designation": "Tester"
         }
@@ -170,7 +171,8 @@ class TestAuthentication:
             "email": settings.ADMIN_EMAIL,
             "password": "AnyPassword123!",
             "full_name": "Duplicate",
-            "role": "audience"
+            "role": "audience",
+            "phone": "9876543208"
         }
         response = client.post("/api/auth/register", json=payload)
         assert response.status_code == 400

@@ -6,6 +6,19 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  
+  // Audience-specific profile details
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('Male');
+  const [stateName, setStateName] = useState('');
+  const [districtName, setDistrictName] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [preferredChannels, setPreferredChannels] = useState(['email']);
+
   const [selectedRole, setSelectedRole] = useState('audience');
   const [organization, setOrganization] = useState('');
   const [designation, setDesignation] = useState('');
@@ -67,9 +80,16 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!email || !password || !fullName) {
-      setError('Full Name, Email, and Password are required');
-      return;
+    if (selectedRole === 'audience') {
+      if (!firstName || !lastName || !email || !password || !phone) {
+        setError('First Name, Last Name, Email, Password, and Phone number are required');
+        return;
+      }
+    } else {
+      if (!email || !password || !fullName) {
+        setError('Full Name, Email, and Password are required');
+        return;
+      }
     }
     setError('');
     setLoading(true);
@@ -78,11 +98,23 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
       const payload = {
         email,
         password,
-        full_name: fullName,
+        full_name: selectedRole === 'audience' ? `${firstName} ${lastName}` : fullName,
         role: selectedRole,
-        organization: organization || null,
-        designation: designation || null,
-        preferred_languages: preferredLangs
+        organization: selectedRole === 'audience' ? null : (organization || null),
+        designation: selectedRole === 'audience' ? null : (designation || null),
+        preferred_languages: preferredLangs,
+        
+        // Audience fields
+        first_name: selectedRole === 'audience' ? firstName : null,
+        last_name: selectedRole === 'audience' ? lastName : null,
+        phone: selectedRole === 'audience' ? phone : null,
+        occupation: selectedRole === 'audience' ? (occupation || 'General') : null,
+        age: selectedRole === 'audience' ? (parseInt(age) || null) : null,
+        gender: selectedRole === 'audience' ? gender : null,
+        state: selectedRole === 'audience' ? stateName : null,
+        district: selectedRole === 'audience' ? districtName : null,
+        city: selectedRole === 'audience' ? cityName : null,
+        preferred_channels: selectedRole === 'audience' ? preferredChannels : []
       };
 
       const response = await fetch(`${backendUrl}/api/auth/register`, {
@@ -319,75 +351,271 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
           </form>
         ) : isRegister ? (
           <form onSubmit={handleRegister}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: '600' }}>Full Name *</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. Ramesh Kumar"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                disabled={loading}
-                required
-                style={{ width: '100%', fontSize: '0.95rem' }}
-              />
-            </div>
+            {selectedRole === 'audience' ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>First Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Ramesh"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={loading}
+                      required
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Last Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Kumar"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={loading}
+                      required
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: '600' }}>Email Address *</label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="ramesh@gov.in"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
-                style={{ width: '100%', fontSize: '0.95rem' }}
-              />
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Email Address *</label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder="ramesh@gov.in"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                      required
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Phone Number *</label>
+                    <input
+                      type="tel"
+                      className="form-control"
+                      placeholder="e.g. 9876543210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      disabled={loading}
+                      required
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: '600' }}>Password *</label>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                required
-                style={{ width: '100%', fontSize: '0.95rem' }}
-              />
-            </div>
-
-            {selectedRole !== 'audience' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Organization</label>
+                  <label className="form-label" style={{ fontWeight: '600' }}>Password *</label>
                   <input
-                    type="text"
+                    type="password"
                     className="form-control"
-                    placeholder="e.g. Health Ministry"
-                    value={organization}
-                    onChange={(e) => setOrganization(e.target.value)}
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
+                    required
                     style={{ width: '100%', fontSize: '0.95rem' }}
                   />
                 </div>
+
+                {/* Additional profile info for segmentation */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Occupation</label>
+                    <select
+                      className="form-control"
+                      value={occupation}
+                      onChange={(e) => setOccupation(e.target.value)}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    >
+                      <option value="">Select Occupation</option>
+                      <option value="Farmer">Farmer 🌾</option>
+                      <option value="Student">Student 🎓</option>
+                      <option value="Healthcare Worker">Healthcare Worker 🏥</option>
+                      <option value="Teacher">Teacher 🏫</option>
+                      <option value="Business Owner">Business Owner 💼</option>
+                      <option value="Other">Other 🧑‍💻</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Age</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 25"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Gender</label>
+                    <select
+                      className="form-control"
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>State</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Bihar"
+                      value={stateName}
+                      onChange={(e) => setStateName(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>District</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Patna"
+                      value={districtName}
+                      onChange={(e) => setDistrictName(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>City</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Patna"
+                      value={cityName}
+                      onChange={(e) => setCityName(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label className="form-label" style={{ fontWeight: '600' }}>Preferred Delivery Channels</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '6px' }}>
+                    {['email', 'sms', 'whatsapp', 'push', 'website'].map(channel => {
+                      const isSelected = preferredChannels.includes(channel);
+                      return (
+                        <div
+                          key={channel}
+                          onClick={() => {
+                            if (isSelected) {
+                              setPreferredChannels(preferredChannels.filter(c => c !== channel));
+                            } else {
+                              setPreferredChannels([...preferredChannels, channel]);
+                            }
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            border: `1.5px solid ${isSelected ? 'hsl(var(--primary))' : 'rgba(255, 255, 255, 0.05)'}`,
+                            background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                            color: isSelected ? 'hsl(var(--text-primary))' : 'hsl(var(--text-secondary))',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            fontWeight: isSelected ? '700' : '500',
+                            textTransform: 'uppercase',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          {channel}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Designation</label>
+                  <label className="form-label" style={{ fontWeight: '600' }}>Full Name *</label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="e.g. Director"
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
+                    placeholder="e.g. Ramesh Kumar"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     disabled={loading}
+                    required
                     style={{ width: '100%', fontSize: '0.95rem' }}
                   />
                 </div>
-              </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '600' }}>Email Address *</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    placeholder="ramesh@gov.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    required
+                    style={{ width: '100%', fontSize: '0.95rem' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '600' }}>Password *</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    required
+                    style={{ width: '100%', fontSize: '0.95rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Organization</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Health Ministry"
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Designation</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Director"
+                      value={designation}
+                      onChange={(e) => setDesignation(e.target.value)}
+                      disabled={loading}
+                      style={{ width: '100%', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="form-group">

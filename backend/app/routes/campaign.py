@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from app.database import get_db
 from app.models import Campaign, Segment, Audience, Template, AuditLog, DeliveryLog
 from app.schemas import CampaignCreate, CampaignUpdate, CampaignResponse, AuditLogResponse, DeliveryLogResponse, CampaignDeliverySummary
-from app.auth import require_admin, require_manager_or_higher, require_communicator_or_higher
+from app.auth import require_admin, require_manager_or_higher
 from app.routes.audience import build_segment_filter_query
 
 
@@ -148,7 +148,7 @@ def format_campaign_response(camp: Campaign) -> CampaignResponse:
 @router.get("", response_model=List[CampaignResponse])
 def list_campaigns(
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     campaigns = db.query(Campaign).filter(Campaign.is_deleted == False).order_by(Campaign.created_at.desc()).all()
     return [format_campaign_response(c) for c in campaigns]
@@ -179,7 +179,7 @@ def get_all_audit_logs(
 def get_campaign(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
     if not camp:
@@ -190,7 +190,7 @@ def get_campaign(
 def create_campaign(
     camp_in: CampaignCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     # Verify segment and template if provided
     if camp_in.segment_id:
@@ -264,7 +264,7 @@ def update_campaign(
     id: str,
     camp_in: CampaignUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
     if not camp:
@@ -506,7 +506,7 @@ def delete_campaign(
 def get_campaign_audit_logs(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
     if not camp:
@@ -534,7 +534,7 @@ def get_campaign_audit_logs(
 def get_campaign_delivery_summary(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
     if not camp:
@@ -555,7 +555,7 @@ def get_campaign_delivery_summary(
 def get_campaign_delivery_logs(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
     if not camp:
@@ -678,7 +678,7 @@ def reject_campaign(
 def export_delivery_logs(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     """Export delivery logs for a campaign as CSV."""
     camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()

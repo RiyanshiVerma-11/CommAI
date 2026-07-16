@@ -69,16 +69,16 @@ def setup_database():
     )
     db.add(manager)
     
-    communicator = User(
-        email=settings.COMMUNICATOR_EMAIL,
-        hashed_password=get_password_hash(settings.COMMUNICATOR_PASSWORD),
-        full_name="Test Communicator",
-        role="communicator",
+    audience = User(
+        email=settings.AUDIENCE_EMAIL,
+        hashed_password=get_password_hash(settings.AUDIENCE_PASSWORD),
+        full_name="Test Audience",
+        role="audience",
         organization="Test Org",
-        designation="Communicator",
+        designation="Audience",
         is_active=True
     )
-    db.add(communicator)
+    db.add(audience)
     
     db.commit()
     db.close()
@@ -157,7 +157,7 @@ class TestAuthentication:
             "email": "newuser@test.com",
             "password": "TestPass123!",
             "full_name": "New Test User",
-            "role": "communicator",
+            "role": "audience",
             "organization": "Test Org",
             "designation": "Tester"
         }
@@ -170,7 +170,7 @@ class TestAuthentication:
             "email": settings.ADMIN_EMAIL,
             "password": "AnyPassword123!",
             "full_name": "Duplicate",
-            "role": "communicator"
+            "role": "audience"
         }
         response = client.post("/api/auth/register", json=payload)
         assert response.status_code == 400
@@ -182,15 +182,15 @@ class TestAuthentication:
 # ========================================================================
 
 class TestRBAC:
-    def test_communicator_cannot_create_audience(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+    def test_audience_cannot_create_audience(self):
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
         payload = {
             "first_name": "Test", "last_name": "Audience", "phone": "9876543210",
             "preferred_languages": ["English"], "occupation": "Student",
             "age": 21, "gender": "Male", "state": "Maharashtra",
             "district": "Pune", "city": "Pune", "preferred_channels": ["email"]
         }
-        response = client.post("/api/audiences", json=payload, headers=comm_headers)
+        response = client.post("/api/audiences", json=payload, headers=aud_headers)
         assert response.status_code == 403
 
     def test_admin_can_create_audience(self):
@@ -207,9 +207,9 @@ class TestRBAC:
         assert response.status_code == 201
         assert response.json()["first_name"] == "Test"
 
-    def test_communicator_cannot_list_users(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/users", headers=comm_headers)
+    def test_audience_cannot_list_users(self):
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/users", headers=aud_headers)
         assert response.status_code == 403
 
     def test_manager_cannot_list_users(self):
@@ -228,7 +228,7 @@ class TestUserManagement:
         response = client.get("/api/users", headers=admin_headers)
         assert response.status_code == 200
         users = response.json()
-        assert len(users) >= 3  # admin, manager, communicator + possibly newuser
+        assert len(users) >= 3  # admin, manager, audience + possibly newuser
 
     def test_admin_list_users_filter_by_role(self):
         admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
@@ -245,10 +245,10 @@ class TestUserManagement:
 
     def test_admin_update_user_role(self):
         admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
-        # Get the communicator user
-        response = client.get("/api/users?role=communicator", headers=admin_headers)
+        # Get the audience user
+        response = client.get("/api/users?role=audience", headers=admin_headers)
         users = response.json()
-        # Find newuser@test.com or any communicator that's not the seeded one
+        # Find newuser@test.com or any audience that's not the seeded one
         target = None
         for u in users:
             if u["email"] == "newuser@test.com":
@@ -265,7 +265,7 @@ class TestUserManagement:
             # Revert
             client.put(
                 f"/api/users/{target['id']}",
-                json={"role": "communicator"},
+                json={"role": "audience"},
                 headers=admin_headers
             )
 
@@ -447,10 +447,15 @@ class TestSegmentation:
         assert response.status_code == 400
 
     def test_list_segments(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/segments", headers=comm_headers)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.get("/api/segments", headers=manager_headers)
         assert response.status_code == 200
         assert len(response.json()) >= 1
+
+        # Audience cannot list segments
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/segments", headers=aud_headers)
+        assert response.status_code == 403
 
     def test_preview_segment(self):
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
@@ -474,12 +479,17 @@ class TestSegmentation:
         assert response.json()["description"] == "Updated description for testing"
 
     def test_get_single_segment(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        segments = client.get("/api/segments", headers=comm_headers).json()
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        segments = client.get("/api/segments", headers=manager_headers).json()
         seg_id = segments[0]["id"]
-        response = client.get(f"/api/segments/{seg_id}", headers=comm_headers)
+        response = client.get(f"/api/segments/{seg_id}", headers=manager_headers)
         assert response.status_code == 200
         assert response.json()["id"] == seg_id
+
+        # Audience cannot get segment
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get(f"/api/segments/{seg_id}", headers=aud_headers)
+        assert response.status_code == 403
 
 
 # ========================================================================
@@ -514,10 +524,15 @@ class TestTemplates:
         assert response.status_code == 400
 
     def test_list_templates(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/templates", headers=comm_headers)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.get("/api/templates", headers=manager_headers)
         assert response.status_code == 200
         assert len(response.json()) >= 1
+
+        # Audience cannot list templates
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/templates", headers=aud_headers)
+        assert response.status_code == 403
 
     def test_update_template(self):
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
@@ -532,8 +547,8 @@ class TestTemplates:
         assert response.json()["title"] == "Updated Alert Warning"
         assert response.json()["version"] >= 2
 
-    def test_communicator_cannot_create_template(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+    def test_audience_cannot_create_template(self):
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
         payload = {
             "title": "Unauthorized Template",
             "category": "awareness",
@@ -541,7 +556,7 @@ class TestTemplates:
             "default_language": "English",
             "body_template": "Test body"
         }
-        response = client.post("/api/templates", json=payload, headers=comm_headers)
+        response = client.post("/api/templates", json=payload, headers=aud_headers)
         assert response.status_code == 403
 
 
@@ -551,12 +566,12 @@ class TestTemplates:
 
 class TestCampaigns:
     def test_create_campaign_draft(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
 
         # Get segment and template IDs
-        segments = client.get("/api/segments", headers=comm_headers).json()
-        templates = client.get("/api/templates", headers=comm_headers).json()
+        segments = client.get("/api/segments", headers=manager_headers).json()
+        templates = client.get("/api/templates", headers=manager_headers).json()
         seg_id = segments[0]["id"]
         tpl_id = templates[0]["id"]
 
@@ -569,16 +584,26 @@ class TestCampaigns:
             "template_id": tpl_id,
             "channel_preferences": ["sms", "whatsapp"],
         }
-        response = client.post("/api/campaigns", json=payload, headers=comm_headers)
+        # Manager succeeds
+        response = client.post("/api/campaigns", json=payload, headers=manager_headers)
         assert response.status_code == 201
         assert response.json()["status"] == "draft"
         assert response.json()["target_audience_count"] >= 1
 
+        # Audience fails
+        response = client.post("/api/campaigns", json=payload, headers=aud_headers)
+        assert response.status_code == 403
+
     def test_list_campaigns(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/campaigns", headers=comm_headers)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.get("/api/campaigns", headers=manager_headers)
         assert response.status_code == 200
         assert len(response.json()) >= 1
+
+        # Audience fails
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/campaigns", headers=aud_headers)
+        assert response.status_code == 403
 
     def test_campaign_state_machine_valid_transitions(self):
         import datetime
@@ -616,11 +641,10 @@ class TestCampaigns:
 
     def test_campaign_state_machine_invalid_transition(self):
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
 
         # Create a fresh campaign
-        segments = client.get("/api/segments", headers=comm_headers).json()
-        templates = client.get("/api/templates", headers=comm_headers).json()
+        segments = client.get("/api/segments", headers=manager_headers).json()
+        templates = client.get("/api/templates", headers=manager_headers).json()
 
         payload = {
             "title": "State Machine Test Campaign",
@@ -629,7 +653,7 @@ class TestCampaigns:
             "template_id": templates[0]["id"],
             "channel_preferences": ["email"],
         }
-        create_resp = client.post("/api/campaigns", json=payload, headers=comm_headers)
+        create_resp = client.post("/api/campaigns", json=payload, headers=manager_headers)
         assert create_resp.status_code == 201
         camp_id = create_resp.json()["id"]
 
@@ -642,9 +666,10 @@ class TestCampaigns:
         assert response.status_code == 400
         assert "Invalid status transition" in response.json()["detail"]
 
-    def test_communicator_cannot_schedule_campaign(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        campaigns = client.get("/api/campaigns", headers=comm_headers).json()
+    def test_audience_cannot_schedule_campaign(self):
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        campaigns = client.get("/api/campaigns", headers=manager_headers).json()
         # Find a draft campaign
         draft = None
         for c in campaigns:
@@ -655,15 +680,15 @@ class TestCampaigns:
             response = client.put(
                 f"/api/campaigns/{draft['id']}",
                 json={"status": "scheduled"},
-                headers=comm_headers
+                headers=aud_headers
             )
             assert response.status_code == 403
 
     def test_campaign_audit_logs(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        campaigns = client.get("/api/campaigns", headers=comm_headers).json()
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        campaigns = client.get("/api/campaigns", headers=manager_headers).json()
         camp_id = campaigns[0]["id"]
-        response = client.get(f"/api/campaigns/{camp_id}/audit-logs", headers=comm_headers)
+        response = client.get(f"/api/campaigns/{camp_id}/audit-logs", headers=manager_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -695,8 +720,8 @@ class TestConfigConstants:
 
 class TestDashboardAnalytics:
     def test_dashboard_stats(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/dashboard/stats", headers=comm_headers)
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/dashboard/stats", headers=aud_headers)
         assert response.status_code == 200
         data = response.json()
         assert "total_audiences" in data
@@ -705,8 +730,8 @@ class TestDashboardAnalytics:
         assert "recent_activities" in data
 
     def test_audience_analytics(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/audiences/analytics", headers=comm_headers)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.get("/api/audiences/analytics", headers=manager_headers)
         assert response.status_code == 200
         data = response.json()
         assert "total" in data
@@ -717,6 +742,11 @@ class TestDashboardAnalytics:
         assert "by_language" in data
         assert "by_channel" in data
         assert "by_age" in data
+
+        # Audience cannot get analytics
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/audiences/analytics", headers=aud_headers)
+        assert response.status_code == 403
 
     def test_analytics_requires_auth(self):
         response = client.get("/api/audiences/analytics")
@@ -737,11 +767,12 @@ class TestSegmentDelete:
         assert response.status_code == 400
         assert "active campaign" in response.json()["detail"]
 
-    def test_communicator_cannot_delete_segment(self):
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        segments = client.get("/api/segments", headers=comm_headers).json()
+    def test_audience_cannot_delete_segment(self):
+        aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        segments = client.get("/api/segments", headers=manager_headers).json()
         seg_id = segments[0]["id"]
-        response = client.delete(f"/api/segments/{seg_id}", headers=comm_headers)
+        response = client.delete(f"/api/segments/{seg_id}", headers=aud_headers)
         assert response.status_code == 403
 
 
@@ -824,8 +855,8 @@ class TestOptionBEnhancements:
         seed_all_templates(db)
         db.close()
 
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
-        response = client.get("/api/templates", headers=comm_headers)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.get("/api/templates", headers=manager_headers)
         assert response.status_code == 200
         templates = response.json()
         
@@ -928,11 +959,11 @@ class TestAICampaignPlanner:
         
         monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint: mock_plan)
         
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
         response = client.post(
             "/api/ai/plan",
             json={"prompt": "Plan a clean water drive for Ludhiana farmers during monsoon.", "category": "awareness_drive"},
-            headers=comm_headers
+            headers=manager_headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -959,11 +990,11 @@ class TestAICampaignPlanner:
         
         monkeypatch.setattr(ai, "refine_campaign_plan", lambda current_plan_str, instruction: mock_refine)
         
-        comm_headers = get_auth_headers(settings.COMMUNICATOR_EMAIL, settings.COMMUNICATOR_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
         response = client.post(
             "/api/ai/plan/refine",
             json={"current_plan": {"title": "Clean Water"}, "instruction": "Make it urgent"},
-            headers=comm_headers
+            headers=manager_headers
         )
         assert response.status_code == 200
         data = response.json()

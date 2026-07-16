@@ -6,7 +6,7 @@ from typing import Any
 
 from app.database import get_db
 from app.models import User
-from app.schemas import UserCreate, UserResponse, Token, OTPVerify
+from app.schemas import UserCreate, UserResponse, UserUpdate, Token, OTPVerify
 from app.auth import (
     get_password_hash,
     verify_password,
@@ -27,6 +27,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
             detail="Email already registered"
         )
     
+    import json
     hashed_pw = get_password_hash(user_in.password)
     user = User(
         email=user_in.email,
@@ -35,6 +36,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
         role=user_in.role,
         organization=user_in.organization,
         designation=user_in.designation,
+        preferred_languages=json.dumps(user_in.preferred_languages) if user_in.preferred_languages else json.dumps([]),
         is_active=True
     )
     db.add(user)
@@ -165,4 +167,29 @@ def verify_otp(verify_in: OTPVerify, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 def read_current_user(current_user: User = Depends(get_current_user)) -> Any:
+    return current_user
+
+
+@router.put("/profile", response_model=UserResponse)
+def update_profile(
+    profile_in: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    """Allow any authenticated user to update their own profile details."""
+    import json
+    if profile_in.full_name is not None:
+        current_user.full_name = profile_in.full_name
+    if profile_in.organization is not None:
+        current_user.organization = profile_in.organization
+    if profile_in.designation is not None:
+        current_user.designation = profile_in.designation
+    if profile_in.preferred_languages is not None:
+        current_user.preferred_languages = json.dumps(profile_in.preferred_languages)
+    if profile_in.password is not None and profile_in.password.strip():
+        current_user.hashed_password = get_password_hash(profile_in.password)
+    
+    current_user.updated_at = datetime.datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
     return current_user

@@ -6,7 +6,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models import Template
 from app.schemas import TemplateCreate, TemplateUpdate, TemplateResponse
-from app.auth import require_admin, require_manager_or_higher, require_communicator_or_higher
+from app.auth import require_admin, require_manager_or_higher
 from app.config import settings
 
 router = APIRouter(prefix="/templates", tags=["Template Library"])
@@ -17,7 +17,7 @@ def list_templates(
     channel: Optional[str] = None,
     default_language: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     query = db.query(Template).filter(Template.is_deleted == False)
     # Hide shadow (adhoc) templates from normal template listings
@@ -36,7 +36,7 @@ def list_templates(
 def get_template(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     tpl = db.query(Template).filter(Template.id == id, Template.is_deleted == False).first()
     if not tpl:

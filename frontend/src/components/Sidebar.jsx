@@ -13,7 +13,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
           <rect x="3" y="16" width="7" height="5" />
         </svg>
       ), 
-      roles: ['admin', 'campaign_manager', 'communicator'] 
+      roles: ['admin', 'campaign_manager', 'audience'] 
     },
     { 
       id: 'audiences', 
@@ -26,7 +26,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       ), 
-      roles: ['admin', 'campaign_manager', 'communicator'] 
+      roles: ['admin', 'campaign_manager'] 
     },
     { 
       id: 'templates', 
@@ -40,7 +40,17 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
           <polyline points="10 9 9 9 8 9" />
         </svg>
       ), 
-      roles: ['admin', 'campaign_manager', 'communicator'] 
+      roles: ['admin', 'campaign_manager'] 
+    },
+    { 
+      id: 'feedback', 
+      label: 'Campaign Feedback', 
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      ), 
+      roles: ['admin', 'campaign_manager', 'audience'] 
     },
     { 
       id: 'campaigns', 
@@ -109,6 +119,8 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
         return <span className="badge badge-admin">Admin</span>;
       case 'campaign_manager':
         return <span className="badge badge-manager">Manager</span>;
+      case 'audience':
+        return <span className="badge badge-audience" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)' }}>Audience</span>;
       default:
         return <span className="badge badge-communicator">Staff</span>;
     }

@@ -7,11 +7,12 @@ from typing import Dict, Any
 
 from app.config import settings
 from app.database import engine, Base, get_db
-from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist
-from app.auth import get_password_hash, require_communicator_or_higher
+from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact
+from app.auth import get_password_hash, require_any_authenticated
 from app.routes import auth, audience, template, campaign, settings as settings_router, translate
 from app.routes import users as users_router
 from app.routes import ai as ai_router
+from app.routes import feedback as feedback_router
 
 # Create database tables (SQLite)
 Base.metadata.create_all(bind=engine)
@@ -33,6 +34,12 @@ def add_missing_columns():
         # Add translations column to templates table if missing
         try:
             conn.execute(text("ALTER TABLE templates ADD COLUMN translations TEXT DEFAULT '{}'"))
+        except Exception:
+            pass
+
+        # Add preferred_languages column to users table if missing
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN preferred_languages TEXT"))
         except Exception:
             pass
 
@@ -64,13 +71,15 @@ api_router.include_router(campaign.router)
 api_router.include_router(settings_router.router)
 api_router.include_router(translate.router)
 api_router.include_router(ai_router.router)
+api_router.include_router(feedback_router.router)
+api_router.include_router(feedback_router.emergency_router)
 
 # --- DASHBOARD METRICS ROUTE ---
 
 @api_router.get("/dashboard/stats")
 def get_dashboard_stats(
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_any_authenticated)
 ) -> Dict[str, Any]:
     # Aggregates
     total_audiences = db.query(Audience).filter(Audience.is_deleted == False).count()
@@ -683,16 +692,16 @@ async def lifespan(app: FastAPI):
             )
             db.add(manager)
             
-            communicator = User(
-                email=settings.COMMUNICATOR_EMAIL,
-                hashed_password=get_password_hash(settings.COMMUNICATOR_PASSWORD),
-                full_name="Anjali Nair",
-                role="communicator",
-                organization="Department of Rural Welfare",
-                designation="Field Communications Coordinator",
+            audience_user = User(
+                email=settings.AUDIENCE_EMAIL,
+                hashed_password=get_password_hash(settings.AUDIENCE_PASSWORD),
+                full_name="Priya Audience",
+                role="audience",
+                organization="General Public",
+                designation="Campaign Recipient",
                 is_active=True
             )
-            db.add(communicator)
+            db.add(audience_user)
             
             db.commit()
             print("[SEEDING DATABASE] Seeding completed successfully.")

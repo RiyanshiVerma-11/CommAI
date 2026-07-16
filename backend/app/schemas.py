@@ -22,6 +22,18 @@ class UserBase(CustomBaseModel):
     role: str
     organization: Optional[str] = None
     designation: Optional[str] = None
+    preferred_languages: Optional[List[str]] = Field(default_factory=list)
+
+    @field_validator("preferred_languages", mode="before", check_fields=False)
+    @classmethod
+    def parse_preferred_languages(cls, v):
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v) if v else []
+            except Exception:
+                return []
+        return v or []
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
@@ -33,6 +45,7 @@ class UserUpdate(CustomBaseModel):
     designation: Optional[str] = None
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=6, description="New password (min 6 chars)")
+    preferred_languages: Optional[List[str]] = None
 
 class UserResponse(UserBase):
     id: str
@@ -295,4 +308,55 @@ class BlacklistResponse(CustomBaseModel):
     class Config:
         from_attributes = True
 
+
+# --- CAMPAIGN FEEDBACK SCHEMAS ---
+
+class CampaignFeedbackCreate(CustomBaseModel):
+    campaign_id: str
+    rating: int = Field(..., ge=1, le=5, description="Star rating from 1 to 5")
+    comment: Optional[str] = None
+    feedback_type: str = Field(..., description="One of: helpful, not_relevant, too_frequent, confusing, excellent")
+
+class CampaignFeedbackResponse(CustomBaseModel):
+    id: str
+    campaign_id: str
+    campaign_title: Optional[str] = None
+    user_id: str
+    user_name: Optional[str] = None
+    rating: int
+    comment: Optional[str] = None
+    feedback_type: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CampaignFeedbackSummary(CustomBaseModel):
+    campaign_id: str
+    campaign_title: str
+    total_feedback: int
+    average_rating: float
+    rating_distribution: Dict[str, int]  # {"1": count, "2": count, ...}
+    type_distribution: Dict[str, int]    # {"helpful": count, "confusing": count, ...}
+
+
+# --- EMERGENCY CONTACT SCHEMAS ---
+
+class EmergencyContactCreate(CustomBaseModel):
+    subject: str = Field(..., min_length=5, max_length=255)
+    message: str = Field(..., min_length=10)
+    urgency: str = Field(default="normal", description="One of: normal, urgent, critical")
+
+class EmergencyContactResponse(CustomBaseModel):
+    id: str
+    user_id: str
+    user_name: Optional[str] = None
+    subject: str
+    message: str
+    urgency: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 

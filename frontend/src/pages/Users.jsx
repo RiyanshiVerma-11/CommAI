@@ -18,7 +18,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
   const [formEmail, setFormEmail] = useState('');
   const [formFullName, setFormFullName] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formRole, setFormRole] = useState('communicator');
+  const [formRole, setFormRole] = useState('audience');
   const [formOrg, setFormOrg] = useState('');
   const [formDesig, setFormDesig] = useState('');
   const [formActive, setFormActive] = useState(true);
@@ -62,7 +62,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
     setFormEmail('');
     setFormFullName('');
     setFormPassword('');
-    setFormRole('communicator');
+    setFormRole('audience');
     setFormOrg('');
     setFormDesig('');
     setFormActive(true);
@@ -200,6 +200,8 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
         return <span className="badge badge-admin">Admin</span>;
       case 'campaign_manager':
         return <span className="badge badge-manager">Manager</span>;
+      case 'audience':
+        return <span className="badge badge-audience" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)' }}>Audience</span>;
       default:
         return <span className="badge badge-communicator">Staff</span>;
     }
@@ -278,7 +280,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
               <option value="">All System Roles</option>
               <option value="admin">Administrator</option>
               <option value="campaign_manager">Campaign Manager</option>
-              <option value="communicator">Communicator</option>
+              <option value="audience">Audience</option>
             </select>
           </div>
 
@@ -460,7 +462,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
                       value={formRole} 
                       onChange={(e) => setFormRole(e.target.value)}
                     >
-                      <option value="communicator">Communicator (Write / Edit Templates)</option>
+                      <option value="audience">Audience (View & Submit Feedback)</option>
                       <option value="campaign_manager">Campaign Manager (Plan & Schedule)</option>
                       <option value="admin">Administrator (Full Access & Settings)</option>
                     </select>

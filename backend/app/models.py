@@ -14,9 +14,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
-    role = Column(String(50), nullable=False)  # admin, campaign_manager, communicator
+    role = Column(String(50), nullable=False)  # admin, campaign_manager, audience
     organization = Column(String(255), nullable=True)
     designation = Column(String(255), nullable=True)
+    preferred_languages = Column(Text, nullable=True)  # JSON serialized array of strings, e.g., '["Hindi", "English"]'
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
@@ -25,6 +26,7 @@ class User(Base):
     templates = relationship("Template", back_populates="creator")
     created_campaigns = relationship("Campaign", foreign_keys="Campaign.created_by", back_populates="creator")
     updated_campaigns = relationship("Campaign", foreign_keys="Campaign.updated_by", back_populates="updater")
+    feedback = relationship("CampaignFeedback", back_populates="user", cascade="all, delete-orphan")
 
 
 class Audience(Base):
@@ -129,6 +131,7 @@ class Campaign(Base):
     updater = relationship("User", foreign_keys=[updated_by], back_populates="updated_campaigns")
     audit_logs = relationship("AuditLog", back_populates="campaign", cascade="all, delete-orphan")
     delivery_logs = relationship("DeliveryLog", back_populates="campaign", cascade="all, delete-orphan")
+    feedback = relationship("CampaignFeedback", back_populates="campaign", cascade="all, delete-orphan")
 
 
 class AuditLog(Base):
@@ -174,3 +177,36 @@ class Blacklist(Base):
     type = Column(String(20), nullable=False)           # email or phone
     value = Column(String(255), unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class CampaignFeedback(Base):
+    """Stores audience feedback and ratings for campaigns they received."""
+    __tablename__ = "campaign_feedback"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    campaign_id = Column(String(36), ForeignKey("campaigns.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False)             # 1-5 star rating
+    comment = Column(Text, nullable=True)                # optional detailed feedback
+    feedback_type = Column(String(50), nullable=False)   # helpful, not_relevant, too_frequent, confusing, excellent
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationships
+    campaign = relationship("Campaign", back_populates="feedback")
+    user = relationship("User", back_populates="feedback")
+
+
+class EmergencyContact(Base):
+    """Allows audience members to send emergency contact requests to campaign managers."""
+    __tablename__ = "emergency_contacts"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    subject = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    urgency = Column(String(20), nullable=False, default="normal")  # normal, urgent, critical
+    status = Column(String(20), nullable=False, default="open")     # open, acknowledged, resolved
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User")

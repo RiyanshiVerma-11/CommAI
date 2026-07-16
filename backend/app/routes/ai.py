@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
 from typing import Optional, List
 
-from app.auth import require_communicator_or_higher
+from app.auth import require_any_authenticated
 from app.services.ai_service import (
     generate_campaign_content,
     optimize_content,
@@ -123,7 +123,7 @@ class ComplianceResponse(BaseModel):
 @router.post("/generate", response_model=GenerateResponse)
 def ai_generate(
     request: GenerateRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Generate campaign subject + body from a text prompt."""
     result = generate_campaign_content(
@@ -138,7 +138,7 @@ def ai_generate(
 @router.post("/optimize", response_model=OptimizeResponse)
 def ai_optimize(
     request: OptimizeRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Rewrite text to match a target tone."""
     result = optimize_content(
@@ -151,7 +151,7 @@ def ai_optimize(
 @router.post("/translate", response_model=TranslateResponse)
 def ai_translate(
     request: TranslateRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Translate text into a target language."""
     result = translate_content(
@@ -165,7 +165,7 @@ def ai_translate(
 @router.post("/personalize", response_model=PersonalizeResponse)
 def ai_personalize(
     request: PersonalizeRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Personalize text for a specific audience profile."""
     result = personalize_content(
@@ -179,7 +179,7 @@ def ai_personalize(
 @router.post("/check-compliance", response_model=ComplianceResponse)
 def ai_check_compliance(
     request: ComplianceRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Run offline compliance and quality audit on message text."""
     result = check_compliance_and_quality(
@@ -215,7 +215,7 @@ class PlanRefineRequest(BaseModel):
 @router.post("/plan")
 def ai_plan_campaign(
     request: PlanRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Generate a complete structured campaign plan from a brief prompt."""
     result = plan_complete_campaign(
@@ -228,7 +228,7 @@ def ai_plan_campaign(
 @router.post("/plan/refine")
 def ai_refine_campaign(
     request: PlanRefineRequest,
-    current_user=Depends(require_communicator_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Refine an existing campaign plan JSON object based on prompt instructions."""
     import json

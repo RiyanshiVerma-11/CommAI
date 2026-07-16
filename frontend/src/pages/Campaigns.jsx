@@ -613,12 +613,10 @@ const Campaigns = ({ user, backendUrl, headers }) => {
     
     if (camp.custom_body) {
       setSelectedTplId('custom');
-      setUseCustomMsg(true);
       setCustomSubject(camp.custom_subject || '');
       setCustomBody(camp.custom_body || '');
     } else {
       setSelectedTplId(camp.template_id || '');
-      setUseCustomMsg(false);
       setCustomSubject('');
       setCustomBody('');
     }
@@ -1845,7 +1843,7 @@ const Campaigns = ({ user, backendUrl, headers }) => {
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="form-group">
                 <label className="form-label">Bind Reusable Message Template *</label>
-                <select className="form-control" value={selectedTplId} onChange={(e) => { setSelectedTplId(e.target.value); setUseCustomMsg(e.target.value === 'custom'); }} required>
+                <select className="form-control" value={selectedTplId} onChange={(e) => { setSelectedTplId(e.target.value); }} required>
                   <option value="">-- Choose Template --</option>
                   <option value="custom">-- Write Custom Message (Direct) --</option>
                   {templates.map(tpl => (

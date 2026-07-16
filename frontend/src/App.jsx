@@ -10,6 +10,7 @@ import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Approvals from './pages/Approvals';
+import Feedback from './pages/Feedback';
 
 
 
@@ -223,6 +224,14 @@ function App() {
             headers={authHeaders}
           />
         );
+      case 'feedback':
+        return (
+          <Feedback
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
       default:
         return <div>Tab not found</div>;
     }
@@ -238,6 +247,7 @@ function App() {
       case 'audit_logs': return 'Operator Audit Trail Logs';
       case 'users': return 'Operator User Directory';
       case 'settings': return 'System Integration Parameters';
+      case 'feedback': return 'Campaign Feedback & Assistance';
       default: return 'CommAI Platform';
     }
   };
@@ -363,8 +373,8 @@ function App() {
                       <span className="profile-dropdown-name">{user?.full_name}</span>
                       <span className="profile-dropdown-email">{user?.email}</span>
                       <span className="profile-dropdown-org">{user?.organization || 'General Public Services'}</span>
-                      <span className={`badge badge-${user?.role === 'admin' ? 'admin' : user?.role === 'campaign_manager' ? 'manager' : 'communicator'}`} style={{ textTransform: 'capitalize', width: 'fit-content', marginTop: '6px' }}>
-                        {user?.role === 'admin' ? 'Admin' : user?.role === 'campaign_manager' ? 'Manager' : 'Staff'}
+                      <span className={`badge badge-${user?.role === 'admin' ? 'admin' : user?.role === 'campaign_manager' ? 'manager' : 'audience'}`} style={{ textTransform: 'capitalize', width: 'fit-content', marginTop: '6px' }}>
+                        {user?.role === 'admin' ? 'Admin' : user?.role === 'campaign_manager' ? 'Manager' : 'Audience'}
                       </span>
                     </div>
                     

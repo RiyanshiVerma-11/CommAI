@@ -21,8 +21,8 @@ class Settings:
     MANAGER_EMAIL: str = "manager@comm.ai"
     MANAGER_PASSWORD: str = "ManagerPassword123!"
     
-    COMMUNICATOR_EMAIL: str = "communicator@comm.ai"
-    COMMUNICATOR_PASSWORD: str = "CommPassword123!"
+    AUDIENCE_EMAIL: str = "audience@comm.ai"
+    AUDIENCE_PASSWORD: str = "AudiencePass123!"
 
     # --- SMTP Email Configuration (Gmail) ---
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -45,7 +45,7 @@ class Settings:
     DAILY_CAP_WHATSAPP: int = 5000
 
     # Supported System Constants
-    ROLES = ["admin", "campaign_manager", "communicator"]
+    ROLES = ["admin", "campaign_manager", "audience"]
     
     LANGUAGES = [
         "English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", 

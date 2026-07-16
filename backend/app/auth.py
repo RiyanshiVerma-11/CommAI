@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 otp_cache = {
     settings.ADMIN_EMAIL: "123456",
     settings.MANAGER_EMAIL: "123456",
-    settings.COMMUNICATOR_EMAIL: "123456"
+    settings.AUDIENCE_EMAIL: "123456"
 }
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -81,7 +81,8 @@ class RoleChecker:
 # Pre-packaged dependencies for router usage
 require_admin = RoleChecker(["admin"])
 require_manager_or_higher = RoleChecker(["admin", "campaign_manager"])
-require_communicator_or_higher = RoleChecker(["admin", "campaign_manager", "communicator"])
+require_any_authenticated = RoleChecker(["admin", "campaign_manager", "audience"])
+require_audience = RoleChecker(["audience"])
 
 
 # --- HIGH-RISK ACTIONS MFA VALIDATION ---

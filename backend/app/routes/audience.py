@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any
 from app.database import get_db
 from app.models import Audience, Segment
 from app.schemas import AudienceCreate, AudienceUpdate, AudienceResponse, SegmentCreate, SegmentUpdate, SegmentResponse
-from app.auth import require_admin, require_manager_or_higher, require_communicator_or_higher
+from app.auth import require_admin, require_manager_or_higher
 from app.config import settings
 
 router = APIRouter(tags=["Audience Management"])
@@ -60,7 +60,7 @@ def list_audiences(
     state: Optional[str] = None,
     gender: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     query = db.query(Audience).filter(Audience.is_deleted == False)
     
@@ -98,7 +98,7 @@ def list_audiences(
 @router.get("/audiences/analytics", response_model=Dict[str, Any])
 def get_audience_analytics(
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     """Returns audience breakdown by language, occupation, state, gender, and channel for dashboard charts."""
     from sqlalchemy import func as sqla_func
@@ -175,7 +175,7 @@ def get_audience_analytics(
 def get_audience(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     aud = db.query(Audience).filter(Audience.id == id, Audience.is_deleted == False).first()
     if not aud:
@@ -587,7 +587,7 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
 @router.get("/segments", response_model=List[SegmentResponse])
 def list_segments(
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     segments = db.query(Segment).order_by(Segment.created_at.desc()).all()
     results = []
@@ -786,7 +786,7 @@ def preview_segment(
     id: str,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     segment = db.query(Segment).filter(Segment.id == id).first()
     if not segment:
@@ -819,7 +819,7 @@ def preview_segment(
 def get_segment(
     id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_manager_or_higher)
 ):
     """Get a single segment by ID."""
     segment = db.query(Segment).filter(Segment.id == id).first()

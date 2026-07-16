@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
 
-from app.auth import require_communicator_or_higher
+from app.auth import require_any_authenticated
 from app.services.translation_service import translate_text
 
 router = APIRouter(prefix="/translate", tags=["Translation Service"])
@@ -18,7 +18,7 @@ class TranslationResponse(BaseModel):
 @router.post("", response_model=TranslationResponse)
 def translate(
     request: TranslationRequest,
-    current_user = Depends(require_communicator_or_higher)
+    current_user = Depends(require_any_authenticated)
 ):
     """
     Translate text interactively. Requires authentication (Communicator role or higher).

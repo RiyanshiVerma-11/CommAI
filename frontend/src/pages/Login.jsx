@@ -6,9 +6,10 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [selectedRole, setSelectedRole] = useState('communicator');
+  const [selectedRole, setSelectedRole] = useState('audience');
   const [organization, setOrganization] = useState('');
   const [designation, setDesignation] = useState('');
+  const [preferredLangs, setPreferredLangs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpMode, setOtpMode] = useState(false);
@@ -19,7 +20,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const demoAccounts = [
     { label: '🛡️ Admin Account', email: 'admin@comm.ai', password: 'AdminPassword123!' },
     { label: '💼 Campaign Manager', email: 'manager@comm.ai', password: 'ManagerPassword123!' },
-    { label: '📣 Communicator Staff', email: 'communicator@comm.ai', password: 'CommPassword123!' }
+    { label: '📣 Audience Member', email: 'audience@comm.ai', password: 'AudiencePass123!' }
   ];
 
   const handlePreFill = (demo) => {
@@ -80,7 +81,8 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
         full_name: fullName,
         role: selectedRole,
         organization: organization || null,
-        designation: designation || null
+        designation: designation || null,
+        preferred_languages: preferredLangs
       };
 
       const response = await fetch(`${backendUrl}/api/auth/register`, {
@@ -359,52 +361,54 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: '600' }}>Organization</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. Health Ministry"
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  disabled={loading}
-                  style={{ width: '100%', fontSize: '0.95rem' }}
-                />
+            {selectedRole !== 'audience' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '600' }}>Organization</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Health Ministry"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    disabled={loading}
+                    style={{ width: '100%', fontSize: '0.95rem' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '600' }}>Designation</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Director"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    disabled={loading}
+                    style={{ width: '100%', fontSize: '0.95rem' }}
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: '600' }}>Designation</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. Director"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  disabled={loading}
-                  style={{ width: '100%', fontSize: '0.95rem' }}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: '600' }}>Platform Role *</label>
               <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
                 <div 
-                  onClick={() => setSelectedRole('communicator')}
+                  onClick={() => { setSelectedRole('audience'); setPreferredLangs([]); }}
                   style={{
                     flex: 1,
                     padding: '14px 10px',
                     borderRadius: '12px',
-                    border: `1.5px solid ${selectedRole === 'communicator' ? 'hsl(var(--accent))' : 'rgba(255,255,255,0.06)'}`,
-                    background: selectedRole === 'communicator' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1.5px solid ${selectedRole === 'audience' ? 'hsl(var(--accent))' : 'rgba(255,255,255,0.06)'}`,
+                    background: selectedRole === 'audience' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.02)',
                     textAlign: 'center',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
                 >
                   <div style={{ fontSize: '1.25rem', marginBottom: '4px' }}>📣</div>
-                  <div style={{ fontWeight: '700', fontSize: '0.84rem', color: selectedRole === 'communicator' ? 'hsl(var(--accent))' : 'hsl(var(--text-secondary))' }}>Staff</div>
-                  <div style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', marginTop: '2px', lineHeight: '1.2' }}>Creates content and manages records.</div>
+                  <div style={{ fontWeight: '700', fontSize: '0.84rem', color: selectedRole === 'audience' ? 'hsl(var(--accent))' : 'hsl(var(--text-secondary))' }}>Audience</div>
+                  <div style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', marginTop: '2px', lineHeight: '1.2' }}>Receives warnings, views analytics & gives feedback.</div>
                 </div>
                 <div 
                   onClick={() => setSelectedRole('campaign_manager')}
@@ -425,6 +429,43 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                 </div>
               </div>
             </div>
+
+            {selectedRole === 'audience' && (
+              <div className="form-group" style={{ marginTop: '16px' }}>
+                <label className="form-label" style={{ fontWeight: '600' }}>Preferred Languages *</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '6px' }}>
+                  {['Hindi', 'English', 'Marathi', 'Tamil', 'Bengali', 'Telugu', 'Kannada', 'Gujarati', 'Malayalam'].map(lang => {
+                    const isSelected = preferredLangs.includes(lang);
+                    return (
+                      <div
+                        key={lang}
+                        onClick={() => {
+                          if (isSelected) {
+                            setPreferredLangs(preferredLangs.filter(l => l !== lang));
+                          } else {
+                            setPreferredLangs([...preferredLangs, lang]);
+                          }
+                        }}
+                        style={{
+                          padding: '6px',
+                          borderRadius: '8px',
+                          border: `1.5px solid ${isSelected ? 'hsl(var(--primary))' : 'rgba(255, 255, 255, 0.05)'}`,
+                          background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                          color: isSelected ? 'hsl(var(--text-primary))' : 'hsl(var(--text-secondary))',
+                          fontSize: '0.82rem',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          fontWeight: isSelected ? '700' : '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {lang}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', marginTop: '24px' }} disabled={loading}>
               {loading ? 'Creating Account...' : 'Register & Sign Up'}
@@ -513,7 +554,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
               const isActive = email === demo.email;
               const isManager = demo.email.includes('manager');
               const isAdmin = demo.email.includes('admin');
-              const roleClass = isAdmin ? 'admin' : isManager ? 'manager' : 'communicator';
+              const roleClass = isAdmin ? 'admin' : isManager ? 'manager' : 'audience';
               
               let iconSvg;
               let label;
@@ -534,7 +575,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                   </svg>
                 );
               } else {
-                label = 'Staff';
+                label = 'Audience';
                 iconSvg = (
                   <svg className="svg-icon" style={{ width: '1.15rem', height: '1.15rem' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M23 7a2 2 0 0 0-2.45-1.45L11 8H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v4l4-2h1l10 2.45A2 2 0 0 0 23 17V7z"/>

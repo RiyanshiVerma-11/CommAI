@@ -46,12 +46,12 @@ const FEATURES = [
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
       </svg>
     ),
-    accent: '#2563eb', bg: '#eff6ff',
-    title: 'Audience & Operators Directory',
-    desc: 'Manage citizens and operators in a structured registry. Restrict access permissions and update credentials safely.',
+    accent: '#06b6d4', bg: '#ecfeff',
+    title: 'Campaign Feedback Portal',
+    desc: 'Empower audience members to rate broadcasts and submit comments. Provides campaign managers with sentiment analytics and dashboards.',
   },
   {
     icon: (
@@ -129,13 +129,13 @@ const ROLES = [
   },
   {
     emoji: '📣',
-    title: 'Communicator',
-    badge: '#16a34a',
-    badgeBg: '#f0fdf4',
-    borderActive: '#86efac',
-    desc: 'Staff operator. Handles audience register seedings and draft template layouts. Strictly restricted from launching or approving live campaigns.',
-    sees: ['Dashboard', 'Audience & Segments', 'Templates Library'],
-    hidden: ['Campaign Planner Wizard', 'Audit Logs', 'User Directory', 'Integration Parameters'],
+    title: 'Audience Member',
+    badge: '#06b6d4',
+    badgeBg: '#ecfeff',
+    borderActive: '#a5f3fc',
+    desc: 'Public campaign recipient. Receives broadcasts, configures language settings, submits feedback comments, and uses emergency support channels to contact officials.',
+    sees: ['Dashboard Stats', 'Feedback Log', 'Emergency Contact support', 'Profile Settings'],
+    hidden: ['Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs', 'User Directory', 'Integration Parameters'],
   },
 ];
 

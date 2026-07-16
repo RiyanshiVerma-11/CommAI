@@ -31,6 +31,7 @@ graph TD
         RouterCampaign["Campaign Planner Router"]
         RouterSettings["Settings Router (SMTP / CallMeBot / Groq)"]
         RouterAI["AI Content Engine Router"]
+        RouterEmergency["Emergency Contact Router"]
     end
 
     subgraph services_layer ["Background Services Layer"]
@@ -53,6 +54,7 @@ graph TD
     AuthMiddleware --> RouterCampaign
     AuthMiddleware --> RouterSettings
     AuthMiddleware --> RouterAI
+    AuthMiddleware --> RouterEmergency
 
     RouterCampaign --> Dispatcher
     Scheduler --> Dispatcher
@@ -66,6 +68,7 @@ graph TD
     RouterTemplate --> SQLAlchemy
     RouterCampaign --> SQLAlchemy
     RouterSettings --> SQLAlchemy
+    RouterEmergency --> SQLAlchemy
 
     SQLAlchemy -->|Reads/Writes SQL| SQLite
 ```
@@ -189,6 +192,18 @@ erDiagram
         timestamp created_at
     }
 
+    emergency_contacts {
+        string id PK
+        string user_id FK
+        string subject
+        text message
+        string urgency "normal | urgent | critical"
+        string status "open | acknowledged | resolved"
+        text admin_reply "nullable"
+        timestamp replied_at "nullable"
+        timestamp created_at
+    }
+
     users ||--o{ templates : "creates"
     users ||--o{ campaigns : "creates"
     users ||--o{ audit_logs : "performs"
@@ -196,6 +211,7 @@ erDiagram
     templates ||--o{ campaigns : "binds"
     campaigns ||--o{ delivery_logs : "broadcasts"
     campaigns ||--o{ audit_logs : "records"
+    users ||--o{ emergency_contacts : "submits"
 ```
 
 ---
@@ -245,6 +261,7 @@ In Weeks 3 and 4, we integrated generative artificial intelligence and localizat
 * **Caret-Position Chip Insertion**: Inserts placeholder variables (`{{first_name}}`, `{{city}}`) at the user's cursor caret position inside text inputs.
 * **Multilingual Translation & Previews**: Pre-translates templates into all 22 official regional Indian languages. Dynamic previews render mock mobile and desktop screens in any language on the fly.
 * **Offline Compliance & Quality Audit**: Evaluates draft copy locally for sentence length warnings, shouting (excessive caps), duplicate sentences, unclosed brackets, and spam keywords, calculating an overall quality score (0-100).
+* **Emergency Inbox & AI Response Generation**: A dedicated portal to monitor incoming citizen emergency requests. Managers can filter by urgency and use AI to automatically draft contextual, professional responses.
   
   ![Campaign Wizard & AI Assistant](docs/screenshots/campaign_wizard.png)
 

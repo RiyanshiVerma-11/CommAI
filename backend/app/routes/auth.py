@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from app.database import get_db
 from app.models import User
-from app.schemas import UserCreate, UserResponse, UserUpdate, Token, OTPVerify
+from app.schemas import UserCreate, UserResponse, UserUpdate, Token, OTPVerify, ForgotPasswordReset
 from app.auth import (
     get_password_hash,
     verify_password,
@@ -303,3 +303,30 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/reset-password-otp")
+def reset_password_otp(reset_in: ForgotPasswordReset, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == reset_in.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User email not registered"
+        )
+        
+    cached_otp = otp_cache.get(reset_in.email)
+    if not cached_otp or cached_otp != reset_in.otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification OTP"
+        )
+        
+    # Clear OTP
+    otp_cache.pop(reset_in.email, None)
+    
+    # Hash and save new password
+    user.hashed_password = get_password_hash(reset_in.new_password)
+    user.updated_at = datetime.datetime.utcnow()
+    db.commit()
+    return {"message": "Password reset successfully. You can now login with your new password."}
+

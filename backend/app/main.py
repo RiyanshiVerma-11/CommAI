@@ -43,6 +43,13 @@ def add_missing_columns():
         except Exception:
             pass
 
+        # Add admin_reply and replied_at columns to emergency_contacts table if missing
+        for col, col_type in [("admin_reply", "TEXT"), ("replied_at", "DATETIME")]:
+            try:
+                conn.execute(text(f"ALTER TABLE emergency_contacts ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
+
 add_missing_columns()
 
 
@@ -81,6 +88,59 @@ def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user = Depends(require_any_authenticated)
 ) -> Dict[str, Any]:
+    # --- Audience-specific portal: return only their personal campaigns ---
+    if current_user.role == "audience":
+        # Find the audience record linked to this user's email
+        audience_record = db.query(Audience).filter(
+            Audience.email == current_user.email,
+            Audience.is_deleted == False
+        ).first()
+
+        my_campaigns = []
+        if audience_record:
+            # Get delivery logs for this audience
+            my_deliveries = (
+                db.query(DeliveryLog)
+                .filter(DeliveryLog.audience_id == audience_record.id)
+                .order_by(DeliveryLog.sent_at.desc())
+                .limit(20)
+                .all()
+            )
+            seen_campaign_ids = set()
+            for dl in my_deliveries:
+                if dl.campaign_id not in seen_campaign_ids:
+                    seen_campaign_ids.add(dl.campaign_id)
+                    camp = db.query(Campaign).filter(Campaign.id == dl.campaign_id, Campaign.is_deleted == False).first()
+                    if camp:
+                        my_campaigns.append({
+                            "timestamp": dl.sent_at.isoformat(),
+                            "activity_type": "campaign",
+                            "message": f"Campaign '{camp.title}' was sent to you via {dl.channel}",
+                            "meta": {"id": camp.id, "status": dl.status, "channel": dl.channel}
+                        })
+
+        # If no deliveries, show a welcome message
+        if not my_campaigns:
+            my_campaigns.append({
+                "timestamp": current_user.created_at.isoformat() if current_user.created_at else datetime.datetime.utcnow().isoformat(),
+                "activity_type": "info",
+                "message": "Welcome to CommAI! You will see campaigns sent to you here.",
+                "meta": {}
+            })
+
+        return {
+            "total_audiences": 0,
+            "active_audiences": 0,
+            "total_segments": 0,
+            "draft_campaigns": 0,
+            "total_campaigns": 0,
+            "total_templates": 0,
+            "total_delivered": 0,
+            "total_failed": 0,
+            "recent_activities": my_campaigns[:10]
+        }
+
+    # --- Admin / Campaign Manager: full system dashboard ---
     # Aggregates
     total_audiences = db.query(Audience).filter(Audience.is_deleted == False).count()
     active_audiences = db.query(Audience).filter(Audience.is_deleted == False, Audience.is_active == True).count()
@@ -140,6 +200,94 @@ def get_dashboard_stats(
         "total_failed": total_failed,
         "recent_activities": recent_activities[:7]  # return top 7
     }
+
+
+# --- CAMPAIGN MANAGERS DETAILED ENDPOINT (Admin-only) ---
+
+@api_router.get("/managers/detailed")
+def get_managers_detailed(
+    search: str = None,
+    is_active: str = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_any_authenticated)
+) -> list:
+    """Returns all campaign managers with their campaign counts, template counts, etc. Admin-only."""
+    from sqlalchemy import func, or_
+
+    if current_user.role != "admin":
+        from fastapi import HTTPException, status as http_status
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    query = db.query(User).filter(User.role == "campaign_manager")
+
+    if is_active == "true":
+        query = query.filter(User.is_active == True)
+    elif is_active == "false":
+        query = query.filter(User.is_active == False)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                User.full_name.ilike(search_term),
+                User.email.ilike(search_term),
+                User.organization.ilike(search_term),
+            )
+        )
+
+    managers = query.order_by(User.created_at.desc()).all()
+
+    result = []
+    for mgr in managers:
+        # Count campaigns created by this manager
+        campaigns_created = db.query(func.count(Campaign.id)).filter(
+            Campaign.created_by == mgr.id,
+            Campaign.is_deleted == False
+        ).scalar() or 0
+
+        # Count templates created by this manager
+        templates_created = db.query(func.count(Template.id)).filter(
+            Template.created_by == mgr.id,
+            Template.is_deleted == False
+        ).scalar() or 0
+
+        # Count total deliveries from their campaigns
+        total_sent = db.query(func.count(DeliveryLog.id)).join(Campaign).filter(
+            Campaign.created_by == mgr.id,
+            DeliveryLog.status == "sent"
+        ).scalar() or 0
+
+        total_failed = db.query(func.count(DeliveryLog.id)).join(Campaign).filter(
+            Campaign.created_by == mgr.id,
+            DeliveryLog.status == "failed"
+        ).scalar() or 0
+
+        # Parse preferred_languages
+        langs = []
+        if mgr.preferred_languages:
+            import json
+            try:
+                langs = json.loads(mgr.preferred_languages)
+            except Exception:
+                langs = []
+
+        result.append({
+            "id": mgr.id,
+            "full_name": mgr.full_name,
+            "email": mgr.email,
+            "organization": mgr.organization,
+            "designation": mgr.designation,
+            "preferred_languages": langs,
+            "is_active": mgr.is_active,
+            "created_at": mgr.created_at.isoformat() if mgr.created_at else None,
+            "updated_at": mgr.updated_at.isoformat() if mgr.updated_at else None,
+            "campaigns_created": campaigns_created,
+            "templates_created": templates_created,
+            "total_sent": total_sent,
+            "total_failed": total_failed,
+        })
+
+    return result
 
 
 # --- CONFIG CONSTANTS ENDPOINT ---
@@ -705,6 +853,113 @@ async def lifespan(app: FastAPI):
             
             db.commit()
             print("[SEEDING DATABASE] Seeding completed successfully.")
+
+        # Seed requested real demo profiles
+        import random
+        requested_users = [
+            {
+                "email": "riyanshi.verma.5356@gmail.com",
+                "password": "riya@1234",
+                "full_name": "Riya Verma",
+                "role": "audience",
+                "organization": "General Public",
+                "designation": "Citizen Recipient",
+                "age": 19,
+                "gender": "Female",
+                "occupation": "Student",
+                "state": "Delhi",
+                "district": "New Delhi",
+                "city": "New Delhi",
+                "preferred_languages": ["Hindi", "English"],
+                "preferred_channels": ["email"]
+            },
+            {
+                "email": "nidhi140002@gmail.com",
+                "password": "nidhi@1234",
+                "full_name": "Nidhi Sharma",
+                "role": "audience",
+                "organization": "General Public",
+                "designation": "Citizen Recipient",
+                "age": 20,
+                "gender": "Female",
+                "occupation": "Student",
+                "state": "Uttar Pradesh",
+                "district": "Lucknow",
+                "city": "Lucknow",
+                "preferred_languages": ["English", "Hindi"],
+                "preferred_channels": ["email"]
+            },
+            {
+                "email": "mailtopalak0002@gmail.com",
+                "password": "palak@1234",
+                "full_name": "Palak",
+                "role": "campaign_manager",
+                "organization": "Ministry of Health",
+                "designation": "Campaign Director",
+            },
+            {
+                "email": "yashviii1289@gmail.com",
+                "password": "yashvi@1234",
+                "full_name": "Yashvi",
+                "role": "campaign_manager",
+                "organization": "Health Ministry",
+                "designation": "Director",
+            }
+        ]
+
+        import json
+        for u_data in requested_users:
+            existing_user = db.query(User).filter(User.email == u_data["email"]).first()
+            if not existing_user:
+                new_user = User(
+                    email=u_data["email"],
+                    hashed_password=get_password_hash(u_data["password"]),
+                    full_name=u_data["full_name"],
+                    role=u_data["role"],
+                    organization=u_data.get("organization", "General Public"),
+                    designation=u_data.get("designation", "Campaign Recipient"),
+                    is_active=True
+                )
+                db.add(new_user)
+                db.commit()
+            else:
+                existing_user.full_name = u_data["full_name"]
+                if "organization" in u_data:
+                    existing_user.organization = u_data["organization"]
+                if "designation" in u_data:
+                    existing_user.designation = u_data["designation"]
+                db.commit()
+                
+            if u_data["role"] == "audience":
+                existing_aud = db.query(Audience).filter(Audience.email == u_data["email"]).first()
+                if not existing_aud:
+                    new_aud = Audience(
+                        first_name=u_data["full_name"].split()[0],
+                        last_name=u_data["full_name"].split()[1] if len(u_data["full_name"].split()) > 1 else "",
+                        email=u_data["email"],
+                        phone=str(random.randint(9100000000, 9199999999)),
+                        preferred_languages=json.dumps(u_data["preferred_languages"]),
+                        occupation=u_data["occupation"],
+                        age=u_data["age"],
+                        gender=u_data["gender"],
+                        state=u_data["state"],
+                        district=u_data["district"],
+                        city=u_data["city"],
+                        preferred_channels=json.dumps(u_data["preferred_channels"]),
+                        is_active=True
+                    )
+                    db.add(new_aud)
+                    db.commit()
+                else:
+                    existing_aud.first_name = u_data["full_name"].split()[0]
+                    existing_aud.last_name = u_data["full_name"].split()[1] if len(u_data["full_name"].split()) > 1 else ""
+                    existing_aud.age = u_data["age"]
+                    existing_aud.gender = u_data["gender"]
+                    existing_aud.occupation = u_data["occupation"]
+                    existing_aud.state = u_data["state"]
+                    existing_aud.district = u_data["district"]
+                    existing_aud.city = u_data["city"]
+                    db.commit()
 
         # Always check and seed demo campaigns/audiences/segments/templates
         seed_demo_data(db)

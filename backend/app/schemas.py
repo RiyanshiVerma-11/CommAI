@@ -375,8 +375,19 @@ class EmergencyContactResponse(CustomBaseModel):
     message: str
     urgency: str
     status: str
+    admin_reply: Optional[str] = None
+    replied_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
 
+class EmergencyContactReply(CustomBaseModel):
+    admin_reply: str = Field(..., min_length=1)
+    status: Optional[str] = Field(default="acknowledged", description="One of: open, acknowledged, resolved")
+
+
+class ForgotPasswordReset(CustomBaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str = Field(..., min_length=6, description="Password must be at least 6 characters")

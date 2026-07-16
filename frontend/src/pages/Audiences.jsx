@@ -229,6 +229,37 @@ const Audiences = ({ user, backendUrl, headers }) => {
     }
   };
 
+  const handleAutoTag = async (id) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/audiences/${id}/auto-tag`, {
+        method: 'POST',
+        headers
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'AI auto-tagging failed');
+      alert(`AI auto-tagged citizen with: ${data.tags.join(', ')}`);
+      fetchAudiences();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleAutoTagAll = async () => {
+    if (!window.confirm('Do you want to run AI classification on all active citizens? This might take a few seconds.')) return;
+    try {
+      const response = await fetch(`${backendUrl}/api/audiences/auto-tag-all`, {
+        method: 'POST',
+        headers
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Batch auto-tagging failed');
+      alert(data.message);
+      fetchAudiences();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   // CSV Import
   const handleCSVImport = async (e) => {
     e.preventDefault();
@@ -454,13 +485,22 @@ const Audiences = ({ user, backendUrl, headers }) => {
             </select>
 
             {['admin', 'campaign_manager'].includes(user.role) && (
-              <button className="btn btn-primary" onClick={handleOpenAdd} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '1.1rem', height: '1.1rem' }}>
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>Add Profile</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-primary" onClick={handleOpenAdd} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '1.1rem', height: '1.1rem' }}>
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add Profile</span>
+                </button>
+                <button 
+                  className="btn btn-dark" 
+                  onClick={handleAutoTagAll} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#a855f7' }}
+                >
+                  <span>✨ AI Auto-Tag All</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -482,6 +522,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                     <th>Languages</th>
                     <th>Details</th>
                     <th>Location</th>
+                    <th>AI Classification Tags</th>
                     <th>Preferred Channels</th>
                     {['admin', 'campaign_manager'].includes(user.role) && <th>Actions</th>}
                   </tr>
@@ -489,17 +530,17 @@ const Audiences = ({ user, backendUrl, headers }) => {
                 <tbody>
                   {audiences.map(aud => (
                     <tr key={aud.id}>
-                      <td style={{ fontWeight: '600' }}>{aud.first_name} {aud.last_name}</td>
+                      <td style={{ fontWeight: '700', color: 'hsl(var(--text-primary))' }}>{aud.first_name} {aud.last_name}</td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                             <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '10px', height: '10px' }}>
                               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                             </svg>
                             {aud.phone}
                           </span>
                           {aud.email && (
-                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                               <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '10px', height: '10px' }}>
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
@@ -512,7 +553,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                       <td>
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                           {aud.preferred_languages.map(l => (
-                            <span key={l} style={{ fontSize: '0.8rem', padding: '2px 8px', background: 'var(--border-color-glass)', color: 'hsl(var(--text-secondary))', borderRadius: '100px' }}>
+                            <span key={l} style={{ fontSize: '0.8rem', padding: '2px 8px', background: 'var(--border-color-glass)', color: 'hsl(var(--text-primary))', fontWeight: '700', borderRadius: '100px' }}>
                               {l}
                             </span>
                           ))}
@@ -520,25 +561,43 @@ const Audiences = ({ user, backendUrl, headers }) => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem', gap: '4px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                             <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '10px', height: '10px' }}>
                               <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
                               <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
                             </svg>
                             {aud.occupation}
                           </span>
-                          <span style={{ color: 'hsl(var(--text-muted))' }}>{aud.age} yrs • {aud.gender}</span>
+                          <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>{aud.age} yrs • {aud.gender}</span>
                         </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem', gap: '4px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                             <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '10px', height: '10px' }}>
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                             </svg>
                             {aud.city}
                           </span>
-                          <span style={{ color: 'hsl(var(--text-muted))' }}>{aud.district}, {aud.state}</span>
+                          <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>{aud.district}, {aud.state}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {(() => {
+                            let custom = {};
+                            try {
+                              custom = typeof aud.custom_fields === 'string' ? JSON.parse(aud.custom_fields) : (aud.custom_fields || {});
+                            } catch(e) {}
+                            if (custom && custom.ai_tags && custom.ai_tags.length > 0) {
+                              return custom.ai_tags.map(t => (
+                                <span key={t} style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '4px', fontWeight: '700' }}>
+                                    {t}
+                                </span>
+                              ));
+                            }
+                            return <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-secondary))', fontStyle: 'italic', fontWeight: '600' }}>Not tagged yet</span>;
+                          })()}
                         </div>
                       </td>
                       <td>
@@ -558,6 +617,9 @@ const Audiences = ({ user, backendUrl, headers }) => {
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                 <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
                               </svg>
+                            </button>
+                            <button className="btn btn-dark" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc' }} onClick={() => handleAutoTag(aud.id)} title="AI Auto-Tag Profile">
+                              ✨ Tag
                             </button>
                             {user.role === 'admin' && (
                               <button className="btn btn-danger" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', background: 'rgba(244, 63, 94, 0.15)' }} onClick={() => handleDeleteAudience(aud.id)} title="Delete Profile">

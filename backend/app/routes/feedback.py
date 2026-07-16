@@ -11,9 +11,10 @@ from app.database import get_db
 from app.models import User, Campaign, CampaignFeedback, EmergencyContact
 from app.schemas import (
     CampaignFeedbackCreate, CampaignFeedbackResponse, CampaignFeedbackSummary,
-    EmergencyContactCreate, EmergencyContactResponse
+    EmergencyContactCreate, EmergencyContactResponse, EmergencyContactReply
 )
 from app.auth import get_current_user, require_any_authenticated, require_manager_or_higher
+from app.services.ai_service import draft_emergency_response
 
 router = APIRouter(prefix="/feedback", tags=["Campaign Feedback"])
 
@@ -276,6 +277,8 @@ def submit_emergency_contact(
         message=contact.message,
         urgency=contact.urgency,
         status=contact.status,
+        admin_reply=contact.admin_reply,
+        replied_at=contact.replied_at,
         created_at=contact.created_at
     )
 
@@ -306,6 +309,8 @@ def list_emergency_contacts(
             message=ec.message,
             urgency=ec.urgency,
             status=ec.status,
+            admin_reply=ec.admin_reply,
+            replied_at=ec.replied_at,
             created_at=ec.created_at
         )
         for ec, user_name in results
@@ -333,3 +338,61 @@ def update_emergency_status(
     contact.status = new_status
     db.commit()
     return {"message": f"Status updated to '{new_status}'", "id": contact_id}
+
+
+@emergency_router.put("/{contact_id}/reply", response_model=EmergencyContactResponse)
+def reply_to_emergency(
+    contact_id: str,
+    reply_in: EmergencyContactReply,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manager_or_higher),
+):
+    """Reply to an emergency contact request and transition its status. Manager/Admin only."""
+    import datetime as dt
+    contact = db.query(EmergencyContact).filter(EmergencyContact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emergency contact not found")
+
+    if reply_in.status not in ["open", "acknowledged", "resolved"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid status. Allowed: open, acknowledged, resolved"
+        )
+
+    contact.admin_reply = reply_in.admin_reply
+    contact.status = reply_in.status
+    contact.replied_at = dt.datetime.utcnow()
+    db.commit()
+    db.refresh(contact)
+
+    # Get the user name
+    creator = db.query(User).filter(User.id == contact.user_id).first()
+    creator_name = creator.full_name if creator else "Unknown"
+
+    return EmergencyContactResponse(
+        id=contact.id,
+        user_id=contact.user_id,
+        user_name=creator_name,
+        subject=contact.subject,
+        message=contact.message,
+        urgency=contact.urgency,
+        status=contact.status,
+        admin_reply=contact.admin_reply,
+        replied_at=contact.replied_at,
+        created_at=contact.created_at
+    )
+
+
+@emergency_router.post("/{contact_id}/generate-draft")
+def generate_emergency_draft(
+    contact_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manager_or_higher),
+):
+    """Generate an AI draft response for an emergency contact."""
+    contact = db.query(EmergencyContact).filter(EmergencyContact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emergency contact not found")
+
+    draft = draft_emergency_response(contact.subject, contact.message, contact.urgency)
+    return {"draft": draft}

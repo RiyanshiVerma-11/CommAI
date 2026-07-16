@@ -424,7 +424,6 @@ const Settings = ({ user, backendUrl, headers }) => {
                   <label className="form-label">Last Name</label>
                   <input
                     type="text"
-                    required
                     className="form-control"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -480,12 +479,12 @@ const Settings = ({ user, backendUrl, headers }) => {
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value)}
                   >
-                    <option value="Farmer">Farmer 🌾</option>
-                    <option value="Student">Student 🎓</option>
-                    <option value="Healthcare Worker">Healthcare Worker 🏥</option>
-                    <option value="Teacher">Teacher 🏫</option>
-                    <option value="Business Owner">Business Owner 💼</option>
-                    <option value="Other">Other 🧑‍💻</option>
+                    <option value="Farmer">Farmer</option>
+                    <option value="Student">Student</option>
+                    <option value="Healthcare Worker">Healthcare Worker</option>
+                    <option value="Teacher">Teacher</option>
+                    <option value="Business Owner">Business Owner</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div className="form-group">

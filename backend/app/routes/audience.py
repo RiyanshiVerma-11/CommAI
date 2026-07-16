@@ -856,3 +856,58 @@ def evaluate_segment_criteria(
         "preview": [format_audience_response(r) for r in preview_records],
         "breakdowns": breakdowns
     }
+
+
+@router.post("/audiences/{id}/auto-tag", response_model=Dict[str, Any])
+def run_auto_tag_for_audience(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager_or_higher)
+):
+    """Run LLM classification to auto-tag an audience member based on demographics and feedback comments."""
+    from app.services.ai_service import auto_tag_audience
+    import json
+    
+    aud = db.query(Audience).filter(Audience.id == id, Audience.is_deleted == False).first()
+    if not aud:
+        raise HTTPException(status_code=404, detail="Audience member not found")
+        
+    tags = auto_tag_audience(db, id)
+    
+    try:
+        custom = json.loads(aud.custom_fields) if aud.custom_fields else {}
+    except Exception:
+        custom = {}
+        
+    custom["ai_tags"] = tags
+    aud.custom_fields = json.dumps(custom)
+    db.commit()
+    db.refresh(aud)
+    
+    return {"message": "Audience auto-tagged successfully", "tags": tags}
+
+
+@router.post("/audiences/auto-tag-all", response_model=Dict[str, Any])
+def run_auto_tag_all_audiences(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager_or_higher)
+):
+    """Run LLM auto-tagging for all active audience members in a single click."""
+    from app.services.ai_service import auto_tag_audience
+    import json
+    
+    active_auds = db.query(Audience).filter(Audience.is_deleted == False).all()
+    count = 0
+    for aud in active_auds:
+        tags = auto_tag_audience(db, aud.id)
+        try:
+            custom = json.loads(aud.custom_fields) if aud.custom_fields else {}
+        except Exception:
+            custom = {}
+        custom["ai_tags"] = tags
+        aud.custom_fields = json.dumps(custom)
+        count += 1
+        
+    db.commit()
+    return {"message": f"Successfully run AI classification for {count} profiles."}
+

@@ -11,6 +11,8 @@ import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Approvals from './pages/Approvals';
 import Feedback from './pages/Feedback';
+import Managers from './pages/Managers';
+import EmergencyInbox from './pages/EmergencyInbox';
 
 
 
@@ -110,6 +112,31 @@ function App() {
     setView('landing');
     setViewRegister(false);
   };
+
+  const [emergencyCount, setEmergencyCount] = useState(0);
+
+  useEffect(() => {
+    if (!token || !user) return;
+    if (user.role !== 'admin' && user.role !== 'campaign_manager') return;
+
+    const fetchCount = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/emergency-contact?status_filter=open`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setEmergencyCount(data.length);
+        }
+      } catch (err) {
+        console.error('Error fetching emergency count:', err);
+      }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 5000); // Poll every 5 seconds for real-time notification
+    return () => clearInterval(interval);
+  }, [token, user]);
 
   if (initialLoading) {
     return (
@@ -216,9 +243,29 @@ function App() {
             headers={authHeaders}
           />
         );
+      case 'managers':
+        if (user.role !== 'admin') return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Campaign Managers directory restricted to Administrators.</div>;
+        return (
+          <Managers
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
       case 'settings':
         return (
           <Settings
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
+      case 'emergency_inbox':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Restricted to operators.</div>;
+        }
+        return (
+          <EmergencyInbox
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
@@ -239,14 +286,16 @@ function App() {
 
   const getHeaderTitle = () => {
     switch (activeTab) {
-      case 'dashboard': return 'Dashboard Overview';
+      case 'dashboard': return user?.role === 'audience' ? 'Your Portal' : 'Dashboard Overview';
       case 'audiences': return 'Audience & Segment Management';
       case 'templates': return 'Templates Library';
       case 'campaigns': return 'Campaign Planner Wizard';
       case 'approvals': return 'Maker-Checker Approvals Queue';
       case 'audit_logs': return 'Operator Audit Trail Logs';
       case 'users': return 'Operator User Directory';
+      case 'managers': return 'Campaign Managers Directory';
       case 'settings': return 'System Integration Parameters';
+      case 'emergency_inbox': return 'Emergency Communications Inbox';
       case 'feedback': return 'Campaign Feedback & Assistance';
       default: return 'CommAI Platform';
     }
@@ -266,6 +315,7 @@ function App() {
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         closeMobileSidebar={() => setMobileSidebarOpen(false)}
+        emergencyCount={emergencyCount}
       />
       <div className="main-content">
         <header className="header">

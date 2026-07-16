@@ -22,13 +22,18 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const [selectedRole, setSelectedRole] = useState('audience');
   const [organization, setOrganization] = useState('');
   const [designation, setDesignation] = useState('');
+  const [orgSelect, setOrgSelect] = useState('Ministry of Health');
+  const [desigSelect, setDesigSelect] = useState('Director');
   const [preferredLangs, setPreferredLangs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpMode, setOtpMode] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpMessage, setOtpMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('password'); // 'password' or 'otp'
+  const [activeTab, setActiveTab] = useState('password'); // 'password', 'otp', or 'forgot_password'
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('email'); // 'email' or 'reset'
+  const [resetOtpCode, setResetOtpCode] = useState('');
+  const [newPasswordReset, setNewPasswordReset] = useState('');
 
   const demoAccounts = [
     { label: '🛡️ Admin Account', email: 'admin@comm.ai', password: 'AdminPassword123!' },
@@ -81,8 +86,8 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const handleRegister = async (e) => {
     e.preventDefault();
     if (selectedRole === 'audience') {
-      if (!firstName || !lastName || !email || !password || !phone) {
-        setError('First Name, Last Name, Email, Password, and Phone number are required');
+      if (!firstName || !email || !password || !phone) {
+        setError('First Name, Email, Password, and Phone number are required');
         return;
       }
     } else {
@@ -100,8 +105,8 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
         password,
         full_name: selectedRole === 'audience' ? `${firstName} ${lastName}` : fullName,
         role: selectedRole,
-        organization: selectedRole === 'audience' ? null : (organization || null),
-        designation: selectedRole === 'audience' ? null : (designation || null),
+        organization: selectedRole === 'audience' ? null : (orgSelect === 'Other' ? (organization || null) : (orgSelect || null)),
+        designation: selectedRole === 'audience' ? null : (desigSelect === 'Other' ? (designation || null) : (desigSelect || null)),
         preferred_languages: preferredLangs,
         
         // Audience fields
@@ -177,6 +182,73 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
       } else {
         setOtpMessage(`${data.message}. Check your email box for the verification code.`);
       }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleForgotPasswordRequestOTP = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError('Please enter your email address to receive reset OTP');
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/auth/request-otp?email=${encodeURIComponent(email)}`, {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to request reset OTP');
+      }
+
+      setForgotPasswordStep('reset');
+      if (data.mocked && data.otp) {
+        setOtpMessage(`Reset code sent! (Sandbox mode OTP: ${data.otp})`);
+      } else {
+        setOtpMessage('Reset code sent! Please check your registered email box.');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e) => {
+    e.preventDefault();
+    if (!resetOtpCode || !newPasswordReset) {
+      setError('OTP code and New Password are required');
+      return;
+    }
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/auth/reset-password-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: resetOtpCode, new_password: newPasswordReset })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Reset failed');
+      }
+
+      // Success! Back to login
+      setActiveTab('password');
+      setForgotPasswordStep('email');
+      setResetOtpCode('');
+      setNewPasswordReset('');
+      setOtpMessage('');
+      setError('');
+      alert(data.message || 'Password reset successfully! You can now log in.');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -266,7 +338,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
         </div>
 
         {/* Custom Authentication Selector Tabs */}
-        {!isRegister && !otpMode && (
+        {!isRegister && !otpMode && activeTab !== 'forgot_password' && (
           <div style={{
             display: 'flex',
             background: 'rgba(255, 255, 255, 0.02)',
@@ -368,7 +440,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: '600' }}>Last Name *</label>
+                    <label className="form-label" style={{ fontWeight: '600' }}>Last Name</label>
                     <input
                       type="text"
                       className="form-control"
@@ -376,7 +448,6 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       disabled={loading}
-                      required
                       style={{ width: '100%', fontSize: '0.95rem' }}
                     />
                   </div>
@@ -436,12 +507,12 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                       style={{ width: '100%', fontSize: '0.95rem' }}
                     >
                       <option value="">Select Occupation</option>
-                      <option value="Farmer">Farmer 🌾</option>
-                      <option value="Student">Student 🎓</option>
-                      <option value="Healthcare Worker">Healthcare Worker 🏥</option>
-                      <option value="Teacher">Teacher 🏫</option>
-                      <option value="Business Owner">Business Owner 💼</option>
-                      <option value="Other">Other 🧑‍💻</option>
+                      <option value="Farmer">Farmer</option>
+                      <option value="Student">Student</option>
+                      <option value="Healthcare Worker">Healthcare Worker</option>
+                      <option value="Teacher">Teacher</option>
+                      <option value="Business Owner">Business Owner</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -592,28 +663,73 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: '600' }}>Organization</label>
-                    <input
-                      type="text"
+                    <select
                       className="form-control"
-                      placeholder="e.g. Health Ministry"
-                      value={organization}
-                      onChange={(e) => setOrganization(e.target.value)}
+                      value={orgSelect}
+                      onChange={(e) => setOrgSelect(e.target.value)}
                       disabled={loading}
                       style={{ width: '100%', fontSize: '0.95rem' }}
-                    />
+                    >
+                      <option value="Ministry of Health">Ministry of Health</option>
+                      <option value="Indian Meteorological Department">Indian Meteorological Department</option>
+                      <option value="National Disaster Management Authority">National Disaster Management Authority</option>
+                      <option value="Department of Agriculture">Department of Agriculture</option>
+                      <option value="District Administration">District Administration</option>
+                      <option value="Municipal Corporation">Municipal Corporation</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: '600' }}>Designation</label>
-                    <input
-                      type="text"
+                    <select
                       className="form-control"
-                      placeholder="e.g. Director"
-                      value={designation}
-                      onChange={(e) => setDesignation(e.target.value)}
+                      value={desigSelect}
+                      onChange={(e) => setDesigSelect(e.target.value)}
                       disabled={loading}
                       style={{ width: '100%', fontSize: '0.95rem' }}
-                    />
+                    >
+                      <option value="Director">Director</option>
+                      <option value="Chief Medical Officer">Chief Medical Officer</option>
+                      <option value="Meteorologist">Meteorologist</option>
+                      <option value="Agricultural Officer">Agricultural Officer</option>
+                      <option value="District Magistrate">District Magistrate</option>
+                      <option value="Municipal Commissioner">Municipal Commissioner</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {orgSelect === 'Other' && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: '600' }}>Custom Organization *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. Red Cross Society"
+                        value={organization}
+                        onChange={(e) => setOrganization(e.target.value)}
+                        disabled={loading}
+                        required
+                        style={{ width: '100%', fontSize: '0.95rem' }}
+                      />
+                    </div>
+                  )}
+                  {desigSelect === 'Other' && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: '600' }}>Custom Designation *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. Volunteer Lead"
+                        value={designation}
+                        onChange={(e) => setDesignation(e.target.value)}
+                        disabled={loading}
+                        required
+                        style={{ width: '100%', fontSize: '0.95rem' }}
+                      />
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -722,7 +838,15 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: '600' }}>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" style={{ fontWeight: '600', margin: 0 }}>Password</label>
+                <span 
+                  onClick={() => { setActiveTab('forgot_password'); setForgotPasswordStep('email'); setError(''); setOtpMessage(''); }} 
+                  style={{ color: 'hsl(var(--primary))', fontSize: '0.82rem', cursor: 'pointer', fontWeight: '600' }}
+                >
+                  Forgot Password?
+                </span>
+              </div>
               <input
                 type="password"
                 className="form-control"
@@ -730,7 +854,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                style={{ width: '100%', fontSize: '0.95rem' }}
+                style={{ width: '100%', fontSize: '0.95rem', marginTop: '6px' }}
               />
             </div>
 
@@ -745,6 +869,83 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
               </span>
             </p>
           </form>
+        ) : activeTab === 'forgot_password' ? (
+          forgotPasswordStep === 'email' ? (
+            <form onSubmit={handleForgotPasswordRequestOTP}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600' }}>Email Address</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="operator@comm.ai"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                  style={{ width: '100%', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button type="submit" className="btn btn-primary" style={{ flexGrow: 1, padding: '12px' }} disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Reset OTP'}
+                </button>
+                <button type="button" className="btn btn-dark" style={{ padding: '12px' }} onClick={() => { setActiveTab('password'); setError(''); setOtpMessage(''); }} disabled={loading}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotPasswordReset}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600' }}>Email Address</label>
+                <input
+                  type="email"
+                  disabled
+                  className="form-control"
+                  value={email}
+                  style={{ width: '100%', fontSize: '0.95rem', opacity: 0.6 }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600' }}>Reset OTP Code</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="123456"
+                  value={resetOtpCode}
+                  onChange={(e) => setResetOtpCode(e.target.value)}
+                  disabled={loading}
+                  required
+                  style={{ width: '100%', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600' }}>New Password</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Min 6 characters"
+                  value={newPasswordReset}
+                  onChange={(e) => setNewPasswordReset(e.target.value)}
+                  disabled={loading}
+                  required
+                  style={{ width: '100%', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button type="submit" className="btn btn-primary" style={{ flexGrow: 1, padding: '12px' }} disabled={loading}>
+                  {loading ? 'Resetting...' : 'Reset Password'}
+                </button>
+                <button type="button" className="btn btn-dark" style={{ padding: '12px' }} onClick={() => { setForgotPasswordStep('email'); setError(''); setOtpMessage(''); }} disabled={loading}>
+                  Back
+                </button>
+              </div>
+            </form>
+          )
         ) : (
           <form onSubmit={handleRequestOTP}>
             <div className="form-group">

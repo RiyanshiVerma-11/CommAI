@@ -6,6 +6,51 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Emergency modal state
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencySubject, setEmergencySubject] = useState('');
+  const [emergencyMessage, setEmergencyMessage] = useState('');
+  const [emergencyUrgency, setEmergencyUrgency] = useState('normal');
+  const [emergencySubmitting, setEmergencySubmitting] = useState(false);
+  const [emergencySuccess, setEmergencySuccess] = useState('');
+
+  const handleEmergencySubmit = async (e) => {
+    e.preventDefault();
+    if (!emergencySubject.trim() || !emergencyMessage.trim()) return;
+
+    setEmergencySubmitting(true);
+    setEmergencySuccess('');
+    try {
+      const res = await fetch(`${backendUrl}/api/emergency-contact`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: emergencySubject,
+          message: emergencyMessage,
+          urgency: emergencyUrgency
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to submit emergency alert');
+      }
+
+      setEmergencySuccess('Your emergency alert has been sent to our operators in real time.');
+      setEmergencySubject('');
+      setEmergencyMessage('');
+      setEmergencyUrgency('normal');
+      // Hide modal after 3 seconds
+      setTimeout(() => {
+        setShowEmergencyModal(false);
+        setEmergencySuccess('');
+      }, 3000);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setEmergencySubmitting(false);
+    }
+  };
+
   const fetchStats = useCallback(async () => {
     try {
       const response = await fetch(`${backendUrl}/api/dashboard/stats`, { headers });
@@ -56,6 +101,261 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
   const totalMessages = totalDelivered + totalFailed;
   const successRate = totalMessages > 0 ? Math.round((totalDelivered / totalMessages) * 100) : 0;
 
+  // ----- Audience-specific portal -----
+  if (user.role === 'audience') {
+    return (
+      <div className="animate-fade-in">
+        <div style={{ marginBottom: '36px' }}>
+          <h1 style={{ fontSize: '2.4rem', fontWeight: '800', marginBottom: '8px', letterSpacing: '-0.03em', color: 'hsl(var(--text-primary))' }}>
+            Welcome, {user.full_name}
+          </h1>
+          <p style={{ color: 'hsl(var(--text-muted))', fontSize: '1.05rem', fontWeight: '500' }}>
+            Your communication portal — Stay connected and share your feedback.
+          </p>
+        </div>
+
+        {/* Profile Summary + Quick Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+          <GlassCard style={{ padding: '28px' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '20px', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+              Your Profile
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                { label: 'Name', value: user.full_name },
+                { label: 'Email', value: user.email },
+                { label: 'Organization', value: user.organization || 'Not specified' },
+                { label: 'Designation', value: user.designation || 'Not specified' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span style={{ fontSize: '0.88rem', color: 'hsl(var(--text-muted))', fontWeight: '600' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.92rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+
+          <GlassCard style={{ padding: '28px' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '20px', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+              Quick Actions
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div
+                className="toolcard"
+                onClick={() => setActiveTab('feedback')}
+                style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ background: 'hsl(var(--primary) / 8%)', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>Campaign Feedback</span>
+                    <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
+                      Share your feedback on campaigns and communications you received.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div
+                className="toolcard"
+                onClick={() => setActiveTab('settings')}
+                style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ background: 'hsl(var(--accent) / 8%)', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg className="svg-icon" style={{ color: 'hsl(var(--accent))', width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>Profile Settings</span>
+                    <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
+                      Update your preferences, personal details, and notification settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Alert Shortcut */}
+              <div
+                className="toolcard"
+                onClick={() => {
+                  setEmergencySubject('');
+                  setEmergencyMessage('');
+                  setEmergencyUrgency('normal');
+                  setEmergencySuccess('');
+                  setShowEmergencyModal(true);
+                }}
+                style={{ 
+                  padding: '18px', 
+                  borderRadius: '14px', 
+                  cursor: 'pointer',
+                  border: '1.5px dashed rgba(239, 68, 68, 0.3)',
+                  background: 'rgba(239, 68, 68, 0.02)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--danger))' }}>Send Emergency Alert</span>
+                    <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
+                      Directly submit an urgent emergency alert request to operators.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+
+        {/* Modal Overlay */}
+        {showEmergencyModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}>
+            <GlassCard style={{ padding: '32px', width: '100%', maxWidth: '500px', position: 'relative' }}>
+              <button 
+                onClick={() => setShowEmergencyModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'hsl(var(--text-muted))',
+                  fontSize: '1.4rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                &times;
+              </button>
+
+              <h3 style={{ marginBottom: '8px', fontWeight: 800, color: 'hsl(var(--danger))' }}>Send Emergency Alert</h3>
+              <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.85rem', marginBottom: '24px', lineHeight: 1.4 }}>
+                Alert campaign operators regarding evacuations, natural disasters, or critical hazards.
+              </p>
+
+              {emergencySuccess ? (
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(34, 197, 94, 0.08)',
+                  border: '1px solid rgba(34, 197, 94, 0.2)',
+                  borderRadius: '10px',
+                  color: 'hsl(var(--accent))',
+                  fontSize: '0.9rem',
+                  textAlign: 'center',
+                  fontWeight: '600'
+                }}>
+                  {emergencySuccess}
+                </div>
+              ) : (
+                <form onSubmit={handleEmergencySubmit}>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Subject Summary</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Severe flooding near North block riverbed"
+                      value={emergencySubject}
+                      onChange={e => setEmergencySubject(e.target.value)}
+                      required
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Urgency Level</label>
+                    <select
+                      className="form-control"
+                      value={emergencyUrgency}
+                      onChange={e => setEmergencyUrgency(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="normal">Normal priority</option>
+                      <option value="urgent">Urgent assistance</option>
+                      <option value="critical">Critical emergency</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '24px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Detailed Message Description</label>
+                    <textarea
+                      className="form-control"
+                      placeholder="Explain your situation in detail. Provide location, landmarks, and details of help required..."
+                      value={emergencyMessage}
+                      onChange={e => setEmergencyMessage(e.target.value)}
+                      required
+                      rows={4}
+                      style={{ width: '100%', resize: 'none' }}
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    disabled={emergencySubmitting}
+                    style={{ width: '100%', padding: '12px', background: 'hsl(var(--danger))', borderColor: 'hsl(var(--danger))' }}
+                  >
+                    {emergencySubmitting ? 'Submitting Alert...' : 'Submit Emergency Alert'}
+                  </button>
+                </form>
+              )}
+            </GlassCard>
+          </div>
+        )}
+
+        {/* Recent Communications */}
+        <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px' }}>
+          <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+            Recent Communications
+          </h2>
+          {s.recent_activities.length === 0 ? (
+            <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '36px 0', fontSize: '0.92rem', fontWeight: '500' }}>
+              No recent communications to display.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {s.recent_activities.slice(0, 5).map((act, index) => (
+                <div key={index} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'hsl(var(--primary))', flexShrink: 0 }}></div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: '600', color: 'hsl(var(--text-secondary))' }}>{act.message}</span>
+                    <div style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', marginTop: '2px', fontWeight: '500' }}>
+                      {new Date(act.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // ----- Admin / Campaign Manager dashboard -----
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '36px' }}>

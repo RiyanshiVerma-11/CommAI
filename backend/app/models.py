@@ -206,6 +206,8 @@ class EmergencyContact(Base):
     message = Column(Text, nullable=False)
     urgency = Column(String(20), nullable=False, default="normal")  # normal, urgent, critical
     status = Column(String(20), nullable=False, default="open")     # open, acknowledged, resolved
+    admin_reply = Column(Text, nullable=True)
+    replied_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     
     # Relationships

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar }) => {
+const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount }) => {
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -88,6 +88,31 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
       roles: ['admin'] 
     },
     { 
+      id: 'managers', 
+      label: 'Campaign Managers', 
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="8.5" cy="7" r="4" />
+          <line x1="20" y1="8" x2="20" y2="14" />
+          <line x1="23" y1="11" x2="17" y2="11" />
+        </svg>
+      ), 
+      roles: ['admin'] 
+    },
+    {
+      id: 'emergency_inbox',
+      label: 'Emergency Inbox',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
+    { 
       id: 'audit_logs', 
       label: 'Audit Logs', 
       icon: (
@@ -169,7 +194,30 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
             <span className="nav-item-icon">
               {item.icon}
             </span>
-            <span>{item.label}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between', width: '100%' }}>
+              <span>{item.label}</span>
+              {item.id === 'emergency_inbox' && emergencyCount > 0 && (
+                <span 
+                  style={{ 
+                    background: '#ef4444', 
+                    color: '#ffffff', 
+                    borderRadius: '50%', 
+                    width: '20px', 
+                    height: '20px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '0.75rem', 
+                    fontWeight: '800',
+                    lineHeight: '1',
+                    boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
+                    animation: 'pulse 2s infinite'
+                  }}
+                >
+                  {emergencyCount}
+                </span>
+              )}
+            </span>
           </li>
         ))}
       </ul>

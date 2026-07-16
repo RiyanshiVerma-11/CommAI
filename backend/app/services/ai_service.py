@@ -548,3 +548,93 @@ def refine_campaign_plan(current_plan_str: str, instruction: str) -> dict:
             "error": "Failed to parse refined AI response as a valid campaign JSON structure.",
             "raw_output": result
         }
+
+
+def auto_tag_audience(db, audience_id: str) -> list:
+    """Analyze audience profile demographics and review feedback comments to suggest tags using LLM."""
+    from app.models import Audience, CampaignFeedback
+    import json
+    import re
+
+    aud = db.query(Audience).filter(Audience.id == audience_id).first()
+    if not aud:
+        return []
+
+    # Get all feedback reviews submitted by this audience member
+    feedbacks = db.query(CampaignFeedback).filter(CampaignFeedback.user_id == aud.id).all()
+    feedback_text = ""
+    if feedbacks:
+        feedback_text = "\n".join([f"- Rated {f.rating}/5 stars for Campaign (Feedback Type: {f.feedback_type}): '{f.comment}'" for f in feedbacks])
+    else:
+        feedback_text = "No feedback comments submitted yet."
+
+    system_prompt = (
+        "You are an AI data classifier for a public communication platform. "
+        "Your task is to analyze a citizen's profile and feedback history, "
+        "and suggest 2 to 4 concise interest/classification tags (e.g., 'Interested in Agriculture', "
+        "'Safety Active', 'Prefers Email', 'Frequent Reviewer', 'High Engagement', 'Needs Support'). "
+        "Return the output strictly as a JSON array of strings, without any explanation, code blocks, or preamble. "
+        "Example: [\"Interested in Farming\", \"Active Reviewer\"]"
+    )
+
+    user_content = (
+        f"Citizen Demographics:\n"
+        f"- Age: {aud.age}\n"
+        f"- Gender: {aud.gender}\n"
+        f"- Occupation: {aud.occupation}\n"
+        f"- Location: {aud.city}, {aud.district}, {aud.state}\n"
+        f"- Preferred Channels: {aud.preferred_channels}\n\n"
+        f"Recent Feedback & Alert Reactions:\n"
+        f"{feedback_text}"
+    )
+
+    tags_str = _call_groq(system_prompt, user_content, temperature=0.1, max_tokens=100)
+    if not tags_str:
+        # Fallback tags if Groq fails or API key is not set
+        fallback_tags = ["General Audience"]
+        if aud.occupation:
+            fallback_tags.append(f"Interested in {aud.occupation}")
+        if feedbacks:
+            fallback_tags.append("Active Contributor")
+        return fallback_tags
+
+    try:
+        match = re.search(r'\[.*\]', tags_str, re.DOTALL)
+        if match:
+            tags = json.loads(match.group(0))
+        else:
+            tags = json.loads(tags_str)
+        if isinstance(tags, list):
+            return [str(t).strip() for t in tags]
+    except Exception:
+        pass
+
+    fallback_tags = ["General Audience"]
+    if aud.occupation:
+        fallback_tags.append(f"Interested in {aud.occupation}")
+    return fallback_tags
+
+
+def draft_emergency_response(subject: str, message: str, urgency: str) -> str:
+    """Generate an AI-assisted response to a citizen emergency message using Groq."""
+    system_prompt = (
+        "You are an AI assistant for a government and community emergency response desk. "
+        "Your task is to write a helpful, reassuring, clear, and action-oriented response "
+        "to a citizen who has reported an emergency or urgent situation. "
+        "Keep the response concise (max 3-4 sentences), highly professional, and informative. "
+        "Do NOT use any emojis. "
+        "Only return the exact message body. Do NOT include greetings like 'Dear citizen', "
+        "closing sign-offs, or introductions like 'Here is the response'."
+    )
+    user_content = f"Urgency: {urgency}\nSubject: {subject}\nMessage: {message}"
+
+    draft = _call_groq(system_prompt, user_content, temperature=0.3, max_tokens=300)
+    if draft:
+        return draft.strip()
+
+    # Dynamic fallback drafts if Groq is unavailable
+    if urgency == "critical" or urgency == "urgent":
+        return f"Thank you for reporting this issue. We have flagged this report as {urgency.upper()} priority. Our emergency response team has been notified and is looking into the situation. Please stay safe and follow active safety protocols in your area."
+    return "Thank you for sharing this feedback. We have acknowledged your report and regional operators are reviewing the details. We will update you as soon as action is taken."
+
+

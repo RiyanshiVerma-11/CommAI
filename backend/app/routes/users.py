@@ -127,10 +127,11 @@ def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def deactivate_user(
     user_id: str,
+    permanent: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Soft-deactivate a user account. Admin-only."""
+    """Soft-deactivate or permanently delete a user account. Admin-only."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -140,13 +141,18 @@ def deactivate_user(
     if user.id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate your own account",
+            detail="Cannot delete your own account",
         )
 
-    user.is_active = False
-    user.updated_at = datetime.datetime.utcnow()
-    db.commit()
-    return {"message": "User deactivated successfully", "id": user_id}
+    if permanent:
+        db.delete(user)
+        db.commit()
+        return {"message": f"User '{user.full_name}' permanently deleted", "id": user_id}
+    else:
+        user.is_active = False
+        user.updated_at = datetime.datetime.utcnow()
+        db.commit()
+        return {"message": "User deactivated successfully", "id": user_id}
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

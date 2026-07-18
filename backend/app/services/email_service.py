@@ -11,6 +11,8 @@ import logging
 import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from typing import Tuple
 
 from app.config import settings
@@ -55,17 +57,22 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False, in
         from email.mime.image import MIMEImage
 
         # Build the email message
-        msg = MIMEMultipart("related")
+        msg = MIMEMultipart("mixed")
         msg["From"] = f"CommAI Alert System <{smtp_email}>"
         msg["To"] = to_email
         msg["Subject"] = subject
 
+        # Create related container for html + inline images
+        msg_related = MIMEMultipart("related")
+        msg.attach(msg_related)
+
         # Create alternative body part (for text + html)
         msg_alternative = MIMEMultipart("alternative")
-        msg.attach(msg_alternative)
+        msg_related.attach(msg_alternative)
 
         # First try inline_image_base64 parameter
         attachments = []
+        file_attachments = []
         html_body_to_send = body if is_html else ""
         plaintext_body_to_send = "" if is_html else body
 
@@ -87,6 +94,13 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False, in
                 mime_img.add_header('Content-ID', f'<{cid}>')
                 mime_img.add_header('Content-Disposition', 'inline', filename=f"image_1.{img_format.lower()}")
                 attachments.append(mime_img)
+
+                # Create standard file attachment copy using MIMEBase to guarantee it is treated as a downloadable file
+                mime_file = MIMEBase('application', 'octet-stream')
+                mime_file.set_payload(img_data)
+                encoders.encode_base64(mime_file)
+                mime_file.add_header('Content-Disposition', 'attachment', filename=f"poster_flyer.{img_format.lower()}")
+                file_attachments.append(mime_file)
             except Exception as e:
                 logger.error(f"[EMAIL] Failed to process inline_image_base64 parameter: {e}")
 
@@ -109,6 +123,13 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False, in
                         mime_img.add_header('Content-ID', f'<{cid}>')
                         mime_img.add_header('Content-Disposition', 'inline', filename=f"image_{index + 1}.{img_format.lower()}")
                         attachments.append(mime_img)
+
+                        # Create standard file attachment copy using MIMEBase to guarantee it is treated as a downloadable file
+                        mime_file = MIMEBase('application', 'octet-stream')
+                        mime_file.set_payload(img_data)
+                        encoders.encode_base64(mime_file)
+                        mime_file.add_header('Content-Disposition', 'attachment', filename=f"poster_attachment_{index + 1}.{img_format.lower()}")
+                        file_attachments.append(mime_file)
                         
                         if is_html:
                             # Replace exact original matched substring with cid reference in HTML
@@ -119,47 +140,44 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False, in
                     except Exception as e:
                         logger.error(f"[EMAIL] Failed to process base64 image match {index + 1}: {e}")
 
-            if attachments:
-                if is_html:
-                    # Replace image tags referencing our inline CIDs with a text placeholder first
-                    clean_plaintext = html_body_to_send
-                    for index in range(len(attachments)):
-                        img_tag_pattern = rf'<img[^>]+src=["\']?cid:inline_image_{index + 1}["\']?[^>]*>'
-                        clean_plaintext = re.sub(img_tag_pattern, " [Visual Poster Inline] ", clean_plaintext, flags=re.IGNORECASE)
-                    # Strip remaining HTML tags to make a clean plaintext fallback
-                    clean_plaintext = strip_html_tags(clean_plaintext)
-                    msg_alternative.attach(MIMEText(clean_plaintext, "plain", "utf-8"))
-                    msg_alternative.attach(MIMEText(html_body_to_send, "html", "utf-8"))
-                else:
-                    # Create HTML part with inline CID image using CommAI Visual Alert template
-                    html_body = f"""
-                <html>
-                  <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f6fa; color: #333;">
-                    <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #e1e8ed;">
-                      <h2 style="color: #4a00e0; margin-top: 0;">CommAI Visual Alert</h2>
-                      <p style="font-size: 1.05rem; line-height: 1.5; color: #2f3542;">{plaintext_body_to_send}</p>
-                      <div style="margin-top: 20px; text-align: center; border-radius: 8px; overflow: hidden; border: 1px solid #e1e8ed; background-color: #090b14; padding: 10px;">
-                        <img src="cid:inline_image_1" alt="Visual Poster" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
-                      </div>
-                      <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;" />
-                      <p style="font-size: 0.8rem; color: #a4b0be; text-align: center; margin-bottom: 0;">This is an automated visual alert from CommAI.</p>
-                    </div>
-                  </body>
-                </html>
-                """
-                    msg_alternative.attach(MIMEText(f"{plaintext_body_to_send}\n\n[Visual poster image is attached inline. If your mail client doesn't support inline images, check attachments.]", "plain", "utf-8"))
-                    msg_alternative.attach(MIMEText(html_body, "html", "utf-8"))
-                
-                # Attach all decoded MIMEImages to the MIMEMultipart("related")
-                for mime_img in attachments:
-                    msg.attach(mime_img)
+        # Now process attachments if any were loaded (from parameter or parsed from body text)
+        if attachments:
+            if is_html:
+                # Replace image tags referencing our inline CIDs with a text placeholder first
+                clean_plaintext = html_body_to_send
+                for index in range(len(attachments)):
+                    img_tag_pattern = rf'<img[^>]+src=["\']?cid:inline_image_{index + 1}["\']?[^>]*>'
+                    clean_plaintext = re.sub(img_tag_pattern, " [Visual Poster Inline] ", clean_plaintext, flags=re.IGNORECASE)
+                # Strip remaining HTML tags to make a clean plaintext fallback
+                clean_plaintext = strip_html_tags(clean_plaintext)
+                msg_alternative.attach(MIMEText(clean_plaintext, "plain", "utf-8"))
+                msg_alternative.attach(MIMEText(html_body_to_send, "html", "utf-8"))
             else:
-                # Fallback if attachments couldn't be decoded
-                if is_html:
-                    msg_alternative.attach(MIMEText(strip_html_tags(body), "plain", "utf-8"))
-                    msg_alternative.attach(MIMEText(body, "html", "utf-8"))
-                else:
-                    msg_alternative.attach(MIMEText(body, "plain", "utf-8"))
+                # Create HTML part with inline CID image using CommAI Visual Alert template
+                html_body = f"""
+            <html>
+              <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f6fa; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #e1e8ed;">
+                  <h2 style="color: #4a00e0; margin-top: 0;">CommAI Visual Alert</h2>
+                  <p style="font-size: 1.05rem; line-height: 1.5; color: #2f3542;">{plaintext_body_to_send}</p>
+                  <div style="margin-top: 20px; text-align: center; border-radius: 8px; overflow: hidden; border: 1px solid #e1e8ed; background-color: #090b14; padding: 10px;">
+                    <img src="cid:inline_image_1" alt="Visual Poster" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
+                  </div>
+                  <hr style="border: 0; border-top: 1px solid #e1e8ed; margin: 20px 0;" />
+                  <p style="font-size: 0.8rem; color: #a4b0be; text-align: center; margin-bottom: 0;">This is an automated visual alert from CommAI.</p>
+                </div>
+              </body>
+            </html>
+            """
+                msg_alternative.attach(MIMEText(f"{plaintext_body_to_send}\n\n[Visual poster image is attached inline. If your mail client doesn't support inline images, check attachments.]", "plain", "utf-8"))
+                msg_alternative.attach(MIMEText(html_body, "html", "utf-8"))
+            
+            # Attach all decoded MIMEImages to the inner related container
+            for mime_img in attachments:
+                msg_related.attach(mime_img)
+            # Attach standard file attachments to the outer mixed container
+            for mime_file in file_attachments:
+                msg.attach(mime_file)
         else:
             # Standard email (no base64 image)
             if is_html:

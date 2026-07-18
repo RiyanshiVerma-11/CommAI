@@ -298,9 +298,8 @@ def dispatch_poster_in_background(
         from app.config import settings
         subject = f"Visual Alert: {poster.title}"
         
-        # Build a safe external image link to serve the image without embedding raw base64 in body text
-        image_link = f"{settings.BACKEND_URL}/api/poster/{poster.id}/image"
-        body = f"{poster.description}\n\nView visual flyer here: {image_link}"
+        # Set email body to campaign description (image is sent directly as inline & file attachment)
+        body = poster.description
         
         inline_image = poster.image_url if poster.image_url.startswith("data:image/") else None
 

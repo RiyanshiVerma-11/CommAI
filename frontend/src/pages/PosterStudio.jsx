@@ -161,6 +161,16 @@ const PosterStudio = ({ user, backendUrl, headers }) => {
 
   const handleCampaignSelect = (campId) => {
     setSelectedCampaignId(campId);
+    
+    // Clear previously generated poster data so we do not show stale visuals
+    setPosterUrl('');
+    setRawImageUrl('');
+    setPosterContent(null);
+    setPromptUsed('');
+    setPosterId(null);
+    setIsFallback(false);
+    setError('');
+
     if (!campId) {
       setTitle('');
       setDescription('');

@@ -25,24 +25,20 @@ logger = logging.getLogger("commai.poster_service")
 # ---------------------------------------------------------------------------
 CATEGORY_VISUALS = {
     "emergency": (
-        "dramatic red and orange gradient sky, warning symbols, emergency sirens, "
-        "bold geometric shapes, urgent visual cues, dark storm clouds, "
-        "lightning bolts, emergency vehicle silhouettes"
+        "high-visibility red and orange alert tones, warning symbols, urgent design cues, "
+        "bold geometric shapes, clean vector graphics, high contrast, dark sky gradients"
     ),
     "awareness": (
-        "vibrant green and blue landscape, community gathering, nature elements, "
-        "clean water, healthy crops, sunshine, rural village panorama, "
-        "modern infographic icons, abstract data visualization elements"
+        "bright and positive community setting, clean environment, public-spirited illustrations, "
+        "modern vector icons, abstract shapes, uplifting lighting, welcoming colors"
     ),
     "education": (
-        "warm golden light, books and learning symbols, school building, "
-        "children silhouettes, chalkboard patterns, graduation caps, "
-        "scientific icons, digital learning devices"
+        "warm and inspiring learning environment, educational motifs, growth symbols, "
+        "scholarly illustrations, clean vector shapes, golden/warm lighting"
     ),
     "announcement": (
-        "professional blue and white corporate design, government building, "
-        "official seal elements, megaphone, podium, formal geometric patterns, "
-        "clean abstract background with subtle official motifs"
+        "official blue and white styling, professional abstract backdrop, formal geometric layout, "
+        "podium or public forum silhouettes, clean official presentation"
     ),
 }
 

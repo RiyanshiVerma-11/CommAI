@@ -13,6 +13,13 @@ import Approvals from './pages/Approvals';
 import Feedback from './pages/Feedback';
 import Managers from './pages/Managers';
 import EmergencyInbox from './pages/EmergencyInbox';
+import SupportQueries from './pages/SupportQueries';
+import ChatbotWidget from './components/ChatbotWidget';
+import PosterStudio from './pages/PosterStudio';
+import SentimentMap from './pages/SentimentMap';
+import CitizenConversations from './pages/CitizenConversations';
+import LiveBulletins from './pages/LiveBulletins';
+
 
 
 
@@ -114,7 +121,10 @@ function App() {
   };
 
   const [emergencyCount, setEmergencyCount] = useState(0);
+  const [queriesCount, setQueriesCount] = useState(0);
+  const [unreadRepliesCount, setUnreadRepliesCount] = useState(0);
 
+  // Poll for admin/manager unread counts
   useEffect(() => {
     if (!token || !user) return;
     if (user.role !== 'admin' && user.role !== 'campaign_manager') return;
@@ -133,8 +143,75 @@ function App() {
       }
     };
 
+    const fetchQueriesCount = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/queries?status_filter=open`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setQueriesCount(data.length);
+        }
+      } catch (err) {
+        console.error('Error fetching queries count:', err);
+      }
+    };
+
     fetchCount();
-    const interval = setInterval(fetchCount, 5000); // Poll every 5 seconds for real-time notification
+    fetchQueriesCount();
+    const interval = setInterval(() => {
+      fetchCount();
+      fetchQueriesCount();
+    }, 5000); // Poll every 5 seconds for real-time notification
+    return () => clearInterval(interval);
+  }, [token, user]);
+
+  // Poll for audience unread replies
+  useEffect(() => {
+    if (!token || !user) return;
+    if (user.role !== 'audience') return;
+
+    const fetchUnreadReplies = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/emergency-contact`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
+          const unread = data.filter(ec => ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id));
+          
+          setUnreadRepliesCount(prev => {
+            if (unread.length > prev) {
+              // Play double chime notification sound
+              try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                  const ctx = new AudioContext();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.type = 'sine';
+                  osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                  osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+                  gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                  osc.start();
+                  osc.stop(ctx.currentTime + 0.6);
+                }
+              } catch (e) {}
+            }
+            return unread.length;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching unread replies:', err);
+      }
+    };
+
+    fetchUnreadReplies();
+    const interval = setInterval(fetchUnreadReplies, 5000);
     return () => clearInterval(interval);
   }, [token, user]);
 
@@ -277,6 +354,55 @@ function App() {
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            unreadRepliesCount={unreadRepliesCount}
+            setUnreadRepliesCount={setUnreadRepliesCount}
+          />
+        );
+      case 'support_queries':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Restricted to operators.</div>;
+        }
+        return (
+          <SupportQueries
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
+      case 'poster_studio':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Poster Studio restricted to operators.</div>;
+        }
+        return (
+          <PosterStudio
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
+      case 'sentiment_map':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Sentiment Map restricted to operators.</div>;
+        }
+        return (
+          <SentimentMap
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
+      case 'citizen_conversations':
+        return (
+          <CitizenConversations
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
+      case 'live_bulletins':
+        return (
+          <LiveBulletins
+            backendUrl={BACKEND_URL}
           />
         );
       default:
@@ -296,7 +422,12 @@ function App() {
       case 'managers': return 'Campaign Managers Directory';
       case 'settings': return 'System Integration Parameters';
       case 'emergency_inbox': return 'Emergency Communications Inbox';
+      case 'support_queries': return 'Support & Confusion Queries Desk';
       case 'feedback': return 'Campaign Feedback & Assistance';
+      case 'poster_studio': return 'AI Visual Poster Studio';
+      case 'sentiment_map': return 'Geographic Sentiment Alarms Map';
+      case 'citizen_conversations': return 'Citizen Interactive RAG Chat';
+      case 'live_bulletins': return 'Live Emergency Alert Bulletins';
       default: return 'CommAI Platform';
     }
   };
@@ -315,7 +446,8 @@ function App() {
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         closeMobileSidebar={() => setMobileSidebarOpen(false)}
-        emergencyCount={emergencyCount}
+        emergencyCount={user?.role === 'audience' ? unreadRepliesCount : emergencyCount}
+        queriesCount={queriesCount}
       />
       <div className="main-content">
         <header className="header">
@@ -466,6 +598,7 @@ function App() {
           {renderActiveView()}
         </main>
       </div>
+      <ChatbotWidget user={user} backendUrl={BACKEND_URL} token={token} />
     </div>
   );
 }

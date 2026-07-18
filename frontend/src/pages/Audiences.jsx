@@ -66,6 +66,90 @@ const Audiences = ({ user, backendUrl, headers }) => {
   const [saveMessage, setSaveMessage] = useState('');
   const [savedSegments, setSavedSegments] = useState([]);
 
+  // --- 4. AI NL SEGMENT STATES ---
+  const [nlQuery, setNlQuery] = useState('');
+  const [nlLoading, setNlLoading] = useState(false);
+  const [nlResult, setNlResult] = useState(null);
+  const [nlError, setNlError] = useState('');
+  const [nlSegName, setNlSegName] = useState('');
+  const [nlSegDesc, setNlSegDesc] = useState('');
+  const [savingNlSeg, setSavingNlSeg] = useState(false);
+  const [nlPreview, setNlPreview] = useState([]);
+
+  const handleNLSegmentSubmit = async (e) => {
+    e.preventDefault();
+    if (!nlQuery.trim()) return;
+    setNlLoading(true);
+    setNlError('');
+    setNlResult(null);
+    setNlPreview([]);
+    try {
+      const response = await fetch(`${backendUrl}/api/ai/nl-segment`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query: nlQuery })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Failed to parse query');
+      setNlResult(data);
+      setNlSegName(`${nlQuery.slice(0, 30)} (AI)`);
+      
+      // Load quick preview via evaluate query filter
+      const previewRes = await fetch(`${backendUrl}/api/segments/evaluate`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data.filter_criteria)
+      });
+      if (previewRes.ok) {
+        const previewData = await previewRes.json();
+        setNlPreview(previewData.preview || []);
+      }
+    } catch (err) {
+      setNlError(err.message);
+    } finally {
+      setNlLoading(false);
+    }
+  };
+
+  const handleCreateNLSegment = async () => {
+    if (!nlSegName.trim() || !nlResult) return;
+    setSavingNlSeg(true);
+    try {
+      const response = await fetch(`${backendUrl}/api/segments`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: nlSegName,
+          description: nlSegDesc || `AI generated segment from: "${nlQuery}"`,
+          filter_criteria: nlResult.filter_criteria,
+          is_dynamic: true
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Failed to create segment');
+      alert('AI-parsed audience segment successfully created and stored!');
+      setSubTab('list');
+      fetchSavedSegments();
+      // Reset
+      setNlQuery('');
+      setNlResult(null);
+      setNlPreview([]);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSavingNlSeg(false);
+    }
+  };
+
   // Fetch Audiences
   const fetchAudiences = useCallback(async () => {
     setLoading(true);
@@ -442,6 +526,9 @@ const Audiences = ({ user, backendUrl, headers }) => {
               <circle cx="12" cy="12" r="2"/>
             </svg>
             Segment Builder
+          </button>
+          <button className={`btn ${subTab === 'nl_segment_builder' ? 'btn-primary' : 'btn-dark'}`} onClick={() => setSubTab('nl_segment_builder')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ✨ AI Smart Segment
           </button>
         </div>
       </div>
@@ -1251,6 +1338,149 @@ const Audiences = ({ user, backendUrl, headers }) => {
               </div>
             </form>
           </GlassCard>
+        </div>
+      )}
+      {/* --- SUBTAB: AI NL SEGMENT BUILDER --- */}
+      {subTab === 'nl_segment_builder' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <GlassCard>
+            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✨ AI Smart Segment Builder</span>
+            </h2>
+            <p style={{ marginBottom: '20px', color: 'hsl(var(--text-secondary))', fontSize: '0.9rem' }}>
+              Create audience target groups using plain natural language query inputs (e.g. <i>"All farmers in Punjab who speak Hindi under 45"</i>).
+            </p>
+
+            <form onSubmit={handleNLSegmentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '600' }}>Describe Your Target Audience</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. Female students in Maharashtra or business owners in Delhi speaking English..."
+                  value={nlQuery}
+                  onChange={(e) => setNlQuery(e.target.value)}
+                  required
+                  style={{ padding: '12px 14px' }}
+                />
+              </div>
+
+              {nlError && (
+                <div style={{ color: 'hsl(var(--danger))', fontSize: '0.8rem' }}>{nlError}</div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={nlLoading || !nlQuery.trim()}
+                style={{ alignSelf: 'flex-start', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {nlLoading ? 'Interpreting Query...' : '🔍 Parse Target Audience'}
+              </button>
+            </form>
+          </GlassCard>
+
+          {nlResult && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', alignItems: 'start' }}>
+              <GlassCard style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Interpreted Criteria</h3>
+                    <span style={{ fontSize: '0.78rem', color: 'hsl(var(--accent))', fontWeight: '600' }}>
+                      {nlResult.explanation}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', display: 'block', fontWeight: 'bold' }}>ESTIMATED SIZE</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+                      {nlResult.estimated_size} Members
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.82rem', fontWeight: '600', marginBottom: '8px', color: 'hsl(var(--text-secondary))' }}>
+                    Parsed JSON Filters:
+                  </h4>
+                  <pre style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--border-color-glass)',
+                    fontSize: '0.78rem',
+                    fontFamily: 'monospace',
+                    color: '#c084fc',
+                    overflowX: 'auto'
+                  }}>
+                    {JSON.stringify(nlResult.filter_criteria, null, 2)}
+                  </pre>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600' }}>New Segment Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Maharashtra Students AI Target"
+                      value={nlSegName}
+                      onChange={(e) => setNlSegName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter a brief segment description"
+                      value={nlSegDesc}
+                      onChange={(e) => setNlSegDesc(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleCreateNLSegment}
+                    disabled={savingNlSeg || !nlSegName.trim()}
+                    style={{ alignSelf: 'flex-start', padding: '10px 24px' }}
+                  >
+                    {savingNlSeg ? 'Saving Segment...' : '✓ Create Segment Target'}
+                  </button>
+                </div>
+              </GlassCard>
+
+              <GlassCard>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '16px' }}>Matched Preview Sample</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto' }}>
+                  {nlPreview.length === 0 ? (
+                    <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', fontStyle: 'italic' }}>
+                      No preview matches available.
+                    </span>
+                  ) : (
+                    nlPreview.map((aud, index) => (
+                      <div
+                        key={aud.id || index}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid var(--border-color-glass)',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        <div style={{ fontWeight: '700', marginBottom: '2px' }}>{aud.first_name} {aud.last_name}</div>
+                        <div style={{ color: 'hsl(var(--text-muted))', fontSize: '0.72rem' }}>
+                          {aud.occupation} • {aud.age} yrs • {aud.city}, {aud.state}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </GlassCard>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -7,12 +7,17 @@ from typing import Dict, Any
 
 from app.config import settings
 from app.database import engine, Base, get_db
-from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact
+from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery
 from app.auth import get_password_hash, require_any_authenticated
-from app.routes import auth, audience, template, campaign, settings as settings_router, translate
+from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router
 from app.routes import users as users_router
 from app.routes import ai as ai_router
 from app.routes import feedback as feedback_router
+from app.routes import poster as poster_router
+from app.routes import sentiment_map as sentiment_map_router
+from app.routes import webhook as webhook_router
+from fastapi import WebSocket, WebSocketDisconnect
+from app.services.websocket_manager import bulletin_manager
 
 # Create database tables (SQLite)
 Base.metadata.create_all(bind=engine)
@@ -50,6 +55,14 @@ def add_missing_columns():
             except Exception:
                 pass
 
+        # Add target_audience_ids and target_segment_id columns to posters table if missing
+        for col, col_type in [("target_audience_ids", "TEXT"), ("target_segment_id", "VARCHAR(36)")]:
+            try:
+                conn.execute(text(f"ALTER TABLE posters ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
+
+
 add_missing_columns()
 
 
@@ -68,6 +81,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# WebSocket bulletins endpoint
+@app.websocket("/ws/bulletins")
+async def websocket_bulletins(websocket: WebSocket):
+    await bulletin_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, listen for any client messages (pings)
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        bulletin_manager.disconnect(websocket)
+    except Exception:
+        bulletin_manager.disconnect(websocket)
+
 # API Router setup
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
@@ -80,6 +106,11 @@ api_router.include_router(translate.router)
 api_router.include_router(ai_router.router)
 api_router.include_router(feedback_router.router)
 api_router.include_router(feedback_router.emergency_router)
+api_router.include_router(queries_router.router)
+api_router.include_router(poster_router.router)
+api_router.include_router(sentiment_map_router.router)
+api_router.include_router(webhook_router.router)
+
 
 # --- DASHBOARD METRICS ROUTE ---
 
@@ -128,6 +159,10 @@ def get_dashboard_stats(
                 "meta": {}
             })
 
+        # Compute open queries & emergencies for current audience member
+        open_emergencies_count = db.query(EmergencyContact).filter(EmergencyContact.user_id == current_user.id, EmergencyContact.status == "open").count()
+        open_queries_count = db.query(SupportQuery).filter(SupportQuery.user_id == current_user.id, SupportQuery.status == "open").count()
+
         return {
             "total_audiences": 0,
             "active_audiences": 0,
@@ -137,6 +172,8 @@ def get_dashboard_stats(
             "total_templates": 0,
             "total_delivered": 0,
             "total_failed": 0,
+            "open_emergencies_count": open_emergencies_count,
+            "open_queries_count": open_queries_count,
             "recent_activities": my_campaigns[:10]
         }
 
@@ -186,6 +223,10 @@ def get_dashboard_stats(
     total_delivered = db.query(DeliveryLog).filter(DeliveryLog.status == "sent").count()
     total_failed = db.query(DeliveryLog).filter(DeliveryLog.status == "failed").count()
 
+    # Count open emergency reports and general queries
+    open_emergencies_count = db.query(EmergencyContact).filter(EmergencyContact.status == "open").count()
+    open_queries_count = db.query(SupportQuery).filter(SupportQuery.status == "open").count()
+
     # Sort activities by timestamp descending
     recent_activities.sort(key=lambda x: x["timestamp"], reverse=True)
     
@@ -198,6 +239,8 @@ def get_dashboard_stats(
         "total_templates": total_templates,
         "total_delivered": total_delivered,
         "total_failed": total_failed,
+        "open_emergencies_count": open_emergencies_count,
+        "open_queries_count": open_queries_count,
         "recent_activities": recent_activities[:7]  # return top 7
     }
 
@@ -853,6 +896,29 @@ async def lifespan(app: FastAPI):
             
             db.commit()
             print("[SEEDING DATABASE] Seeding completed successfully.")
+
+        # Ensure Priya Audience profile exists in the audiences table
+        existing_priya_aud = db.query(Audience).filter(Audience.email == settings.AUDIENCE_EMAIL).first()
+        if not existing_priya_aud:
+            print("[SEEDING DATABASE] Generating Priya Audience profile...")
+            import json
+            priya_aud = Audience(
+                first_name="Priya",
+                last_name="Audience",
+                email=settings.AUDIENCE_EMAIL,
+                phone="9876543299",
+                preferred_languages=json.dumps(["English", "Hindi"]),
+                occupation="General Public",
+                age=24,
+                gender="Female",
+                state="Maharashtra",
+                district="Mumbai",
+                city="Mumbai",
+                preferred_channels=json.dumps(["email", "sms", "whatsapp"]),
+                is_active=True
+            )
+            db.add(priya_aud)
+            db.commit()
 
         # Seed requested real demo profiles
         import random

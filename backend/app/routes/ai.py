@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
 from typing import Optional, List
+from sqlalchemy.orm import Session
 
+from app.database import get_db
+from app.models import Audience
+from app.routes.audience import build_segment_filter_query
+from app.services.nl_segment import parse_natural_language_filter, generate_segment_explanation
 from app.auth import require_any_authenticated
 from app.services.ai_service import (
     generate_campaign_content,
@@ -11,6 +16,7 @@ from app.services.ai_service import (
     check_compliance_and_quality,
     plan_complete_campaign,
     refine_campaign_plan,
+    generate_chat_reply,
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Content Engine"])
@@ -242,3 +248,64 @@ def ai_refine_campaign(
         instruction=request.instruction,
     )
     return result
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+
+@router.post("/chat")
+def ai_chat(
+    request: ChatRequest,
+    current_user=Depends(require_any_authenticated),
+):
+    """Chat with the CommAI assistant helper."""
+    history_dicts = [{"role": msg.role, "content": msg.content} for msg in request.history]
+    reply = generate_chat_reply(message=request.message, history=history_dicts, user_role=current_user.role)
+    return {"reply": reply}
+
+
+class NLSegmentRequest(BaseModel):
+    query: str
+
+    @validator("query")
+    def query_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Query cannot be empty")
+        return v.strip()
+
+@router.post("/nl-segment")
+def ai_nl_segment(
+    request: NLSegmentRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_any_authenticated),
+):
+    """Convert natural language query into filter criteria and return matching audience count."""
+    filter_criteria = parse_natural_language_filter(request.query)
+    if not filter_criteria:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Failed to parse natural language filter criteria. Please make your query more descriptive."
+        )
+    
+    explanation = generate_segment_explanation(request.query, filter_criteria)
+    
+    # Calculate estimated audience size
+    query = db.query(Audience).filter(Audience.is_deleted == False, Audience.is_active == True)
+    try:
+        query = build_segment_filter_query(filter_criteria, query)
+        size = query.count()
+    except Exception:
+        size = 0
+        
+    return {
+        "filter_criteria": filter_criteria,
+        "explanation": explanation,
+        "estimated_size": size
+    }
+
+

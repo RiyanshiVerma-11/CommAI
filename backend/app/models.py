@@ -212,3 +212,56 @@ class EmergencyContact(Base):
     
     # Relationships
     user = relationship("User")
+
+
+class SupportQuery(Base):
+    """Allows users/audience members to send support/confusion queries to campaign managers."""
+    __tablename__ = "support_queries"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    subject = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="open")     # open, acknowledged, resolved
+    admin_reply = Column(Text, nullable=True)
+    replied_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User")
+
+
+class CitizenMessage(Base):
+    """Tracks direct citizen inbound messages and automatic outbound RAG replies."""
+    __tablename__ = "citizen_messages"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    audience_id = Column(String(36), ForeignKey("audiences.id"), nullable=False)
+    direction = Column(String(20), nullable=False)          # inbound or outbound
+    channel = Column(String(50), nullable=False)            # whatsapp, sms, etc.
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationships
+    audience = relationship("Audience")
+
+
+class Poster(Base):
+    """Stores AI-generated public posters and warning flyers."""
+    __tablename__ = "posters"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    category = Column(String(50), nullable=False)
+    tone = Column(String(50), nullable=False)
+    language = Column(String(50), nullable=False)
+    image_url = Column(Text, nullable=False)
+    prompt_used = Column(Text, nullable=False)
+    target_audience_ids = Column(Text, nullable=True)  # JSON-serialized array of targeted audience member IDs
+    target_segment_id = Column(String(36), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+
+

@@ -1002,3 +1002,328 @@ class TestAICampaignPlanner:
         data = response.json()
         assert data["campaign"]["title"] == "Clean Water Ludhiana 2026 (Urgent)"
 
+
+class TestSupportQueries:
+    def test_queries_workflow(self, monkeypatch):
+        # Authenticate users
+        admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+
+        # 1. Submit query as audience
+        response = client.post(
+            "/api/queries",
+            json={"subject": "Confused about WhatsApp template", "message": "I don't understand how to insert city placeholder."},
+            headers=audience_headers
+        )
+        assert response.status_code == 201
+        query_data = response.json()
+        assert query_data["subject"] == "Confused about WhatsApp template"
+        assert query_data["status"] == "open"
+        query_id = query_data["id"]
+
+        # 2. List queries as audience - should see 1 query
+        response = client.get("/api/queries", headers=audience_headers)
+        assert response.status_code == 200
+        queries_list = response.json()
+        assert len(queries_list) >= 1
+        assert any(q["id"] == query_id for q in queries_list)
+
+        # 3. List open queries as manager - should see the query
+        response = client.get("/api/queries?status_filter=open", headers=manager_headers)
+        assert response.status_code == 200
+        manager_queries = response.json()
+        assert any(q["id"] == query_id for q in manager_queries)
+
+        # 4. Generate AI reply draft
+        from app.routes import queries
+        monkeypatch.setattr(queries, "draft_query_response", lambda subject, message: "Use {{city}} placeholder.")
+        
+        response = client.post(
+            f"/api/queries/{query_id}/ai-reply",
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        ai_reply_data = response.json()
+        assert "draft_reply" in ai_reply_data
+        assert ai_reply_data["draft_reply"] == "Use {{city}} placeholder."
+
+        # 5. Reply to query as manager
+        response = client.put(
+            f"/api/queries/{query_id}/reply",
+            json={"admin_reply": "Here is how you do it: Use the double curly braces.", "status": "resolved"},
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        updated_query = response.json()
+        assert updated_query["status"] == "resolved"
+        assert updated_query["admin_reply"] == "Here is how you do it: Use the double curly braces."
+
+        # 6. Verify dashboard stats return correct counts
+        response = client.get("/api/dashboard/stats", headers=manager_headers)
+        assert response.status_code == 200
+        stats = response.json()
+        assert "open_queries_count" in stats
+
+    def test_chatbot_endpoint(self, monkeypatch):
+        from app.routes import ai
+        monkeypatch.setattr(ai, "generate_chat_reply", lambda message, history, user_role=None: "This is a chat reply helper.")
+        
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.post(
+            "/api/ai/chat",
+            json={"message": "What is CommAI?", "history": []},
+            headers=audience_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["reply"] == "This is a chat reply helper."
+
+    def test_new_mind_blowing_features_endpoints(self, monkeypatch):
+        # Authenticate users
+        admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+
+        # 1. Test Poster Studio Prompt + URL Generation (authenticated)
+        from app.routes import poster
+        monkeypatch.setattr(poster, "generate_poster_prompt", lambda title, description, category, tone, language: "Visual prompt composition helper")
+        response = client.post(
+            "/api/poster/generate",
+            json={"title": "Test Poster Title", "description": "Visual flyer description block", "language": "Hindi"},
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        poster_data = response.json()
+        assert "image_url" in poster_data
+        assert "prompt_used" in poster_data
+        assert poster_data["language"] == "Hindi"
+
+        # Test Poster Send Endpoint
+        poster_id = poster_data["id"]
+        assert poster_id is not None
+
+        send_resp = client.post(
+            f"/api/poster/{poster_id}/send",
+            json={
+                "image_url": "http://pollinations.ai/p/test-modified-data",
+                "audience_ids": [],
+                "segment_id": None,
+                "channels": ["email"]
+            },
+            headers=manager_headers
+        )
+        assert send_resp.status_code == 200
+        assert send_resp.json()["status"] == "success"
+
+        # Test Poster availability query
+        avail_resp = client.get("/api/poster/available", headers=audience_headers)
+        assert avail_resp.status_code == 200
+        assert isinstance(avail_resp.json(), list)
+
+        # 2. Test Sentiment Map aggregations (manager/admin restricted)
+        map_resp = client.get("/api/sentiment-map/data", headers=manager_headers)
+        assert map_resp.status_code == 200
+        assert isinstance(map_resp.json(), list)
+
+        # 3. Test Webhook Citizen Reply RAG Pipeline (requires valid audience phone/email match)
+        # Seed an audience for mapping
+        aud_payload = {
+            "first_name": "TestCitizen", "last_name": "RAG", "email": "rag_citizen@domain.com",
+            "phone": "9998887770", "preferred_languages": ["Hindi"], "occupation": "Farmer",
+            "age": 30, "gender": "Male", "state": "Punjab", "district": "Ludhiana", "city": "Ludhiana",
+            "preferred_channels": ["whatsapp"]
+        }
+        client.post("/api/audiences", json=aud_payload, headers=admin_headers)
+
+        from app.routes import webhook
+        monkeypatch.setattr(webhook, "generate_rag_response", lambda query, db: "RAG matching response answer")
+        web_resp = client.post(
+            "/api/webhook/citizen-reply",
+            json={"phone": "9998887770", "content": "How do I create dynamic audience?", "channel": "whatsapp"}
+        )
+        assert web_resp.status_code == 200
+        web_data = web_resp.json()
+        assert web_data["auto_reply"] == "RAG matching response answer"
+
+        # Check conversations feed list
+        conv_list_resp = client.get("/api/webhook/conversations", headers=manager_headers)
+        assert conv_list_resp.status_code == 200
+        assert len(conv_list_resp.json()) >= 1
+
+        # 4. Test AI-powered NL segmentation criteria parse
+        from app.routes import ai as ai_route
+        monkeypatch.setattr(ai_route, "parse_natural_language_filter", lambda q: {"states": ["Punjab"], "occupation": "Farmer", "logic": "AND"})
+        monkeypatch.setattr(ai_route, "generate_segment_explanation", lambda q, f: "Explains segment")
+        nl_resp = client.post(
+            "/api/ai/nl-segment",
+            json={"query": "Farmers in Punjab under 40"},
+            headers=manager_headers
+        )
+        assert nl_resp.status_code == 200
+        nl_data = nl_resp.json()
+        assert "filter_criteria" in nl_data
+        assert nl_data["estimated_size"] >= 0
+
+class TestEmergencyContacts:
+    """Comprehensive tests for emergency contact submit, list, reply, status update, and AI draft."""
+
+    def test_emergency_contact_full_workflow(self, monkeypatch):
+        # Authenticate users
+        admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+
+        # 1. Submit emergency contact as audience
+        response = client.post(
+            "/api/emergency-contact",
+            json={
+                "subject": "Flooding near river bank",
+                "message": "Water level rising rapidly near village. 50 families affected. Need immediate evacuation support.",
+                "urgency": "critical"
+            },
+            headers=audience_headers
+        )
+        assert response.status_code == 201
+        ec_data = response.json()
+        assert ec_data["subject"] == "Flooding near river bank"
+        assert ec_data["urgency"] == "critical"
+        assert ec_data["status"] == "open"
+        assert ec_data["admin_reply"] is None
+        contact_id = ec_data["id"]
+
+        # 2. Submit another emergency as audience (normal priority)
+        response2 = client.post(
+            "/api/emergency-contact",
+            json={
+                "subject": "Street light not working",
+                "message": "The street light near main road junction has been off for 3 days.",
+                "urgency": "normal"
+            },
+            headers=audience_headers
+        )
+        assert response2.status_code == 201
+        contact_id_2 = response2.json()["id"]
+
+        # 3. List emergency contacts as audience - should see own contacts only
+        response = client.get("/api/emergency-contact", headers=audience_headers)
+        assert response.status_code == 200
+        audience_list = response.json()
+        assert len(audience_list) >= 2
+        audience_ids = {ec["id"] for ec in audience_list}
+        assert contact_id in audience_ids
+        assert contact_id_2 in audience_ids
+
+        # 4. List emergency contacts as manager - should see all
+        response = client.get("/api/emergency-contact", headers=manager_headers)
+        assert response.status_code == 200
+        manager_list = response.json()
+        assert len(manager_list) >= 2
+        manager_ids = {ec["id"] for ec in manager_list}
+        assert contact_id in manager_ids
+
+        # 5. List with status filter
+        response = client.get("/api/emergency-contact?status_filter=open", headers=manager_headers)
+        assert response.status_code == 200
+        open_list = response.json()
+        assert all(ec["status"] == "open" for ec in open_list)
+
+        # 6. Update status to acknowledged as manager
+        response = client.put(
+            f"/api/emergency-contact/{contact_id}/status?new_status=acknowledged",
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["message"] == "Status updated to 'acknowledged'"
+
+        # 7. Verify status changed
+        response = client.get("/api/emergency-contact", headers=audience_headers)
+        updated_ec = next(ec for ec in response.json() if ec["id"] == contact_id)
+        assert updated_ec["status"] == "acknowledged"
+
+        # 8. Generate AI draft response (with monkeypatch)
+        from app.routes import feedback as feedback_mod
+        monkeypatch.setattr(
+            feedback_mod, "draft_emergency_response",
+            lambda subject, message, urgency: "Your report has been received. Emergency teams are mobilizing."
+        )
+        response = client.post(
+            f"/api/emergency-contact/{contact_id}/generate-draft",
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        draft_data = response.json()
+        assert "draft" in draft_data
+        assert draft_data["draft"] == "Your report has been received. Emergency teams are mobilizing."
+
+        # 9. Reply to emergency contact as manager and resolve
+        response = client.put(
+            f"/api/emergency-contact/{contact_id}/reply",
+            json={
+                "admin_reply": "Evacuation teams dispatched to your location. Please move to higher ground immediately.",
+                "status": "resolved"
+            },
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        reply_data = response.json()
+        assert reply_data["status"] == "resolved"
+        assert reply_data["admin_reply"] == "Evacuation teams dispatched to your location. Please move to higher ground immediately."
+        assert reply_data["replied_at"] is not None
+
+        # 10. Verify resolved contact visible to audience
+        response = client.get("/api/emergency-contact", headers=audience_headers)
+        resolved_ec = next(ec for ec in response.json() if ec["id"] == contact_id)
+        assert resolved_ec["status"] == "resolved"
+        assert resolved_ec["admin_reply"] is not None
+
+    def test_emergency_contact_invalid_urgency(self):
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.post(
+            "/api/emergency-contact",
+            json={
+                "subject": "Testing invalid urgency level",
+                "message": "This message tests that an invalid urgency value is rejected properly.",
+                "urgency": "super_critical"
+            },
+            headers=audience_headers
+        )
+        # Route validates urgency after Pydantic passes schema validation
+        assert response.status_code == 400
+        assert "Invalid urgency" in response.json()["detail"]
+
+    def test_emergency_contact_invalid_status_update(self):
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+
+        # Create a contact first
+        response = client.post(
+            "/api/emergency-contact",
+            json={"subject": "Status Test", "message": "Testing invalid status", "urgency": "normal"},
+            headers=audience_headers
+        )
+        cid = response.json()["id"]
+
+        # Try invalid status
+        response = client.put(
+            f"/api/emergency-contact/{cid}/status?new_status=invalid_status",
+            headers=manager_headers
+        )
+        assert response.status_code == 400
+        assert "Invalid status" in response.json()["detail"]
+
+    def test_emergency_contact_not_found(self):
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.put(
+            "/api/emergency-contact/nonexistent-id-12345/status?new_status=resolved",
+            headers=manager_headers
+        )
+        assert response.status_code == 404
+
+    def test_emergency_draft_not_found(self):
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.post(
+            "/api/emergency-contact/nonexistent-id-12345/generate-draft",
+            headers=manager_headers
+        )
+        assert response.status_code == 404

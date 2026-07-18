@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GlassCard from '../components/GlassCard';
 
-export default function Feedback({ user, backendUrl, headers }) {
+export default function Feedback({ user, backendUrl, headers, unreadRepliesCount = 0, setUnreadRepliesCount }) {
   const [activeSubTab, setActiveSubTab] = useState('received'); // 'received', 'submitted', 'emergency', 'dashboard' (mgr/admin)
   const [campaigns, setCampaigns] = useState([]);
   const [submittedFeedback, setSubmittedFeedback] = useState([]);
@@ -9,6 +9,7 @@ export default function Feedback({ user, backendUrl, headers }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [emergencyError, setEmergencyError] = useState('');
 
   // Feedback form state
   const [selectedCampaign, setSelectedCampaign] = useState(null);
@@ -38,6 +39,28 @@ export default function Feedback({ user, backendUrl, headers }) {
       setActiveSubTab('received');
     }
   }, [user]);
+
+  // Auto-dismiss success and error messages after 6 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (emergencyError) {
+      const timer = setTimeout(() => setEmergencyError(''), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [emergencyError]);
 
   // Load campaigns available for feedback
   const loadCampaigns = async () => {
@@ -74,14 +97,37 @@ export default function Feedback({ user, backendUrl, headers }) {
   // Load emergency contacts (own for audience, all for manager)
   const loadEmergencyContacts = async () => {
     setLoading(true);
-    setError('');
+    setEmergencyError('');
     try {
       const res = await fetch(`${backendUrl}/api/emergency-contact`, { headers });
-      if (!res.ok) throw new Error('Failed to load emergency contacts');
+      if (!res.ok) {
+        const statusText = res.status === 401 ? 'Session expired. Please log in again.' 
+          : res.status === 403 ? 'You do not have permission to view this resource.'
+          : res.status >= 500 ? 'Server error. Our team has been notified.'
+          : 'Could not load emergency requests. Please check your connection.';
+        throw new Error(statusText);
+      }
       const data = await res.json();
       setEmergencyContacts(data);
+
+      if (isAudience && activeSubTab === 'emergency') {
+        const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
+        let updated = false;
+        data.forEach(ec => {
+          if (ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id)) {
+            ackList.push(ec.id);
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem('acknowledged_emergencies', JSON.stringify(ackList));
+          if (setUnreadRepliesCount) {
+            setUnreadRepliesCount(0);
+          }
+        }
+      }
     } catch (err) {
-      setError(err.message);
+      setEmergencyError(err.message || 'Could not load emergency requests. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -235,8 +281,29 @@ export default function Feedback({ user, backendUrl, headers }) {
             <button 
               onClick={() => setActiveSubTab('emergency')}
               className={`btn ${activeSubTab === 'emergency' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              🚨 Emergency Support
+              <span>🚨 Emergency Support</span>
+              {unreadRepliesCount > 0 && (
+                <span 
+                  style={{ 
+                    background: '#ef4444', 
+                    color: '#ffffff', 
+                    borderRadius: '50%', 
+                    width: '18px', 
+                    height: '18px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '0.7rem', 
+                    fontWeight: '800',
+                    lineHeight: '1',
+                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+                  }}
+                >
+                  {unreadRepliesCount}
+                </span>
+              )}
             </button>
           </>
         ) : (
@@ -556,7 +623,23 @@ export default function Feedback({ user, backendUrl, headers }) {
               </p>
 
               {loading ? (
-                <div>Loading queue logs...</div>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid hsl(var(--primary))', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '12px' }}></div>
+                  <div>Loading support requests...</div>
+                </div>
+              ) : emergencyError ? (
+                <div className="glass-card" style={{ padding: '28px', textAlign: 'center' }}>
+                  <div style={{ color: 'var(--danger, #ef4444)', fontSize: '0.92rem', marginBottom: '16px', fontWeight: 600 }}>
+                    ⚠️ {emergencyError}
+                  </div>
+                  <button 
+                    onClick={loadEmergencyContacts} 
+                    className="btn btn-primary" 
+                    style={{ padding: '8px 20px', fontSize: '0.85rem' }}
+                  >
+                    🔄 Retry
+                  </button>
+                </div>
               ) : emergencyContacts.length === 0 ? (
                 <div className="glass-card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   📪 Support queue is currently empty.
@@ -593,6 +676,55 @@ export default function Feedback({ user, backendUrl, headers }) {
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(0,0,0,0.1)', padding: '12px', borderRadius: '8px', margin: '10px 0 12px 0' }}>
                           {ec.message}
                         </p>
+
+                        {ec.admin_reply && (
+                          <div style={{
+                            marginTop: '12px',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            background: 'rgba(59, 130, 246, 0.08)',
+                            border: '1px solid rgba(59, 130, 246, 0.15)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            marginBottom: '10px'
+                          }}>
+                            <span style={{ fontSize: '0.74rem', color: 'hsl(var(--primary))', fontWeight: '800', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              💬 Official Response:
+                            </span>
+                            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                              {ec.admin_reply}
+                            </p>
+                            {ec.replied_at && (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', alignSelf: 'flex-end', marginTop: '2px' }}>
+                                Replied on: {new Date(ec.replied_at).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {isAudience && ec.status === 'resolved' && (
+                          <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '12px' }}>
+                            {(!JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]').includes(ec.id)) ? (
+                              <button 
+                                onClick={() => {
+                                  const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
+                                  if (!ackList.includes(ec.id)) {
+                                    ackList.push(ec.id);
+                                    localStorage.setItem('acknowledged_emergencies', JSON.stringify(ackList));
+                                    loadEmergencyContacts();
+                                  }
+                                }}
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: '6px 12px', fontSize: '0.78rem', background: 'var(--success)', borderColor: 'var(--success)' }}
+                              >
+                                ✓ Acknowledge & Clear Notification Badge
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 'bold' }}>✓ Response Acknowledged</span>
+                            )}
+                          </div>
+                        )}
 
                         {!isAudience && ec.status !== 'resolved' && (
                           <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>

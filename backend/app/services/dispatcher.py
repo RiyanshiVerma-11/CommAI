@@ -86,7 +86,8 @@ def dispatch_to_channel(
     channel: str,
     audience: Audience,
     subject: str,
-    body: str
+    body: str,
+    inline_image_base64: str = None
 ) -> tuple:
     """
     Dispatch a message to a specific channel for a specific audience member.
@@ -96,7 +97,7 @@ def dispatch_to_channel(
     if channel == "email":
         if not audience.email:
             return False, "No email address on file", "email"
-        success, error = send_email(audience.email, subject, body)
+        success, error = send_email(audience.email, subject, body, inline_image_base64=inline_image_base64)
         return success, error, "email"
 
     elif channel == "whatsapp":
@@ -172,6 +173,29 @@ def _dispatch_campaign_worker(campaign_id: str):
         if not campaign:
             logger.error(f"[DISPATCHER] Campaign {campaign_id} not found")
             return
+
+        # Broadcast campaign alerts via WebSockets if it's an emergency alert
+        if campaign.campaign_type == "emergency_alert":
+            import asyncio
+            from app.services.websocket_manager import bulletin_manager
+            payload = {
+                "type": "campaign_alert",
+                "id": campaign.id,
+                "title": campaign.title,
+                "description": campaign.description,
+                "objective": campaign.objective,
+                "campaign_type": campaign.campaign_type,
+                "created_at": datetime.datetime.utcnow().isoformat()
+            }
+            try:
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(bulletin_manager.broadcast(payload))
+                except RuntimeError:
+                    asyncio.run(bulletin_manager.broadcast(payload))
+            except Exception as e:
+                logger.error(f"[WS] Failed to broadcast campaign alert: {e}")
+
 
         # 2. Load template
         template = db.query(Template).filter(Template.id == campaign.template_id).first()

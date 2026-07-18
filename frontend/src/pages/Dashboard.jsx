@@ -5,6 +5,9 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [posters, setPosters] = useState([]);
+  const [fullscreenPoster, setFullscreenPoster] = useState(null);
+  const [newPosterNotification, setNewPosterNotification] = useState(null);
 
   // Emergency modal state
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
@@ -51,6 +54,19 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
     }
   };
 
+  const fetchPosters = useCallback(async () => {
+    if (user.role !== 'audience') return;
+    try {
+      const response = await fetch(`${backendUrl}/api/poster/available`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setPosters(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard posters:", err);
+    }
+  }, [backendUrl, headers, user.role]);
+
   const fetchStats = useCallback(async () => {
     try {
       const response = await fetch(`${backendUrl}/api/dashboard/stats`, { headers });
@@ -68,7 +84,79 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchPosters();
+  }, [fetchStats, fetchPosters]);
+
+  const playChime = useCallback((urgency) => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.15); // E5
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.6);
+      }
+    } catch (e) {
+      console.warn("Web Audio chime failed to execute:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'audience') return;
+
+    const rawUrl = backendUrl || 'http://localhost:8001';
+    const wsUrl = rawUrl.replace(/^http/, 'ws') + '/ws/bulletins';
+
+    let ws;
+    let reconnectTimeout;
+
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'campaign_alert') {
+            playChime(data.urgency || 'normal');
+            
+            setNewPosterNotification({
+              id: data.id,
+              title: data.title || 'New Visual Poster Alert',
+              description: data.message || '',
+              image_url: `${backendUrl}/api/poster/${data.id}/image`
+            });
+
+            // Automatically refresh the available posters list in UI
+            fetchPosters();
+          }
+        } catch (err) {
+          console.error('Error parsing WS message in Dashboard:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimeout = setTimeout(connect, 4000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [backendUrl, user?.role, fetchPosters, playChime]);
+
 
   if (loading) {
     return <div style={{ color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', fontWeight: 600 }}>Gathering dashboard metrics...</div>;
@@ -175,6 +263,25 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
                     <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>Profile Settings</span>
                     <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
                       Update your preferences, personal details, and notification settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div
+                className="toolcard"
+                onClick={() => setActiveTab('citizen_conversations')}
+                style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ background: 'hsl(var(--primary) / 8%)', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>Citizen RAG Chat</span>
+                    <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
+                      Interact with our Grounded RAG assistant to get campaign answers.
                     </p>
                   </div>
                 </div>
@@ -326,31 +433,198 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
           </div>
         )}
 
-        {/* Recent Communications */}
-        <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px' }}>
-          <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
-            Recent Communications
-          </h2>
-          {s.recent_activities.length === 0 ? (
-            <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '36px 0', fontSize: '0.92rem', fontWeight: '500' }}>
-              No recent communications to display.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {s.recent_activities.slice(0, 5).map((act, index) => (
-                <div key={index} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'hsl(var(--primary))', flexShrink: 0 }}></div>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '0.92rem', fontWeight: '600', color: 'hsl(var(--text-secondary))' }}>{act.message}</span>
-                    <div style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', marginTop: '2px', fontWeight: '500' }}>
-                      {new Date(act.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          {/* Recent Communications */}
+          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px' }}>
+            <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+              Recent Communications
+            </h2>
+            {s.recent_activities.length === 0 ? (
+              <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '36px 0', fontSize: '0.92rem', fontWeight: '500' }}>
+                No recent communications to display.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {s.recent_activities.slice(0, 5).map((act, index) => (
+                  <div key={index} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'hsl(var(--primary))', flexShrink: 0 }}></div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: '600', color: 'hsl(var(--text-secondary))' }}>{act.message}</span>
+                      <div style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', marginTop: '2px', fontWeight: '500' }}>
+                        {new Date(act.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </GlassCard>
+
+          {/* Warning Flyers & Visual Posters */}
+          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px', display: 'flex', flexDirection: 'column' }}>
+            <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+              Warning Flyers & Visual Posters
+            </h2>
+            {posters.length === 0 ? (
+              <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '36px 0', fontSize: '0.92rem', fontWeight: '500' }}>
+                No posters matching your preferred language are available.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '350px' }}>
+                {posters.map((poster, index) => (
+                  <div key={index} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color-glass)', flexShrink: 0, background: '#090b14' }}>
+                      <img src={poster.image_url} alt={poster.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>{poster.title}</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{poster.description.slice(0, 70)}...</p>
+                      <button
+                        onClick={() => setFullscreenPoster(poster)}
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '6px',
+                          fontSize: '0.72rem',
+                          color: 'hsl(var(--accent))',
+                          fontWeight: '700',
+                          textDecoration: 'none',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        👁 View Fullscreen
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+
+        {fullscreenPoster && (
+          <div 
+            onClick={() => setFullscreenPoster(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: 'rgba(3, 7, 18, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 99999,
+              cursor: 'pointer'
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ 
+                position: 'relative', 
+                maxWidth: '600px', 
+                width: '90%', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                background: '#0e1222',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '24px',
+                borderRadius: '16px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+              }}
+            >
+              <img 
+                src={fullscreenPoster.image_url} 
+                alt={fullscreenPoster.title} 
+                style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '8px', objectFit: 'contain' }} 
+              />
+              <h3 style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{fullscreenPoster.title}</h3>
+              <p style={{ color: 'hsl(var(--text-muted))', marginTop: '8px', fontSize: '0.88rem', textAlign: 'center', lineHeight: '1.4' }}>{fullscreenPoster.description}</p>
+              <button 
+                onClick={() => setFullscreenPoster(null)}
+                style={{
+                  marginTop: '20px',
+                  padding: '8px 28px',
+                  borderRadius: '8px',
+                  background: 'hsl(var(--primary))',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
             </div>
-          )}
-        </GlassCard>
+          </div>
+        )}
+
+        {newPosterNotification && (
+          <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            width: '320px',
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            border: '1.5px solid hsl(var(--primary))',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            backdropFilter: 'blur(8px)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Visual Alert</span>
+              <button onClick={() => setNewPosterNotification(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', padding: 0, lineHieght: 1 }}>&times;</button>
+            </div>
+            <h4 style={{ color: 'white', margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>{newPosterNotification.title}</h4>
+            <p style={{ color: 'hsl(var(--text-muted))', margin: 0, fontSize: '0.78rem', lineHeight: '1.4' }}>{newPosterNotification.description.slice(0, 100)}...</p>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button 
+                onClick={() => {
+                  setFullscreenPoster(newPosterNotification);
+                  setNewPosterNotification(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'hsl(var(--primary))',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                View Poster
+              </button>
+              <button 
+                onClick={() => setNewPosterNotification(null)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -486,6 +760,54 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
             </span>
           </div>
         </GlassCard>
+
+        <GlassCard 
+          className="stat-card animate-fade-in" 
+          onClick={() => setActiveTab('emergency_inbox')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', border: '1px dashed hsl(var(--danger) / 40%)', background: 'hsl(var(--danger) / 2%)', transition: 'border-color 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stat-title" style={{ color: 'hsl(var(--danger))', fontWeight: 'bold' }}>Emergency Alerts</span>
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <span className="stat-number" style={{ color: 'hsl(var(--danger))' }}>{s.open_emergencies_count || 0}</span>
+            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--danger))' }}></span>
+              Open emergency inbox tickets
+            </span>
+          </div>
+        </GlassCard>
+
+        <GlassCard 
+          className="stat-card animate-fade-in" 
+          onClick={() => setActiveTab('support_queries')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', border: '1px dashed hsl(var(--primary) / 40%)', background: 'hsl(var(--primary) / 2%)', transition: 'border-color 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stat-title" style={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}>Support Queries</span>
+            <div style={{ background: 'rgba(76, 140, 252, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <span className="stat-number" style={{ color: 'hsl(var(--primary))' }}>{s.open_queries_count || 0}</span>
+            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--primary))' }}></span>
+              Unresolved support requests
+            </span>
+          </div>
+        </GlassCard>
       </div>
 
 
@@ -562,6 +884,22 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
               <span className="toolcard-title" style={{ fontSize: '1rem', fontWeight: '700', marginTop: '6px' }}>CSV Bulk Importer</span>
               <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', lineHeight: '1.5', margin: 0 }}>
                 Upload spreadsheet files to mass seed recipient records with validation.
+              </p>
+            </div>
+
+            <div
+              className="toolcard"
+              onClick={() => setActiveTab('citizen_conversations')}
+              style={{ padding: '20px', borderRadius: '16px' }}
+            >
+              <div className="toolcard-icon-container" style={{ background: 'hsl(var(--primary) / 8%)', color: 'hsl(var(--primary))', borderRadius: '10px', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg className="svg-icon" style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+              </div>
+              <span className="toolcard-title" style={{ fontSize: '1rem', fontWeight: '700', marginTop: '6px' }}>Citizen RAG Chat</span>
+              <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', lineHeight: '1.5', margin: 0 }}>
+                Simulate two-way citizen communications and test grounded RAG answers.
               </p>
             </div>
           </div>

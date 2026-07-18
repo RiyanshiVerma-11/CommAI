@@ -47,6 +47,13 @@ const Campaigns = ({ user, backendUrl, headers }) => {
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
 
+  // --- INLINE POSTER STUDIO STATES ---
+  const [inlinePosterUrl, setInlinePosterUrl] = useState('');
+  const [inlinePosterLoading, setInlinePosterLoading] = useState(false);
+  const [inlinePosterError, setInlinePosterError] = useState('');
+  const [inlinePosterLanguage, setInlinePosterLanguage] = useState('Hindi');
+  const [inlinePosterTone, setInlinePosterTone] = useState('formal');
+
   // --- NEW WORKFLOW STATES ---
   const [listTab, setListTab] = useState('all'); // 'all' or 'drafts'
   const [editingCampId, setEditingCampId] = useState(null);
@@ -745,6 +752,143 @@ const Campaigns = ({ user, backendUrl, headers }) => {
       fetchCampaigns();
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const overlayTextOnPoster = (imageUrl, titleText, descText, catText, langText) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imageUrl;
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        
+        // 1. Draw original AI background image
+        ctx.drawImage(img, 0, 0, 1024, 1024);
+        
+        // 2. Draw styled glassmorphism panel at the bottom
+        const cardX = 40;
+        const cardY = 660;
+        const cardW = 944;
+        const cardH = 320;
+        
+        ctx.fillStyle = "rgba(10, 12, 22, 0.92)"; 
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+        } else {
+          ctx.rect(cardX, cardY, cardW, cardH);
+        }
+        ctx.fill();
+        ctx.stroke();
+        
+        // 3. Accent indicator bar
+        ctx.fillStyle = "hsl(190, 90%, 50%)"; // cyan
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(cardX + 25, cardY + 30, 6, 45, 3);
+        } else {
+          ctx.rect(cardX + 25, cardY + 30, 6, 45);
+        }
+        ctx.fill();
+        
+        // 4. Header Category Tag
+        ctx.font = "bold 20px 'Segoe UI', Arial, sans-serif";
+        ctx.fillStyle = "hsl(190, 90%, 50%)";
+        ctx.fillText(`${catText.toUpperCase()} ADVISORY • ${langText.toUpperCase()}`, cardX + 45, cardY + 60);
+        
+        // 5. Title Text
+        ctx.font = "bold 38px 'Segoe UI', Arial, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(titleText, cardX + 25, cardY + 115);
+        
+        // 6. Message Body text wrapping function
+        ctx.font = "normal 22px 'Segoe UI', Arial, sans-serif";
+        ctx.fillStyle = "#cbd5e1"; // text-slate-300
+        
+        const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+          const words = text.split(' ');
+          let line = '';
+          let currentY = y;
+          for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            let metrics = context.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+              context.fillText(line, x, currentY);
+              line = words[n] + ' ';
+              currentY += lineHeight;
+            } else {
+              line = testLine;
+            }
+          }
+          context.fillText(line, x, currentY);
+        };
+        
+        wrapText(ctx, descText, cardX + 25, cardY + 175, cardW - 50, 32);
+        
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          resolve(dataUrl);
+        } catch (e) {
+          console.error("Failed to generate data URL from canvas:", e);
+          resolve(imageUrl); // fallback
+        }
+      };
+      
+      img.onerror = () => {
+        resolve(imageUrl); // fallback
+      };
+    });
+  };
+
+  const handleGenerateCampaignPoster = async () => {
+    if (!formTitle.trim()) return;
+    setInlinePosterLoading(true);
+    setInlinePosterError('');
+    setInlinePosterUrl('');
+    const posterDesc = customBody || formDesc || formObjective || "Public awareness notice warning.";
+    const posterCat = formType === 'emergency_alert' ? 'emergency' : 'awareness';
+    try {
+      const response = await fetch(`${backendUrl}/api/poster/generate`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formTitle,
+          description: posterDesc,
+          category: posterCat,
+          tone: inlinePosterTone,
+          language: inlinePosterLanguage
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to generate campaign poster');
+      }
+      const data = await response.json();
+      
+      const compiledDataUrl = await overlayTextOnPoster(
+        data.image_url,
+        formTitle,
+        posterDesc,
+        posterCat,
+        inlinePosterLanguage
+      );
+
+      setInlinePosterUrl(compiledDataUrl);
+    } catch (err) {
+      setInlinePosterError(err.message || 'An error occurred while generating the poster.');
+    } finally {
+      setInlinePosterLoading(false);
     }
   };
 
@@ -2375,6 +2519,130 @@ const Campaigns = ({ user, backendUrl, headers }) => {
                   Live Variable Interpolation Preview
                 </label>
                 {renderCampaignMockup()}
+              </div>
+
+              {/* 🎨 Inline Visual Flyer Generation Box */}
+              <div style={{
+                marginTop: '16px',
+                padding: '20px',
+                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(6, 182, 212, 0.03) 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.25)',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '1.5rem' }}>🎨</span>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800', color: 'hsl(var(--primary))' }}>
+                      Visual Campaign Flyer Studio
+                    </h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>
+                      Generate an infographic visual poster for this campaign using the details you entered.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: '600' }}>Language</label>
+                    <select
+                      className="form-control"
+                      value={inlinePosterLanguage}
+                      onChange={(e) => setInlinePosterLanguage(e.target.value)}
+                      style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                    >
+                      {configLanguages.map(lang => (
+                        <option key={lang} value={lang}>{lang}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: '600' }}>Tone</label>
+                    <select
+                      className="form-control"
+                      value={inlinePosterTone}
+                      onChange={(e) => setInlinePosterTone(e.target.value)}
+                      style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                    >
+                      <option value="formal">Formal</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="empathetic">Empathetic</option>
+                      <option value="simplified">Simplified</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleGenerateCampaignPoster}
+                  disabled={inlinePosterLoading}
+                  style={{ width: '100%', padding: '10px', fontSize: '0.85rem', fontWeight: '600' }}
+                >
+                  {inlinePosterLoading ? 'Generating Visual Poster...' : '✨ Generate & Attach Warning Flyer'}
+                </button>
+
+                {inlinePosterError && (
+                  <div style={{ color: 'hsl(var(--danger))', fontSize: '0.8rem', marginTop: '4px' }}>
+                    ⚠️ {inlinePosterError}
+                  </div>
+                )}
+
+                {inlinePosterUrl && (
+                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
+                    
+                    {/* ℹ️ AI Typography Text Disclaimer */}
+                    <div style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      fontSize: '0.82rem',
+                      lineHeight: '1.45',
+                      color: 'hsl(var(--text-primary))',
+                      textAlign: 'left'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: 'hsl(38, 92%, 55%)', fontWeight: '700' }}>
+                        <span>⚠️</span>
+                        <span>AI Typography Note</span>
+                      </div>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>Problem:</strong> AI image generators (like Flux/Stable Diffusion) generate visual patterns rather than typography, causing text inside posters to look garbled or misspelled.
+                      </div>
+                      <div>
+                        <strong>Solution:</strong> Use this generated poster as a graphic background and overlay clean, readable text on top using Canva, a PDF editor, or design software.
+                      </div>
+                    </div>
+
+                    <div style={{ width: '100%', maxWidth: '380px', borderRadius: '12px', overflow: 'hidden', border: '1.5px solid var(--border-color-glass)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                      <img src={inlinePosterUrl} alt="Campaign Poster" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <a href={inlinePosterUrl} target="_blank" rel="noopener noreferrer" className="btn btn-dark btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        🔎 View Fullscreen
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = inlinePosterUrl;
+                          link.download = `${formTitle.replace(/\s+/g, '_')}_flyer.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                      >
+                        💾 Download
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

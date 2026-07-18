@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount }) => {
+const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount, queriesCount }) => {
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -112,6 +112,18 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
       ),
       roles: ['admin', 'campaign_manager']
     },
+    {
+      id: 'support_queries',
+      label: 'Support Queries',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
     { 
       id: 'audit_logs', 
       label: 'Audit Logs', 
@@ -122,6 +134,52 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
         </svg>
       ), 
       roles: ['admin'] 
+    },
+
+    {
+      id: 'poster_studio',
+      label: 'Poster Studio',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
+    {
+      id: 'sentiment_map',
+      label: 'Sentiment Map',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="10" r="3" />
+          <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
+    {
+      id: 'citizen_conversations',
+      label: 'Citizen RAG Chat',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager', 'audience']
+    },
+    {
+      id: 'live_bulletins',
+      label: 'Live Bulletins',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 11a9 9 0 0 1 9 9" />
+          <path d="M4 4a16 16 0 0 1 16 16" />
+          <circle cx="5" cy="19" r="1" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager', 'audience']
     },
     { 
       id: 'settings', 
@@ -136,7 +194,38 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     },
   ];
 
-
+  const categories = [
+    {
+      id: 'core',
+      label: 'Core Dashboard',
+      items: ['dashboard', 'live_bulletins']
+    },
+    {
+      id: 'campaigns',
+      label: 'Campaign Planner',
+      items: ['campaigns', 'templates', 'approvals', 'poster_studio']
+    },
+    {
+      id: 'outreach',
+      label: 'Outreach & Insights',
+      items: ['audiences', 'sentiment_map', 'feedback']
+    },
+    {
+      id: 'support',
+      label: 'Emergency & Chat',
+      items: ['emergency_inbox', 'support_queries', 'citizen_conversations']
+    },
+    {
+      id: 'governance',
+      label: 'System Governance',
+      items: ['users', 'managers', 'audit_logs']
+    },
+    {
+      id: 'settings',
+      label: 'Preferences',
+      items: ['settings']
+    }
+  ];
 
   const getRoleBadge = (role) => {
     switch (role) {
@@ -156,7 +245,12 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const filteredItems = menuItems.filter(item => item.roles.includes(user.role));
+  const renderedCategories = categories
+    .map(cat => ({
+      ...cat,
+      items: menuItems.filter(item => cat.items.includes(item.id) && item.roles.includes(user.role))
+    }))
+    .filter(cat => cat.items.length > 0);
 
   return (
     <div className="sidebar animate-slide-left">
@@ -181,46 +275,94 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
         </button>
       </div>
       
-      <ul className="nav-menu" style={{ gap: '6px' }}>
-        {filteredItems.map(item => (
-          <li
-            key={item.id}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab(item.id);
-              if (closeMobileSidebar) closeMobileSidebar();
-            }}
-          >
-            <span className="nav-item-icon">
-              {item.icon}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between', width: '100%' }}>
-              <span>{item.label}</span>
-              {item.id === 'emergency_inbox' && emergencyCount > 0 && (
-                <span 
-                  style={{ 
-                    background: '#ef4444', 
-                    color: '#ffffff', 
-                    borderRadius: '50%', 
-                    width: '20px', 
-                    height: '20px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontSize: '0.75rem', 
-                    fontWeight: '800',
-                    lineHeight: '1',
-                    boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
-                    animation: 'pulse 2s infinite'
+      <div className="nav-menu-container" style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexGrow: 1, overflowY: 'auto', paddingBottom: '24px' }}>
+        {renderedCategories.map(cat => (
+          <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {!_sidebarCollapsed ? (
+              <div style={{
+                padding: '6px 14px 2px 14px',
+                fontSize: '0.68rem',
+                fontWeight: '900',
+                textTransform: 'uppercase',
+                color: 'var(--text-primary)',
+                letterSpacing: '0.08em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                opacity: 0.95
+              }}>
+                <span>{cat.label}</span>
+                <div style={{ flexGrow: 1, height: '1.5px', background: 'rgba(255, 255, 255, 0.08)' }}></div>
+              </div>
+            ) : (
+              <div style={{ margin: '4px 12px 2px 12px', borderTop: '1.5px solid rgba(255, 255, 255, 0.05)' }}></div>
+            )}
+            
+            <ul className="nav-menu" style={{ gap: '2px', margin: 0, padding: 0, listStyle: 'none' }}>
+              {cat.items.map(item => (
+                <li
+                  key={item.id}
+                  className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (closeMobileSidebar) closeMobileSidebar();
                   }}
+                  style={{ margin: '0 8px' }}
                 >
-                  {emergencyCount}
-                </span>
-              )}
-            </span>
-          </li>
+                  <span className="nav-item-icon">
+                    {item.icon}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between', width: '100%' }}>
+                    <span>{item.label}</span>
+                    {((item.id === 'emergency_inbox' && user.role !== 'audience') || (item.id === 'feedback' && user.role === 'audience')) && emergencyCount > 0 && (
+                      <span 
+                        style={{ 
+                          background: '#ef4444', 
+                          color: '#ffffff', 
+                          borderRadius: '50%', 
+                          width: '20px', 
+                          height: '20px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.75rem', 
+                          fontWeight: '800',
+                          lineHeight: '1',
+                          boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
+                          animation: 'pulse 2s infinite'
+                        }}
+                      >
+                        {emergencyCount}
+                      </span>
+                    )}
+                    {item.id === 'support_queries' && queriesCount > 0 && (
+                      <span 
+                        style={{ 
+                          background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%)', 
+                          color: '#ffffff', 
+                          borderRadius: '50%', 
+                          width: '20px', 
+                          height: '20px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.75rem', 
+                          fontWeight: '800',
+                          lineHeight: '1',
+                          boxShadow: '0 2px 5px rgba(76, 140, 252, 0.3)',
+                          animation: 'pulse 2s infinite'
+                        }}
+                      >
+                        {queriesCount}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
       
       <div 
         className="sidebar-user" 

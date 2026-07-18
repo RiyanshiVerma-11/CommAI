@@ -12,6 +12,95 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_PRIMARY = "llama-3.3-70b-versatile"
 MODEL_FALLBACK = "llama-3.1-8b-instant"
 
+# ---------------------------------------------------------------------------
+# Comprehensive Platform Knowledge — injected into all AI prompts
+# ---------------------------------------------------------------------------
+PLATFORM_KNOWLEDGE = """
+=== CommAI Platform Reference (Authoritative) ===
+
+CommAI is a government mass communication platform that enables organizations to broadcast campaigns 
+and public alerts in 22 official Indian languages across Email, SMS, WhatsApp, Push Notifications, 
+and Web Broadcasts.
+
+There are THREE user roles with different permissions and UI layouts:
+
+--- ROLE 1: Audience / Citizen ---
+Citizens have restricted access. They CANNOT create campaigns, templates, segments, or manage users.
+Their sidebar shows these sections:
+
+  CORE DASHBOARD:
+    • Dashboard ("Your Portal") — personal overview stats and quick links.
+    • Live Bulletins — real-time emergency alert broadcast feed.
+
+  OUTREACH & INSIGHTS:
+    • Campaign Feedback — this is the MAIN page for citizen interaction. It has 3 sub-tabs:
+        1. "📬 Received Campaigns" — browse awareness/emergency campaigns sent to them. 
+           Click "Give Feedback" to rate (1-5 stars) and classify (helpful / confusing / not relevant).
+        2. "⭐ My Feedback History" — view and delete past feedback submissions.
+        3. "🚨 Emergency Support" — TWO panels:
+             LEFT: "Submit Urgent Request" form with Subject, Urgency Priority 
+                   (Normal / Urgent / Critical), and Detailed Message. Click "Send Emergency Message".
+             RIGHT: "My Support Requests" — track submitted requests and view official responses 
+                    from campaign managers.
+
+  EMERGENCY & CHAT:
+    • Citizen RAG Chat — AI-powered chatbot for platform help and questions.
+
+  PREFERENCES:
+    • Settings — edit profile, change password, view audience profile details.
+
+--- ROLE 2: Campaign Manager ---
+Managers can create and manage campaigns, templates, audience segments, and respond to citizen queries.
+Their sidebar shows these sections:
+
+  CORE DASHBOARD:
+    • Dashboard Overview — platform-wide metrics and stats.
+    • Live Bulletins — real-time broadcast feed.
+
+  CAMPAIGN PLANNER:
+    • Campaign Planner — create campaigns (types: Emergency Alert, Awareness Drive, General Announcement).
+      Uses a step-by-step wizard: select template → choose audience/segment → configure channels → launch.
+    • Templates Library — create/edit message templates. Includes AI tools: Generate, Optimize, 
+      Personalize, Compliance Check, and multi-language translation.
+    • Poster Studio — AI-powered visual poster generation and distribution.
+
+  OUTREACH & INSIGHTS:
+    • Audience & Segments — view/create audience profiles and smart segments.
+    • Sentiment Map — geographic visualization of citizen feedback sentiment.
+    • Campaign Feedback — "📊 Feedback Sentiment Analytics" dashboard to view ratings/comments 
+      per campaign. Also has "🚨 Emergency Assistance Requests" tab to monitor/respond.
+
+  EMERGENCY & CHAT:
+    • Emergency Inbox — dedicated page to monitor ALL citizen emergency requests. 
+      Managers can search, filter by status/urgency, reply with AI-drafted responses, 
+      and mark requests as acknowledged/resolved.
+    • Support Queries — dedicated page to answer citizen confusion/help queries. 
+      Managers can search, filter, generate AI draft replies, and resolve queries.
+    • Citizen RAG Chat — view AI-powered citizen conversation feed.
+
+  PREFERENCES:
+    • Settings — SMTP email config, WhatsApp config, API keys, blacklist management, diagnostics.
+
+--- ROLE 3: Admin ---
+Admins have full access to everything Campaign Managers have, PLUS:
+
+  SYSTEM GOVERNANCE:
+    • User Directory — manage all platform operator accounts.
+    • Campaign Managers — manage campaign manager accounts.
+    • Audit Logs — complete operator activity trail.
+    • Approvals Queue — maker-checker approval workflow for campaigns.
+
+=== KEY NAVIGATION RULES ===
+• To submit an emergency request (Citizen): Go to "Campaign Feedback" in sidebar → click "🚨 Emergency Support" tab → fill the form on the left → click "Send Emergency Message".
+• To check emergency request status (Citizen): Same page → "My Support Requests" panel on the right.
+• To respond to emergencies (Manager/Admin): Go to "Emergency Inbox" in sidebar under "Emergency & Chat".
+• To respond to support queries (Manager/Admin): Go to "Support Queries" in sidebar under "Emergency & Chat".
+• To create a campaign (Manager/Admin): Go to "Campaign Planner" in sidebar → click "Create New Campaign".
+• To give feedback on a campaign (Citizen): Go to "Campaign Feedback" → "📬 Received Campaigns" tab → click "Give Feedback".
+• To use the chatbot (All roles): Go to "Citizen RAG Chat" in sidebar, or use the floating chat widget.
+• To view live alerts (All roles): Go to "Live Bulletins" in sidebar.
+"""
+
 PLACEHOLDER_GUARD = (
     "CRITICAL REQUIREMENT: Do NOT translate, modify, replace, or remove any "
     "placeholder variables enclosed in double-curly braces (for example, "
@@ -618,13 +707,18 @@ def auto_tag_audience(db, audience_id: str) -> list:
 def draft_emergency_response(subject: str, message: str, urgency: str) -> str:
     """Generate an AI-assisted response to a citizen emergency message using Groq."""
     system_prompt = (
-        "You are an AI assistant for a government and community emergency response desk. "
+        "You are an AI assistant for a government and community emergency response desk "
+        "on the CommAI mass communication platform. "
         "Your task is to write a helpful, reassuring, clear, and action-oriented response "
         "to a citizen who has reported an emergency or urgent situation. "
         "Keep the response concise (max 3-4 sentences), highly professional, and informative. "
         "Do NOT use any emojis. "
         "Only return the exact message body. Do NOT include greetings like 'Dear citizen', "
-        "closing sign-offs, or introductions like 'Here is the response'."
+        "closing sign-offs, or introductions like 'Here is the response'.\n\n"
+        "If you need to tell the citizen how to track their request, tell them to go to "
+        "'Campaign Feedback' in the sidebar and click the '🚨 Emergency Support' tab — "
+        "their request status and any official replies will appear under 'My Support Requests'.\n\n"
+        f"{PLATFORM_KNOWLEDGE}"
     )
     user_content = f"Urgency: {urgency}\nSubject: {subject}\nMessage: {message}"
 
@@ -634,7 +728,102 @@ def draft_emergency_response(subject: str, message: str, urgency: str) -> str:
 
     # Dynamic fallback drafts if Groq is unavailable
     if urgency == "critical" or urgency == "urgent":
-        return f"Thank you for reporting this issue. We have flagged this report as {urgency.upper()} priority. Our emergency response team has been notified and is looking into the situation. Please stay safe and follow active safety protocols in your area."
-    return "Thank you for sharing this feedback. We have acknowledged your report and regional operators are reviewing the details. We will update you as soon as action is taken."
+        return f"Thank you for reporting this issue. We have flagged this report as {urgency.upper()} priority. Our emergency response team has been notified and is looking into the situation. Please stay safe and follow active safety protocols in your area. You can track updates under Campaign Feedback → 🚨 Emergency Support → My Support Requests."
+    return "Thank you for sharing this feedback. We have acknowledged your report and regional operators are reviewing the details. We will update you as soon as action is taken. You can track your request under Campaign Feedback → 🚨 Emergency Support → My Support Requests."
+
+
+def draft_query_response(subject: str, message: str) -> str:
+    """Generate an AI-assisted response to a user support query using Groq."""
+    system_prompt = (
+        "You are an AI assistant helping a platform operator respond to a user "
+        "who has sent a support query or expressed confusion about the CommAI mass communication platform. "
+        "Provide a clear, helpful, and polite response explaining how to resolve their issue "
+        "using the EXACT navigation paths described in the platform reference below. "
+        "NEVER fabricate UI elements, buttons, or tabs that don't exist. "
+        "If you're unsure, tell the user their query has been noted and a manager is looking into it. "
+        "Keep the response concise (max 3-4 sentences) and highly professional. "
+        "Only return the exact message body. Do NOT include greetings like 'Dear User', "
+        "closing sign-offs, or introductions.\n\n"
+        f"{PLATFORM_KNOWLEDGE}"
+    )
+    user_content = f"Subject: {subject}\nMessage: {message}"
+
+    draft = _call_groq(system_prompt, user_content, temperature=0.3, max_tokens=300)
+    if draft:
+        return draft.strip()
+    return "Thank you for reaching out with your query. We have logged your request in our system and a platform operator is reviewing it. We will get back to you with further instructions shortly."
+
+
+def generate_chat_reply(message: str, history: list, user_role: str = "general") -> str:
+    """Generate an AI assistant response for chatbot widget using Groq."""
+    if not settings.GROQ_API_KEY:
+        logger.warning("[AI] Groq API Key is not set.")
+        return "AI assistant is offline. Please check system configurations."
+
+    if user_role == "audience":
+        role_context = (
+            "You are chatting with a Citizen / Audience member. They have RESTRICTED access to the platform. "
+            "They CANNOT create campaigns, templates, segments, or manage other users. "
+            "When guiding them, ONLY reference pages and tabs they can actually see. "
+            "Make sure your guidance reflects their citizen-level permissions."
+        )
+    else:
+        role_context = (
+            "You are chatting with a Platform Operator (Admin or Campaign Manager). They have access to administrative features: "
+            "creating campaigns, managing templates, defining audience segments, reviewing approvals, and configuring integrations. "
+            "When guiding them, reference the exact sidebar items and page names from the platform reference below."
+        )
+
+    CHAT_SYSTEM_PROMPT = (
+        "You are the CommAI Assistant, an AI helper for the CommAI mass communication platform.\n\n"
+        f"{role_context}\n\n"
+        f"{PLATFORM_KNOWLEDGE}\n\n"
+        "IMPORTANT RULES:\n"
+        "1. ONLY reference navigation paths, tabs, buttons, and pages that ACTUALLY EXIST in the platform reference above.\n"
+        "2. NEVER fabricate or guess UI elements. If unsure, say so honestly.\n"
+        "3. Avoid providing technical or implementation details about database schemas, code internals, or uvicorn commands "
+        "unless the user explicitly asks about them.\n"
+        "4. Keep your response concise, clear, and direct. Do not include markdown headers or greetings.\n"
+        "5. If you cannot help, or if the user is frustrated, tell them they can click the thumbs-down icon below "
+        "your reply to submit a support query to a campaign manager who will respond personally."
+    )
+
+    headers = {
+        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    
+    # Construct full list of messages
+    messages = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    for msg in history:
+        messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+    
+    messages.append({"role": "user", "content": message})
+
+    payload = {
+        "model": MODEL_PRIMARY,
+        "messages": messages,
+        "temperature": 0.5,
+        "max_tokens": 400,
+    }
+
+    try:
+        resp = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+        if resp.status_code != 200:
+            logger.warning(f"[AI] Primary model failed in chat ({resp.status_code}). Trying fallback...")
+            payload["model"] = MODEL_FALLBACK
+            resp = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+
+        if resp.status_code == 200:
+            text = resp.json()["choices"][0]["message"]["content"].strip()
+            return _clean_output(text)
+        else:
+            logger.error(f"[AI] Groq chat call failed: {resp.text}")
+            return "Sorry, I am having trouble connecting to the AI brain right now. Please try again."
+    except Exception as e:
+        logger.error(f"[AI] Error calling Groq API for chat: {e}", exc_info=True)
+        return "Sorry, I encountered an internal error processing your request."
+
+
 
 

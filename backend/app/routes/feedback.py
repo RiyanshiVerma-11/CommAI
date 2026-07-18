@@ -269,6 +269,29 @@ def submit_emergency_contact(
     db.commit()
     db.refresh(contact)
 
+    # Broadcast new emergency alert via WebSockets
+    import asyncio
+    import logging
+    from app.services.websocket_manager import bulletin_manager
+    try:
+        payload = {
+            "type": "emergency_contact",
+            "id": contact.id,
+            "user_name": current_user.full_name,
+            "subject": contact.subject,
+            "message": contact.message,
+            "urgency": contact.urgency,
+            "created_at": contact.created_at.isoformat()
+        }
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(bulletin_manager.broadcast(payload))
+        except RuntimeError:
+            # No running loop (e.g. running in testing thread)
+            asyncio.run(bulletin_manager.broadcast(payload))
+    except Exception as e:
+        logging.getLogger("commai").error(f"[WS] Failed to broadcast emergency contact: {e}")
+
     return EmergencyContactResponse(
         id=contact.id,
         user_id=contact.user_id,

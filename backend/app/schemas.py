@@ -391,3 +391,29 @@ class ForgotPasswordReset(CustomBaseModel):
     email: EmailStr
     otp: str
     new_password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
+
+
+# --- SUPPORT QUERY SCHEMAS ---
+
+class SupportQueryCreate(CustomBaseModel):
+    subject: str = Field(..., min_length=5, max_length=255)
+    message: str = Field(..., min_length=10)
+
+class SupportQueryResponse(CustomBaseModel):
+    id: str
+    user_id: str
+    user_name: Optional[str] = None
+    subject: str
+    message: str
+    status: str
+    admin_reply: Optional[str] = None
+    replied_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SupportQueryReply(CustomBaseModel):
+    admin_reply: str = Field(..., min_length=1)
+    status: Optional[str] = Field(default="acknowledged", description="One of: open, acknowledged, resolved")
+

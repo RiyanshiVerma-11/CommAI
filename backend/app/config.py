@@ -36,6 +36,12 @@ class Settings:
     # --- Groq Translation Configuration ---
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
 
+    # --- Secondary Groq API Key (Fallback) ---
+    GROQ_API_KEY_SECONDARY: str = os.getenv("GROQ_API_KEY_SECONDARY", "")
+
+    # --- Google Gemini API Key ---
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+
     # --- Country Code for Phone Numbers ---
     DEFAULT_COUNTRY_CODE: str = os.getenv("DEFAULT_COUNTRY_CODE", "91")  # India
 
@@ -43,6 +49,9 @@ class Settings:
     DAILY_CAP_EMAIL: int = 5000
     DAILY_CAP_SMS: int = 5000
     DAILY_CAP_WHATSAPP: int = 5000
+
+    # --- External backend URL (for emails and hyperlinks) ---
+    BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8001")
 
     # Supported System Constants
     ROLES = ["admin", "campaign_manager", "audience"]
@@ -70,16 +79,34 @@ class Settings:
             try:
                 with open(config_path, "r") as f:
                     data = json.load(f)
-                self.SMTP_HOST = data.get("SMTP_HOST", self.SMTP_HOST)
-                self.SMTP_PORT = int(data.get("SMTP_PORT", self.SMTP_PORT))
-                self.SMTP_EMAIL = data.get("SMTP_EMAIL", self.SMTP_EMAIL)
-                self.SMTP_APP_PASSWORD = data.get("SMTP_APP_PASSWORD", self.SMTP_APP_PASSWORD)
-                self.CALLMEBOT_DEFAULT_APIKEY = data.get("CALLMEBOT_DEFAULT_APIKEY", self.CALLMEBOT_DEFAULT_APIKEY)
-                self.GROQ_API_KEY = data.get("GROQ_API_KEY", self.GROQ_API_KEY)
-                self.DEFAULT_COUNTRY_CODE = data.get("DEFAULT_COUNTRY_CODE", self.DEFAULT_COUNTRY_CODE)
-                self.DAILY_CAP_EMAIL = int(data.get("DAILY_CAP_EMAIL", self.DAILY_CAP_EMAIL))
-                self.DAILY_CAP_SMS = int(data.get("DAILY_CAP_SMS", self.DAILY_CAP_SMS))
-                self.DAILY_CAP_WHATSAPP = int(data.get("DAILY_CAP_WHATSAPP", self.DAILY_CAP_WHATSAPP))
+                
+                # Use falsy fallbacks so empty strings in settings.json fall back to .env configuration
+                self.SMTP_HOST = data.get("SMTP_HOST") or self.SMTP_HOST
+                
+                port_val = data.get("SMTP_PORT")
+                if port_val is not None and port_val != "":
+                    self.SMTP_PORT = int(port_val)
+                    
+                self.SMTP_EMAIL = data.get("SMTP_EMAIL") or self.SMTP_EMAIL
+                self.SMTP_APP_PASSWORD = data.get("SMTP_APP_PASSWORD") or self.SMTP_APP_PASSWORD
+                self.CALLMEBOT_DEFAULT_APIKEY = data.get("CALLMEBOT_DEFAULT_APIKEY") or self.CALLMEBOT_DEFAULT_APIKEY
+                self.GROQ_API_KEY = data.get("GROQ_API_KEY") or self.GROQ_API_KEY
+                self.GROQ_API_KEY_SECONDARY = data.get("GROQ_API_KEY_SECONDARY") or self.GROQ_API_KEY_SECONDARY
+                self.GEMINI_API_KEY = data.get("GEMINI_API_KEY") or self.GEMINI_API_KEY
+                self.DEFAULT_COUNTRY_CODE = data.get("DEFAULT_COUNTRY_CODE") or self.DEFAULT_COUNTRY_CODE
+                self.BACKEND_URL = data.get("BACKEND_URL") or self.BACKEND_URL
+                
+                cap_email = data.get("DAILY_CAP_EMAIL")
+                if cap_email is not None and cap_email != "":
+                    self.DAILY_CAP_EMAIL = int(cap_email)
+                    
+                cap_sms = data.get("DAILY_CAP_SMS")
+                if cap_sms is not None and cap_sms != "":
+                    self.DAILY_CAP_SMS = int(cap_sms)
+                    
+                cap_wa = data.get("DAILY_CAP_WHATSAPP")
+                if cap_wa is not None and cap_wa != "":
+                    self.DAILY_CAP_WHATSAPP = int(cap_wa)
             except Exception as e:
                 print(f"[CONFIG] Error loading settings overrides: {e}")
 

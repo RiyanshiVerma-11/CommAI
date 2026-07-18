@@ -282,6 +282,9 @@ In Weeks 3 and 4, we integrated generative artificial intelligence and localizat
 * **End-to-End Testing**: Validates segment calculation, AI translation, Maker-Checker locks, and channel dispatch.
 * **Suppression Registry**: A global blacklist preventing communication to citizens who opted out.
 * **Daily Billing Send Caps**: Enforces absolute daily send caps per channel to prevent runaway API fees.
+* **AI Visual Poster Studio & Served Binary Images**: Custom canvas composite system that overlays multilingual typography on AI-generated backgrounds, served via a dedicated binary image endpoint (`/api/poster/{id}/image`) to prevent rendering slow-downs and bypass blocked new-tab navigations.
+* **Inline Email Image Attachment**: Automatically parses and attaches poster media files in emails as inline MIME attachments (CIDs), with an automatic credentials normalization helper (Gmail App Password space-stripping) to prevent SMTP auth failures.
+* **Dashboard Real-Time Alerts**: Live WebSocket broadcast listeners attached to the citizen portal dashboard that triggers audio chime notifications and real-time toast popups whenever an emergency flyer is published, dynamically refreshing lists without manual reloading.
 
 ---
 
@@ -332,7 +335,7 @@ For immediate launch without installing Python/Node dependencies on your host ma
 2. Navigate to `backend` and run the FastAPI server:
    ```powershell
    cd backend
-   python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
    ```
 - Swagger documentation: `http://127.0.0.1:8000/docs`
 - Database: Creates local `comm_platform.db` in `backend/` folder on launch.

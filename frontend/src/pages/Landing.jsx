@@ -113,6 +113,30 @@ const FEATURES = [
     title: 'Emergency Inbox & AI Replies',
     desc: 'Monitor incoming citizen emergency requests. Filter by urgency and use AI to automatically draft contextual, professional responses.',
   },
+  {
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-5.1 7-11V5l-7-3-7 3v5c0 5.9 7 11 7 11z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
+    accent: '#ef4444', bg: '#fef2f2',
+    title: 'State Emergency Broadcasts',
+    desc: 'Managers and admins can launch a direct, state-targeted emergency alert from the Geographic Sentiment Map.',
+  },
+  {
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>,
+    accent: '#7c3aed', bg: '#f5f3ff',
+    title: 'Live Citizen Alert Centre',
+    desc: 'Critical alerts trigger a real-time dashboard chime and popup, then remain available in each citizen’s Emergency Alerts tab.',
+  },
+  {
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>,
+    accent: '#0891b2', bg: '#ecfeff',
+    title: 'AI Emergency Flyers',
+    desc: 'Generate an urgent visual background and persistent flyer for the selected audience while keeping the message actionable.',
+  },
+  {
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H4z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>,
+    accent: '#16a34a', bg: '#f0fdf4',
+    title: 'Four Emergency Channels',
+    desc: 'Deliver through Email, WhatsApp, SMS, and Push while connected citizens see the dashboard alert immediately.',
+  },
 ];
 
 const ROLES = [
@@ -122,7 +146,7 @@ const ROLES = [
     badge: '#7c3aed',
     badgeBg: '#f5f3ff',
     borderActive: '#c4b5fd',
-    desc: 'Platform gatekeeper. Controls settings/diagnostics/caps, invites operators, and exercises ultimate Maker-Checker approval power over pending broadcasts.',
+    desc: 'Platform gatekeeper. Controls settings, diagnostics and safety caps, approves queued campaigns, and can issue direct state emergency broadcasts.',
     sees: ['Dashboard', 'Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs', 'User Directory', 'Integration Parameters'],
     hidden: [],
   },
@@ -133,7 +157,7 @@ const ROLES = [
     badgeBg: '#eff6ff',
     borderActive: '#93c5fd',
     highlighted: true,
-    desc: 'Core planner. Orchestrates campaigns and designs segments. Campaigns targeting >=100 recipients or flagged as Emergency automatically route for Admin authorization.',
+    desc: 'Core planner. Orchestrates campaigns and segments, and can issue a direct state emergency broadcast from the active Sentiment Map.',
     sees: ['Dashboard', 'Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs'],
     hidden: ['User Directory', 'Integration Parameters'],
   },
@@ -143,9 +167,9 @@ const ROLES = [
     badge: '#06b6d4',
     badgeBg: '#ecfeff',
     borderActive: '#a5f3fc',
-    desc: 'Public campaign recipient. Receives broadcasts, configures language settings, submits feedback comments, and uses emergency support channels to contact officials.',
-    sees: ['Dashboard Stats', 'Feedback Log', 'Emergency Contact support', 'Profile Settings'],
-    hidden: ['Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs', 'User Directory', 'Integration Parameters'],
+    desc: 'Public campaign recipient. Receives broadcasts, live critical alerts and persistent emergency flyers, configures language settings, and contacts officials for support.',
+    sees: ['Emergency Alerts centre', 'Live dashboard notifications', 'Feedback Log', 'Emergency Contact support', 'Profile Settings'],
+    hidden: [],
   },
 ];
 
@@ -170,7 +194,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 30);
-      const sections = ['hero', 'platform', 'simulator', 'estimator', 'roles'];
+      const sections = ['hero', 'platform', 'emergency-alerts', 'use-cases', 'security-compliance', 'faqs', 'simulator', 'estimator', 'roles'];
       for (const id of [...sections].reverse()) {
         const el = document.getElementById(id);
         if (el && window.scrollY >= el.offsetTop - 120) {
@@ -278,9 +302,11 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
   const T = landingTheme === 'dark' ? T_dark : T_light;
 
   const NAV_LINKS = [
-    { id: 'platform',  label: 'Features'  },
-    { id: 'simulator', label: 'Try Simulator' },
-    { id: 'roles',     label: 'Access Roles'     },
+    { id: 'platform', label: 'Product' },
+    { id: 'emergency-alerts', label: 'Emergency Alerts' },
+    { id: 'use-cases', label: 'Solutions' },
+    { id: 'security-compliance', label: 'Security' },
+    { id: 'faqs', label: 'Resources' },
   ];
 
   return (
@@ -414,12 +440,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
             </div>
 
             <h1 style={{ fontSize:'3.4rem', fontWeight:800, lineHeight:1.05, letterSpacing:'-0.035em', color:T.text, marginBottom:22 }}>
-              Reach every citizen,<br/>
-              <span style={{ background: `linear-gradient(135deg, ${T.blue} 0%, #a855f7 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>in their language.</span>
+              Public communication<br/>
+              <span style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 48%, #ef4444 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>that moves at the speed of need.</span>
             </h1>
 
             <p style={{ fontSize:'1.15rem', color:T.textSec, lineHeight:1.68, marginBottom:40, maxWidth:520 }}>
-              CommAI helps government departments and NGOs plan, translate, and dispatch mass-communication campaigns — across SMS, WhatsApp, Email, and Push — to millions of recipients in 22 Indian languages.
+              CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, WhatsApp, SMS, and Push in 22 Indian languages.
             </p>
 
             <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:56 }}>
@@ -427,14 +453,14 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
                 style={{ padding:'14px 32px', borderRadius:12, border:'none', background:`linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, color:'#fff', fontWeight:700, fontSize:'1.05rem', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 20px rgba(37,99,235,.3)`, transition:'all .2s ease' }}
                 onMouseEnter={e => { e.currentTarget.style.filter='brightness(1.12)'; e.currentTarget.style.transform='translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.filter='none'; e.currentTarget.style.transform='none'; }}>
-                Start for Free
+                Launch your workspace
               </button>
               <button onClick={() => smoothScrollTo('simulator')}
                 style={{ padding:'14px 28px', borderRadius:12, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'1.05rem', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:10, transition:'all 0.2s ease' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHov; e.currentTarget.style.transform='translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform='none'; }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                See Simulator
+                Explore the platform
               </button>
             </div>
 
@@ -455,7 +481,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
           </div>
 
           {/* Right — dashboard preview card */}
-          <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:20, overflow:'hidden', boxShadow:T.shadowLg, position: 'relative' }}>
+          <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:22, overflow:'hidden', boxShadow:'0 24px 70px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08)', position: 'relative', transform:'rotate(1.2deg)' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}></div>
             {/* Fake window chrome */}
             <div style={{ background: landingTheme==='dark'?'rgba(255,255,255,0.01)':'#f8fafc', borderBottom:`1px solid ${T.border}`, padding:'14px 20px', display:'flex', alignItems:'center', gap:8 }}>
@@ -467,6 +493,13 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               </div>
             </div>
             <div style={{ padding:24 }}>
+              <div style={{ background:'linear-gradient(135deg, #dc2626 0%, #7c3aed 100%)', borderRadius:14, padding:'14px 16px', marginBottom:18, color:'#fff', boxShadow:'0 10px 24px rgba(220,38,38,.22)' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+                  <div><div style={{ fontSize:'0.68rem', fontWeight:800, letterSpacing:'.1em', opacity:.82, textTransform:'uppercase', marginBottom:4 }}>Emergency command centre</div><div style={{ fontSize:'0.96rem', fontWeight:800 }}>Maharashtra flood advisory</div></div>
+                  <div style={{ background:'rgba(255,255,255,.16)', border:'1px solid rgba(255,255,255,.28)', borderRadius:20, padding:'5px 9px', fontSize:'0.68rem', fontWeight:800, whiteSpace:'nowrap' }}>LIVE NOW</div>
+                </div>
+                <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>{['Email','WhatsApp','SMS','Push'].map(channel => <span key={channel} style={{ fontSize:'0.65rem', fontWeight:700, padding:'3px 7px', borderRadius:9, background:'rgba(255,255,255,.14)' }}>{channel}</span>)}</div>
+              </div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                 <span style={{ fontWeight:800, fontSize:'0.95rem', color:T.text }}>Live Campaign Monitor</span>
                 <span style={{ fontSize:'0.72rem', background:T.greenLight, color:T.green, border:`1px solid ${T.green}40`, borderRadius:20, padding:'3px 12px', fontWeight:700, display:'inline-flex', alignItems:'center', gap:5 }}>
@@ -590,14 +623,16 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
             {FEATURES.map(f => (
               <div key={f.title}
-                style={{ background:T.bg, border:`1px solid ${T.border}`, borderRadius:T.radius, padding:28, cursor:'default', transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:T.radius, padding:28, cursor:'default', transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', position:'relative', overflow:'hidden' }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow=T.shadowLg; e.currentTarget.style.borderColor=T.blueMid; e.currentTarget.style.transform='translateY(-4px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.borderColor=T.border; e.currentTarget.style.transform='none'; }}>
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${f.accent}, transparent)` }}></div>
                 <div style={{ width:46, height:46, borderRadius:12, background:f.bg, display:'flex', alignItems:'center', justifyContent:'center', color:f.accent, marginBottom:18, boxShadow: `0 4px 10px ${f.accent}15` }}>
                   {f.icon}
                 </div>
                 <div style={{ fontWeight:800, fontSize:'1.05rem', color:T.text, marginBottom:10 }}>{f.title}</div>
                 <div style={{ fontSize:'0.88rem', color:T.textSec, lineHeight:1.6 }}>{f.desc}</div>
+                <div style={{ marginTop:18, color:f.accent, fontSize:'0.76rem', fontWeight:800, letterSpacing:'.04em' }}>BUILT INTO COMMAI →</div>
               </div>
             ))}
           </div>
@@ -605,6 +640,35 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
       </section>
 
       {/* ══════════════════════ AI SPOTLIGHT ══════════════════════ */}
+      <section id="emergency-alerts" style={{ padding: '100px 40px', background: landingTheme === 'dark' ? 'linear-gradient(135deg, #170b12 0%, #080b15 56%, #101228 100%)' : 'linear-gradient(135deg, #fff5f5 0%, #f8faff 60%, #f5f3ff 100%)', borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ maxWidth: 1140, margin: '0 auto' }}>
+          <div style={{ maxWidth: 700, marginBottom: 48 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: T.red, background: `${T.red}12`, border: `1px solid ${T.red}30`, borderRadius: 20, padding: '6px 12px', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.09em', textTransform: 'uppercase' }}>Emergency response</span>
+            <h2 style={{ fontSize: '2.55rem', fontWeight: 850, letterSpacing: '-0.04em', color: T.text, lineHeight: 1.1, margin: '18px 0 16px' }}>From state signal to citizen action—instantly.</h2>
+            <p style={{ margin: 0, color: T.textSec, fontSize: '1.08rem', lineHeight: 1.65 }}>A controlled, direct-response workflow for verified emergencies. Campaign Managers and Administrators can target one state from the Sentiment Map, select delivery channels, and reach the right citizens without waiting in the normal campaign approval queue.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+            {[
+              { n: '01', title: 'Detect & target', text: 'Open the Geographic Sentiment Map and select an affected state—or choose it directly from the state selector.', color: T.red },
+              { n: '02', title: 'Compose & deliver', text: 'Set urgency, generate an AI-backed emergency flyer, and dispatch through Email, WhatsApp, SMS, and Push.', color: T.amber },
+              { n: '03', title: 'Alert citizens live', text: 'Connected citizens receive a critical chime and visual popup; the flyer stays in their Emergency Alerts centre.', color: T.blue },
+            ].map(step => (
+              <div key={step.n} style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 18, padding: 28, boxShadow: T.shadow }}>
+                <div style={{ color: step.color, fontWeight: 900, fontSize: '0.78rem', letterSpacing: '0.12em', marginBottom: 28 }}>STEP {step.n}</div>
+                <h3 style={{ margin: '0 0 10px', color: T.text, fontSize: '1.18rem', fontWeight: 800 }}>{step.title}</h3>
+                <p style={{ margin: 0, color: T.textSec, lineHeight: 1.6, fontSize: '0.9rem' }}>{step.text}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: T.textSec, fontSize: '0.86rem', fontWeight: 600 }}>
+            <span style={{ color: T.red, fontWeight: 900 }}>Access control:</span>
+            <span>Direct broadcasts are restricted to Campaign Managers and Administrators.</span>
+            <span style={{ color: T.textMuted }}>•</span>
+            <span>Only citizens in the selected state receive the live alert and saved flyer.</span>
+          </div>
+        </div>
+      </section>
+
       <section id="ai-engine" style={{ 
         padding: '100px 40px', 
         maxWidth: 1140, 
@@ -928,12 +992,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, color: T.red, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Sector Spotlight: Disaster Management</div>
                   <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: T.text, margin: '0 0 14px 0' }}>Urgent Weather Warnings & Evacuation Alerts</h3>
                   <p style={{ fontSize: '0.96rem', color: T.textSec, lineHeight: 1.6, marginBottom: 20 }}>
-                    In times of flood, cyclone, or heatwaves, every second counts. CommAI provides a fast-track Emergency Broadcast trigger. Any emergency campaign automatically bypasses queue restrictions and runs a Maker-Checker flash flow.
+                    In times of flood, cyclone, or heatwaves, every second counts. Authorized Campaign Managers and Administrators can use the active Sentiment Map to launch a direct state emergency broadcast. This verified direct-response action bypasses the normal maker-checker campaign queue.
                   </p>
                   <ul style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.9rem', color: T.textSec }}>
-                    <li><b>Emergency Override:</b> Priority pipeline with guaranteed routing.</li>
-                    <li><b>High Deliverability:</b> Integrates multiple fallback SMS gateways.</li>
-                    <li><b>State-Wide Safety:</b> Reach over 100,000 citizens in minutes.</li>
+                    <li><b>State-specific targeting:</b> Only citizens in the selected state receive the alert.</li>
+                    <li><b>Four delivery channels:</b> Email, WhatsApp, SMS, and Push are selectable per broadcast.</li>
+                    <li><b>Real-time citizen response:</b> A live chime, visual popup, and saved emergency flyer appear on the audience dashboard.</li>
                   </ul>
                 </div>
               )}
@@ -1199,6 +1263,8 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {[
             { q: 'How accurate are the automated translations?', a: 'Translations are powered by domain-specific LLM models and optimized for regional contexts. For high-importance campaigns, operators can leverage our Built-in review editor to run a secondary manual check on all translations before dispatching.' },
+            { q: 'Who can send a direct state emergency alert?', a: 'Only Campaign Managers and Administrators can launch the direct broadcast from the Geographic Sentiment Map. This verified emergency action bypasses the standard maker-checker campaign queue and is scoped to citizens in the selected state.' },
+            { q: 'How do citizens receive critical alerts?', a: 'Citizens in the targeted state receive the selected Email, WhatsApp, SMS, and Push deliveries. If they are currently connected, CommAI also presents a real-time chime and visual alert; the emergency flyer remains in their dashboard Alert Centre.' },
             { q: 'What happens if a WhatsApp or SMS gateway fails?', a: 'CommAI utilizes an automated channel fallback queue. If a primary pathway (e.g. WhatsApp API) fails or experiences high latencies, the dispatcher routes the warning through secondary SMS or push relays based on recipient preferences.' },
             { q: 'Can we restrict the maximum number of daily messages?', a: 'Yes. Administrators can define safety caps in the Settings panel to limit the total volume of daily emails/texts. Once reached, scheduled campaigns are automatically paused to prevent gateway cost spikes.' },
             { q: 'How is message delivery pricing calculated?', a: 'The estimator calculates potential expenditure based on typical local costs (SMS = $0.02, WhatsApp = $0.04). No billing happens on CommAI itself; operators hook up their own Twilio, SMTP, or WhatsApp Business API credentials.' }

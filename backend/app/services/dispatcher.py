@@ -94,6 +94,12 @@ def dispatch_to_channel(
     
     Returns (success: bool, error: str, actual_channel: str)
     """
+    # Some direct-send paths (state emergencies and posters) reach this
+    # function without going through the campaign template renderer. Render at
+    # the delivery boundary so every recipient receives their own details.
+    subject = interpolate_template(subject, audience)
+    body = interpolate_template(body, audience)
+
     if channel == "email":
         if not audience.email:
             return False, "No email address on file", "email"

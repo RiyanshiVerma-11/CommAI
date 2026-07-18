@@ -37,6 +37,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [autofillPosterData, setAutofillPosterData] = useState(null);
 
   const getInitials = (name) => {
     if (!name) return 'U';
@@ -268,6 +269,7 @@ function App() {
             setActiveTab={setActiveTab}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            token={token}
           />
         );
       case 'audiences':
@@ -378,6 +380,8 @@ function App() {
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            autofillPosterData={autofillPosterData}
+            setAutofillPosterData={setAutofillPosterData}
           />
         );
       case 'sentiment_map':
@@ -389,6 +393,8 @@ function App() {
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            setActiveTab={setActiveTab}
+            setAutofillPosterData={setAutofillPosterData}
           />
         );
       case 'citizen_conversations':

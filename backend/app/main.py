@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 
 from app.config import settings
-from app.database import engine, Base, get_db
+from app.database import engine, Base, get_db, SessionLocal
 from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery
 from app.auth import get_password_hash, require_any_authenticated
+from jose import JWTError, jwt
 from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router
 from app.routes import users as users_router
 from app.routes import ai as ai_router
@@ -84,7 +85,34 @@ app.add_middleware(
 # WebSocket bulletins endpoint
 @app.websocket("/ws/bulletins")
 async def websocket_bulletins(websocket: WebSocket):
-    await bulletin_manager.connect(websocket)
+    token = websocket.query_params.get("token")
+    user_id = state = role = None
+    if token:
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id = payload.get("user_id")
+            role = payload.get("role")
+            if not user_id or role != "audience":
+                raise JWTError("Bulletin sessions must be audience users")
+
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+                audience = db.query(Audience).filter(
+                    Audience.email == user.email,
+                    Audience.is_active == True,
+                    Audience.is_deleted == False,
+                ).first() if user else None
+                if not audience:
+                    raise JWTError("No active audience profile")
+                state = audience.state
+            finally:
+                db.close()
+        except JWTError:
+            await websocket.close(code=1008)
+            return
+
+    await bulletin_manager.connect(websocket, user_id=user_id, state=state, role=role)
     try:
         while True:
             # Keep connection alive, listen for any client messages (pings)

@@ -13,27 +13,43 @@ class ConnectionManager:
     """Manages WebSocket connections for live bulletin broadcasts."""
 
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.active_connections: list[dict] = []
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, user_id: str = None, state: str = None, role: str = None):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections.append({
+            "websocket": websocket,
+            "user_id": user_id,
+            "state": state,
+            "role": role,
+        })
         logger.info(f"[WS] Client connected. Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        self.active_connections = [
+            connection
+            for connection in self.active_connections
+            if connection["websocket"] != websocket
+        ]
         logger.info(f"[WS] Client disconnected. Total: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
-        """Broadcast a JSON message to all connected clients."""
+        """Broadcast a JSON message, optionally scoped to a target state."""
         payload = json.dumps(message)
+        target_state = message.get("target_state")
         disconnected = []
         for connection in self.active_connections:
+            # Global bulletins retain the historical broadcast behaviour. A
+            # state-scoped emergency is delivered only to authenticated audience
+            # sessions whose registered audience profile is in that state.
+            if target_state and (
+                connection["role"] != "audience" or connection["state"] != target_state
+            ):
+                continue
             try:
-                await connection.send_text(payload)
+                await connection["websocket"].send_text(payload)
             except Exception:
-                disconnected.append(connection)
+                disconnected.append(connection["websocket"])
 
         # Clean up dead connections
         for conn in disconnected:

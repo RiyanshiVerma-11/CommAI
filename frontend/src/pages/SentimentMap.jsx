@@ -3,7 +3,7 @@ import GlassCard from '../components/GlassCard';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const SentimentMap = ({ user, backendUrl, headers }) => {
+const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersGroupRef = useRef(null);
@@ -18,6 +18,123 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
     urgent: 0,
     normal: 0,
   });
+
+  const [selectedStateForBroadcast, setSelectedStateForBroadcast] = useState('');
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastState, setBroadcastState] = useState('');
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastDescription, setBroadcastDescription] = useState('');
+  const [broadcastUrgency, setBroadcastUrgency] = useState('critical');
+  const [broadcastChannels, setBroadcastChannels] = useState(['email', 'whatsapp']);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [submittingBroadcast, setSubmittingBroadcast] = useState(false);
+  const [broadcastSuccess, setBroadcastSuccess] = useState('');
+  const [broadcastError, setBroadcastError] = useState('');
+
+  const indianStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat", 
+    "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", 
+    "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Jammu and Kashmir", "Ladakh", "New Delhi"
+  ];
+
+  const handleOpenModalForState = useCallback((stateName) => {
+    setBroadcastState(stateName);
+    setBroadcastTitle('');
+    setBroadcastDescription('');
+    setBroadcastUrgency('critical');
+    setBroadcastChannels(['email', 'whatsapp']);
+    setBroadcastSuccess('');
+    setBroadcastError('');
+    setShowBroadcastModal(true);
+  }, []);
+
+  const handleGenerateDescriptionWithAI = async () => {
+    if (!broadcastTitle.trim()) {
+      setBroadcastError('Please enter an alert title first.');
+      return;
+    }
+    setAiGenerating(true);
+    setBroadcastError('');
+    try {
+      const res = await fetch(`${backendUrl}/api/ai/generate`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: broadcastTitle,
+          category: 'emergency',
+          channel: 'email',
+          tone: 'urgent'
+        })
+      });
+      if (!res.ok) throw new Error('AI generation failed');
+      const data = await res.json();
+      if (data.body) {
+        setBroadcastDescription(data.body);
+      } else if (data.error) {
+        setBroadcastError(data.error);
+      }
+    } catch (err) {
+      setBroadcastError('Failed to generate description with AI. Please write manually.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleRedirectToPosterStudio = () => {
+    setAutofillPosterData({
+      title: broadcastTitle,
+      description: broadcastDescription,
+      category: 'emergency'
+    });
+    setActiveTab('poster_studio');
+  };
+
+  const handleBroadcastSubmit = async (e) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastDescription.trim()) return;
+
+    setSubmittingBroadcast(true);
+    setBroadcastSuccess('');
+    setBroadcastError('');
+
+    try {
+      const res = await fetch(`${backendUrl}/api/sentiment-map/broadcast-emergency`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          state: broadcastState,
+          title: broadcastTitle,
+          description: broadcastDescription,
+          channels: broadcastChannels,
+          urgency: broadcastUrgency
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to broadcast emergency alert');
+      }
+
+      setBroadcastSuccess(`Emergency alert successfully broadcasted to ${broadcastState}!`);
+      setTimeout(() => {
+        setShowBroadcastModal(false);
+        setBroadcastSuccess('');
+        setBroadcastTitle('');
+        setBroadcastDescription('');
+      }, 3000);
+    } catch (err) {
+      setBroadcastError(err.message);
+    } finally {
+      setSubmittingBroadcast(false);
+    }
+  };
 
   const [theme, setTheme] = useState(document.documentElement.classList.contains('light-theme') ? 'light' : 'dark');
 
@@ -147,23 +264,55 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
               ${state.recent_subjects.map(sub => `<li style="margin-bottom: 2px;">${sub}</li>`).join('')}
             </ul>
           </div>
+          <button
+            class="popup-broadcast-btn"
+            data-state="${state.state}"
+            style="
+              margin-top: 10px;
+              width: 100%;
+              padding: 7px 10px;
+              border: 1.5px solid rgba(239, 68, 68, 0.5);
+              border-radius: 8px;
+              background: rgba(239, 68, 68, 0.12);
+              color: hsl(0, 84%, 65%);
+              font-weight: 700;
+              font-size: 0.72rem;
+              cursor: pointer;
+              letter-spacing: 0.02em;
+              transition: background 0.2s;
+            "
+          >🚨 Launch State Emergency Alert</button>
         </div>
       `;
 
       circle.bindPopup(popupHtml, {
         className: 'glass-leaflet-popup',
         closeButton: false,
-        maxWidth: 240,
+        maxWidth: 260,
       });
 
       circle.on('mouseover', function (e) {
         this.openPopup();
       });
 
+      circle.on('popupopen', function () {
+        const popup = this.getPopup();
+        const container = popup.getElement();
+        if (container) {
+          const btn = container.querySelector('.popup-broadcast-btn');
+          if (btn) {
+            btn.onclick = () => {
+              handleOpenModalForState(btn.getAttribute('data-state'));
+              this.closePopup();
+            };
+          }
+        }
+      });
+
       markersGroupRef.current.addLayer(circle);
     });
 
-  }, [mapData, loading, error, theme]);
+  }, [mapData, loading, error, theme, handleOpenModalForState]);
 
   // Inject Leaflet popup customized styles into the head
   useEffect(() => {
@@ -226,8 +375,44 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
         </GlassCard>
 
         {/* Stats and Urgency Breakdown Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
           
+          {/* Quick Broadcast Dropdown */}
+          <GlassCard style={{ padding: '20px' }}>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '12px', color: 'hsl(var(--danger))' }}>
+              🚨 Quick State Broadcast
+            </h4>
+            <p style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginBottom: '12px', lineHeight: 1.4 }}>
+              Select a state and directly broadcast an emergency alert to all citizens in that region.
+            </p>
+            <select
+              className="form-control"
+              value={selectedStateForBroadcast}
+              onChange={(e) => setSelectedStateForBroadcast(e.target.value)}
+              style={{ width: '100%', marginBottom: '10px', fontSize: '0.85rem' }}
+            >
+              <option value="">— Select a State —</option>
+              {indianStates.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button
+              className="btn btn-primary"
+              disabled={!selectedStateForBroadcast}
+              onClick={() => handleOpenModalForState(selectedStateForBroadcast)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                background: selectedStateForBroadcast ? 'hsl(var(--danger))' : 'rgba(239,68,68,0.2)',
+                borderColor: selectedStateForBroadcast ? 'hsl(var(--danger))' : 'transparent',
+                cursor: selectedStateForBroadcast ? 'pointer' : 'not-allowed',
+                opacity: selectedStateForBroadcast ? 1 : 0.5,
+              }}
+            >
+              🚨 Broadcast Alert to State
+            </button>
+          </GlassCard>
+
           <GlassCard style={{ padding: '20px' }}>
             <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '16px', color: 'hsl(var(--primary))' }}>
               Platform Sentiment Summary
@@ -270,6 +455,7 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
                 mapData.map((item, idx) => (
                   <div
                     key={idx}
+                    onClick={() => handleOpenModalForState(item.state)}
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -278,6 +464,8 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
                       borderRadius: '6px',
                       background: 'var(--border-color-glass)',
                       fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
                       borderLeft: `3px solid ${
                         item.sentiment === 'critical'
                           ? 'hsl(0, 84%, 60%)'
@@ -300,6 +488,226 @@ const SentimentMap = ({ user, backendUrl, headers }) => {
 
         </div>
       </div>
+
+      {/* Emergency Broadcast Modal */}
+      {showBroadcastModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <GlassCard style={{ padding: '32px', width: '100%', maxWidth: '560px', position: 'relative' }}>
+            <button 
+              onClick={() => setShowBroadcastModal(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                color: 'hsl(var(--text-muted))',
+                fontSize: '1.4rem',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              &times;
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+              <div style={{ 
+                background: 'rgba(239, 68, 68, 0.12)', 
+                borderRadius: '10px', 
+                width: '40px', 
+                height: '40px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '1.2rem'
+              }}>🚨</div>
+              <div>
+                <h3 style={{ margin: 0, fontWeight: 800, color: 'hsl(var(--danger))', fontSize: '1.1rem' }}>Broadcast Emergency Alert</h3>
+                <p style={{ margin: 0, color: 'hsl(var(--text-muted))', fontSize: '0.78rem' }}>Target: <strong style={{ color: 'hsl(var(--text-primary))' }}>{broadcastState}</strong></p>
+              </div>
+            </div>
+            <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.82rem', marginBottom: '20px', lineHeight: 1.4 }}>
+              This alert will be broadcast to all registered citizens in <strong>{broadcastState}</strong> via selected channels and appear as a real-time notification on their dashboards.
+            </p>
+
+            {broadcastSuccess ? (
+              <div style={{
+                padding: '18px',
+                background: 'rgba(34, 197, 94, 0.08)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                borderRadius: '10px',
+                color: 'hsl(var(--accent))',
+                fontSize: '0.92rem',
+                textAlign: 'center',
+                fontWeight: '600'
+              }}>
+                ✓ {broadcastSuccess}
+              </div>
+            ) : (
+              <form onSubmit={handleBroadcastSubmit}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Alert Title / Subject</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Flash Flood Warning in Pune District"
+                    value={broadcastTitle}
+                    onChange={e => setBroadcastTitle(e.target.value)}
+                    required
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem', margin: 0 }}>Alert Description</label>
+                    <button
+                      type="button"
+                      onClick={handleGenerateDescriptionWithAI}
+                      disabled={aiGenerating || !broadcastTitle.trim()}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid hsl(var(--primary) / 40%)',
+                        background: 'hsl(var(--primary) / 8%)',
+                        color: 'hsl(var(--primary))',
+                        fontWeight: '700',
+                        fontSize: '0.72rem',
+                        cursor: aiGenerating || !broadcastTitle.trim() ? 'not-allowed' : 'pointer',
+                        opacity: aiGenerating || !broadcastTitle.trim() ? 0.5 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      {aiGenerating ? (
+                        <>
+                          <span className="spinner-dot" style={{ width: '10px', height: '10px', borderRadius: '50%', border: '2px solid hsl(var(--primary))', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin 0.8s linear infinite' }}></span>
+                          Generating...
+                        </>
+                      ) : '✨ Generate with AI'}
+                    </button>
+                  </div>
+                  <textarea
+                    className="form-control"
+                    placeholder="Detailed emergency alert message for citizens..."
+                    value={broadcastDescription}
+                    onChange={e => setBroadcastDescription(e.target.value)}
+                    required
+                    rows={4}
+                    style={{ width: '100%', resize: 'none' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Urgency Level</label>
+                    <select
+                      className="form-control"
+                      value={broadcastUrgency}
+                      onChange={e => setBroadcastUrgency(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="critical">🚨 Critical</option>
+                      <option value="urgent">⚠️ Urgent</option>
+                      <option value="normal">✓ Normal</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Channels</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                      {['email', 'whatsapp', 'sms', 'push'].map(ch => (
+                        <label key={ch} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', cursor: 'pointer', color: 'hsl(var(--text-secondary))' }}>
+                          <input
+                            type="checkbox"
+                            checked={broadcastChannels.includes(ch)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setBroadcastChannels(prev => [...prev, ch]);
+                              } else {
+                                setBroadcastChannels(prev => prev.filter(c => c !== ch));
+                              }
+                            }}
+                            style={{ accentColor: 'hsl(var(--primary))' }}
+                          />
+                          {ch === 'email' ? '📧 Email' : ch === 'whatsapp' ? '💬 WhatsApp' : ch === 'sms' ? '📱 SMS' : '🚀 Push'}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {broadcastError && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: '8px',
+                    color: 'hsl(var(--danger))',
+                    fontSize: '0.82rem',
+                    marginBottom: '14px',
+                    fontWeight: '500'
+                  }}>
+                    {broadcastError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    disabled={submittingBroadcast || !broadcastTitle.trim() || !broadcastDescription.trim()}
+                    style={{ 
+                      flex: 1, 
+                      padding: '12px', 
+                      background: 'hsl(var(--danger))', 
+                      borderColor: 'hsl(var(--danger))', 
+                      fontWeight: '700',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    {submittingBroadcast ? 'Broadcasting Alert...' : '🚨 Broadcast Now'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRedirectToPosterStudio}
+                    disabled={!broadcastTitle.trim()}
+                    className="btn"
+                    style={{
+                      padding: '12px 16px',
+                      background: 'hsl(var(--primary) / 10%)',
+                      border: '1px solid hsl(var(--primary) / 30%)',
+                      color: 'hsl(var(--primary))',
+                      fontWeight: '700',
+                      fontSize: '0.82rem',
+                      borderRadius: '8px',
+                      cursor: !broadcastTitle.trim() ? 'not-allowed' : 'pointer',
+                      opacity: !broadcastTitle.trim() ? 0.5 : 1,
+                    }}
+                    title="Open Poster Studio with these alert details pre-filled"
+                  >
+                    🎨 Create Poster
+                  </button>
+                </div>
+              </form>
+            )}
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const PosterStudio = ({ user, backendUrl, headers }) => {
+const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofillPosterData }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    if (autofillPosterData) {
+      setTitle(autofillPosterData.title || '');
+      setDescription(autofillPosterData.description || '');
+      setCategory(autofillPosterData.category || 'emergency');
+      setAutofillPosterData(null);
+    }
+  }, [autofillPosterData, setAutofillPosterData]);
   const [category, setCategory] = useState('awareness');
   const [tone, setTone] = useState('formal');
   const [language, setLanguage] = useState(user?.preferred_languages?.[0] || 'English');

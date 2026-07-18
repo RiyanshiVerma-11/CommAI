@@ -4,14 +4,17 @@ geographic sentiment visualization on an interactive India map.
 """
 import json
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
+from pydantic import BaseModel, Field, field_validator
 
 from app.database import get_db
-from app.models import EmergencyContact, User, Audience
+from app.models import EmergencyContact, User, Audience, Poster
 from app.auth import require_manager_or_higher
+from app.services.websocket_manager import bulletin_manager
+from app.services.poster_service import generate_poster_prompt, generate_poster_url
 
 logger = logging.getLogger("commai.sentiment_map")
 
@@ -152,3 +155,155 @@ def get_sentiment_map_data(
     # Sort by total descending
     result.sort(key=lambda x: x["total"], reverse=True)
     return result
+
+
+class StateEmergencyBroadcastSchema(BaseModel):
+    state: str = Field(min_length=2, max_length=100)
+    title: str = Field(min_length=3, max_length=255)
+    description: str = Field(min_length=5, max_length=5000)
+    channels: List[Literal["email", "whatsapp", "sms", "push"]] = Field(
+        default_factory=lambda: ["email", "whatsapp", "sms", "push"], min_length=1
+    )
+    urgency: Literal["critical", "urgent", "normal"] = "critical"
+
+    @field_validator("state")
+    @classmethod
+    def validate_state(cls, value: str) -> str:
+        state = value.strip()
+        if state not in STATE_COORDINATES:
+            raise ValueError("State must be a supported Indian state or union territory")
+        return state
+
+    @field_validator("title", "description")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be blank")
+        return value
+
+    @field_validator("channels")
+    @classmethod
+    def unique_channels(cls, value: List[str]) -> List[str]:
+        return list(dict.fromkeys(value))
+
+
+def dispatch_state_emergency_in_background(
+    audience_ids: List[str],
+    title: str,
+    description: str,
+    channels: List[str]
+):
+    import logging
+    from app.database import SessionLocal
+    from app.models import Audience
+    from app.services.dispatcher import dispatch_to_channel
+
+    db = SessionLocal()
+    try:
+        # The IDs were resolved when the poster was created, so delivery and
+        # persistent-flyer visibility use the exact same state audience.
+        audience_members = db.query(Audience).filter(
+            Audience.id.in_(audience_ids),
+            Audience.is_deleted == False,
+            Audience.is_active == True
+        ).all()
+
+        if not audience_members:
+            logging.getLogger("commai").info("[MAP-EMERGENCY] No active target audience members remain")
+            return
+
+        subject = f"🚨 EMERGENCY ALERT: {title}"
+        body = description
+
+        logging.getLogger("commai").info(f"[MAP-EMERGENCY] Start dispatching alert to {len(audience_members)} users via {channels}")
+        for member in audience_members:
+            for channel in channels:
+                try:
+                    dispatch_to_channel(channel, member, subject, body)
+                except Exception as ex:
+                    logging.getLogger("commai").error(f"[MAP-EMERGENCY] Failed channel {channel} for {member.email or member.phone}: {ex}")
+    except Exception as e:
+        logging.getLogger("commai").error(f"[MAP-EMERGENCY] Exception in background state dispatch: {e}")
+    finally:
+        db.close()
+
+
+@router.post("/broadcast-emergency")
+async def broadcast_state_emergency(
+    request: StateEmergencyBroadcastSchema,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager_or_higher),
+):
+    """
+    Directly broadcast a critical emergency alert targeting a specific state/region.
+    Creates a Poster record with a dynamic AI-generated background, sends real-time
+    WebSocket push to citizens, and dispatches via communication channels.
+    """
+    import datetime
+
+    # Resolve the state audience before saving the poster. These same IDs make
+    # the flyer persistently visible only to the intended citizens.
+    audience_members = db.query(Audience).filter(
+        Audience.state == request.state,
+        Audience.is_deleted == False,
+        Audience.is_active == True,
+    ).all()
+    audience_ids = [member.id for member in audience_members]
+
+    # 1. Generate visual background prompt
+    prompt = generate_poster_prompt(
+        title=request.title,
+        description=request.description,
+        category="emergency",
+        tone="urgent",
+        language="English",
+    )
+
+    # 2. Get Pollinations AI image URL
+    image_url = generate_poster_url(prompt) if prompt else "https://image.pollinations.ai/prompt/emergency%20alert"
+
+    # 3. Create Poster database record
+    db_poster = Poster(
+        title=request.title,
+        description=request.description,
+        category="emergency",
+        tone="urgent",
+        language="English",
+        image_url=image_url,
+        prompt_used=prompt or "Fallback emergency prompt"
+    )
+    db_poster.target_audience_ids = json.dumps(audience_ids)
+    db_poster.target_segment_id = None
+    db.add(db_poster)
+    db.commit()
+    db.refresh(db_poster)
+
+    # 4. Broadcast live notification to connected clients via WebSockets
+    payload = {
+        "id": db_poster.id,
+        "type": "campaign_alert",
+        "title": f"🚨 EMERGENCY: {request.title}",
+        "message": request.description,
+        "urgency": request.urgency,
+        "target_state": request.state,
+        "created_at": datetime.datetime.utcnow().isoformat()
+    }
+    await bulletin_manager.broadcast(payload)
+
+    # 5. Launch background channel dispatch thread
+    background_tasks.add_task(
+        dispatch_state_emergency_in_background,
+        audience_ids,
+        request.title,
+        request.description,
+        request.channels
+    )
+
+    return {
+        "status": "success",
+        "message": "Emergency alert broadcasted successfully!",
+        "poster_id": db_poster.id,
+        "target_count": len(audience_ids),
+    }

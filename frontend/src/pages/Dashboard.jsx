@@ -1,13 +1,29 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
+const formatAlertDateTime = (timestamp) => {
+  if (!timestamp) return '';
+  // Earlier API responses stored UTC without an offset. Treat those values as
+  // UTC so an emergency alert is never displayed in the server's local time.
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(timestamp);
+  const date = new Date(hasTimezone ? timestamp : `${timestamp}Z`);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)} IST`;
+};
+
+const Dashboard = ({ user, setActiveTab, backendUrl, headers, token }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [posters, setPosters] = useState([]);
   const [fullscreenPoster, setFullscreenPoster] = useState(null);
   const [newPosterNotification, setNewPosterNotification] = useState(null);
+  const [alertTab, setAlertTab] = useState('emergency');
+  const [liveCriticalAlerts, setLiveCriticalAlerts] = useState([]);
 
   // Emergency modal state
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
@@ -114,7 +130,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
     if (user?.role !== 'audience') return;
 
     const rawUrl = backendUrl || 'http://localhost:8001';
-    const wsUrl = rawUrl.replace(/^http/, 'ws') + '/ws/bulletins';
+    const wsUrl = rawUrl.replace(/^http/, 'ws') + `/ws/bulletins?token=${encodeURIComponent(token)}`;
 
     let ws;
     let reconnectTimeout;
@@ -128,6 +144,20 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
           
           if (data.type === 'campaign_alert') {
             playChime(data.urgency || 'normal');
+
+            if (data.urgency === 'critical' || data.urgency === 'urgent') {
+              setLiveCriticalAlerts(current => {
+                if (current.some(alert => alert.id === data.id)) return current;
+                return [{
+                  id: data.id,
+                  title: data.title || 'Emergency alert',
+                  description: data.message || data.description || '',
+                  urgency: data.urgency,
+                  created_at: data.created_at || new Date().toISOString(),
+                }, ...current].slice(0, 20);
+              });
+              setAlertTab('emergency');
+            }
             
             setNewPosterNotification({
               id: data.id,
@@ -155,7 +185,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
-  }, [backendUrl, user?.role, fetchPosters, playChime]);
+  }, [backendUrl, token, user?.role, fetchPosters, playChime]);
 
 
   if (loading) {
@@ -191,8 +221,18 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
 
   // ----- Audience-specific portal -----
   if (user.role === 'audience') {
+    const emergencyFlyers = posters.filter(
+      poster => poster.category === 'emergency' || poster.tone === 'urgent'
+    );
+    const posterIds = new Set(emergencyFlyers.map(poster => poster.id));
+    const emergencyAlerts = [
+      ...liveCriticalAlerts.filter(alert => !posterIds.has(alert.id)),
+      ...emergencyFlyers,
+    ];
+    const displayedAlerts = alertTab === 'emergency' ? emergencyAlerts : posters;
+
     return (
-      <div className="animate-fade-in">
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ marginBottom: '36px' }}>
           <h1 style={{ fontSize: '2.4rem', fontWeight: '800', marginBottom: '8px', letterSpacing: '-0.03em', color: 'hsl(var(--text-primary))' }}>
             Welcome, {user.full_name}
@@ -203,7 +243,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
         </div>
 
         {/* Profile Summary + Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px', order: 2 }}>
           <GlassCard style={{ padding: '28px' }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '20px', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
               Your Profile
@@ -433,9 +473,9 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px', order: 1 }}>
           {/* Recent Communications */}
-          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px' }}>
+          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px', gridColumn: 2, gridRow: 1 }}>
             <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
               Recent Communications
             </h2>
@@ -460,25 +500,53 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
             )}
           </GlassCard>
 
-          {/* Warning Flyers & Visual Posters */}
-          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px', display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
-              Warning Flyers & Visual Posters
-            </h2>
-            {posters.length === 0 ? (
+          {/* Citizen alert centre: urgent alerts are persistent and separated from regular flyers. */}
+          <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px', display: 'flex', flexDirection: 'column', gridColumn: 1, gridRow: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '1.3rem', margin: 0, fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>
+                Your Alerts
+              </h2>
+              {emergencyAlerts.length > 0 && (
+                <span style={{ background: 'hsl(var(--danger))', color: 'white', borderRadius: '999px', fontSize: '0.72rem', fontWeight: '800', padding: '4px 9px' }}>
+                  {emergencyAlerts.length} {emergencyAlerts.length === 1 ? 'EMERGENCY' : 'EMERGENCIES'}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+              <button
+                type="button"
+                onClick={() => setAlertTab('emergency')}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${alertTab === 'emergency' ? 'hsl(var(--danger))' : 'var(--border-color-glass)'}`, background: alertTab === 'emergency' ? 'hsl(var(--danger) / 12%)' : 'transparent', color: alertTab === 'emergency' ? 'hsl(var(--danger))' : 'hsl(var(--text-muted))', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}
+              >
+                🚨 Emergency Alerts {emergencyAlerts.length ? `(${emergencyAlerts.length})` : ''}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAlertTab('all')}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${alertTab === 'all' ? 'hsl(var(--primary))' : 'var(--border-color-glass)'}`, background: alertTab === 'all' ? 'hsl(var(--primary) / 12%)' : 'transparent', color: alertTab === 'all' ? 'hsl(var(--primary))' : 'hsl(var(--text-muted))', fontWeight: '800', fontSize: '0.78rem', cursor: 'pointer' }}
+              >
+                All Flyers ({posters.length})
+              </button>
+            </div>
+            {displayedAlerts.length === 0 ? (
               <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '36px 0', fontSize: '0.92rem', fontWeight: '500' }}>
-                No posters matching your preferred language are available.
+                {alertTab === 'emergency'
+                  ? 'No active emergency alerts for your area.'
+                  : 'No flyers matching your preferred language are available.'}
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '350px' }}>
-                {posters.map((poster, index) => (
-                  <div key={index} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color-glass)', flexShrink: 0, background: '#090b14' }}>
-                      <img src={poster.image_url} alt={poster.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {displayedAlerts.map((poster) => (
+                  <div key={poster.id} className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', borderRadius: '10px', background: alertTab === 'emergency' ? 'hsl(var(--danger) / 6%)' : 'rgba(255,255,255,0.02)', border: `1px solid ${alertTab === 'emergency' ? 'hsl(var(--danger) / 32%)' : 'rgba(255,255,255,0.04)'}` }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color-glass)', flexShrink: 0, background: '#090b14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                      {poster.image_url
+                        ? <img src={poster.image_url} alt={poster.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : '🚨'}
                     </div>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>{poster.title}</h4>
                       <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{poster.description.slice(0, 70)}...</p>
+                      {poster.created_at && <p style={{ margin: '5px 0 0', fontSize: '0.68rem', color: 'hsl(var(--text-muted))' }}>{formatAlertDateTime(poster.created_at)}</p>}
                       <button
                         onClick={() => setFullscreenPoster(poster)}
                         style={{
@@ -537,11 +605,15 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers }) => {
                 boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
               }}
             >
-              <img 
-                src={fullscreenPoster.image_url} 
-                alt={fullscreenPoster.title} 
-                style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '8px', objectFit: 'contain' }} 
-              />
+              {fullscreenPoster.image_url ? (
+                <img
+                  src={fullscreenPoster.image_url}
+                  alt={fullscreenPoster.title}
+                  style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '8px', objectFit: 'contain' }}
+                />
+              ) : (
+                <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'hsl(var(--danger) / 12%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'hsl(var(--danger))' }}>🚨</div>
+              )}
               <h3 style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{fullscreenPoster.title}</h3>
               <p style={{ color: 'hsl(var(--text-muted))', marginTop: '8px', fontSize: '0.88rem', textAlign: 'center', lineHeight: '1.4' }}>{fullscreenPoster.description}</p>
               <button 

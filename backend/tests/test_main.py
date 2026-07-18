@@ -38,6 +38,40 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
+
+def test_direct_channel_dispatch_interpolates_recipient_placeholders(monkeypatch):
+    """Direct state/poster messages must render recipient fields before email delivery."""
+    from app.models import Audience
+    from app.services import dispatcher
+
+    recipient = Audience(
+        first_name="Asha", last_name="Patel", email="asha@example.test",
+        phone="9000000000", preferred_languages='["English"]', occupation="Resident",
+        age=32, gender="Female", state="Maharashtra", district="Pune", city="Pune",
+        preferred_channels='["email"]',
+    )
+    captured = {}
+
+    def capture_email(to_email, subject, body, **kwargs):
+        captured.update({"to": to_email, "subject": subject, "body": body})
+        return True, ""
+
+    monkeypatch.setattr(dispatcher, "send_email", capture_email)
+    success, _, channel = dispatcher.dispatch_to_channel(
+        "email",
+        recipient,
+        "Emergency for {{first_name}} in {city}",
+        "{{first_name}} {{last_name}}, evacuate {city} in {state}.",
+    )
+
+    assert success is True
+    assert channel == "email"
+    assert captured == {
+        "to": "asha@example.test",
+        "subject": "Emergency for Asha in Pune",
+        "body": "Asha Patel, evacuate Pune in Maharashtra.",
+    }
+
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
     # Create tables
@@ -1133,6 +1167,62 @@ class TestSupportQueries:
         map_resp = client.get("/api/sentiment-map/data", headers=manager_headers)
         assert map_resp.status_code == 200
         assert isinstance(map_resp.json(), list)
+
+        # 2b. State emergency broadcasts are manager-only and persist only for
+        # the selected state's audience.
+        from app.models import Audience, Poster
+        from app.routes import sentiment_map
+
+        db = TestingSessionLocal()
+        citizen = db.query(Audience).filter(Audience.email == settings.AUDIENCE_EMAIL).first()
+        if not citizen:
+            citizen = Audience(
+                first_name="State", last_name="Citizen", email=settings.AUDIENCE_EMAIL,
+                phone="9000000001", preferred_languages=json.dumps(["Hindi"]),
+                occupation="Resident", age=30, gender="Other", state="Maharashtra",
+                district="Pune", city="Pune", preferred_channels=json.dumps(["email"]),
+                is_active=True, is_deleted=False,
+            )
+            db.add(citizen)
+            db.commit()
+        citizen_id = citizen.id
+        db.close()
+
+        delivered_payloads = []
+
+        async def capture_bulletin(payload):
+            delivered_payloads.append(payload)
+
+        monkeypatch.setattr(sentiment_map, "generate_poster_prompt", lambda **kwargs: "emergency visual prompt")
+        monkeypatch.setattr(sentiment_map, "generate_poster_url", lambda prompt: "https://example.test/emergency.png")
+        monkeypatch.setattr(sentiment_map.bulletin_manager, "broadcast", capture_bulletin)
+        monkeypatch.setattr(sentiment_map, "dispatch_state_emergency_in_background", lambda *args: None)
+        import app.database as database_module
+        monkeypatch.setattr(database_module, "SessionLocal", TestingSessionLocal)
+
+        denied_resp = client.post(
+            "/api/sentiment-map/broadcast-emergency",
+            json={"state": "Maharashtra", "title": "Flood warning", "description": "Move to higher ground immediately.", "channels": ["email"]},
+            headers=audience_headers,
+        )
+        assert denied_resp.status_code == 403
+
+        broadcast_resp = client.post(
+            "/api/sentiment-map/broadcast-emergency",
+            json={"state": "Maharashtra", "title": "Flood warning", "description": "Move to higher ground immediately.", "channels": ["email"], "urgency": "critical"},
+            headers=manager_headers,
+        )
+        assert broadcast_resp.status_code == 200
+        assert broadcast_resp.json()["target_count"] >= 1
+        assert delivered_payloads[-1]["target_state"] == "Maharashtra"
+
+        db = TestingSessionLocal()
+        saved_poster = db.query(Poster).filter(Poster.id == broadcast_resp.json()["poster_id"]).first()
+        assert citizen_id in json.loads(saved_poster.target_audience_ids)
+        db.close()
+
+        targeted_flyers = client.get("/api/poster/available", headers=audience_headers)
+        assert any(p["id"] == saved_poster.id for p in targeted_flyers.json())
 
         # 3. Test Webhook Citizen Reply RAG Pipeline (requires valid audience phone/email match)
         # Seed an audience for mapping

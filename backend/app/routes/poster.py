@@ -9,6 +9,7 @@ Architecture: Hybrid rendering
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
 from typing import Optional, List
+from datetime import timezone
 
 from app.auth import require_any_authenticated
 from app.services.poster_service import (
@@ -18,6 +19,11 @@ from app.services.poster_service import (
 )
 
 router = APIRouter(prefix="/poster", tags=["Poster Generation"])
+
+
+def utc_isoformat(value) -> str:
+    """Serialize legacy naïve database timestamps as explicit UTC ISO-8601."""
+    return value.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class PosterRequest(BaseModel):
@@ -231,8 +237,9 @@ def get_available_posters(
                     if aud.id not in seg_member_ids:
                         continue
 
-            # 3. Language filter
-            if target_languages and p.language not in target_languages:
+            # 3. Emergency flyers must remain visible to their explicitly
+            # targeted citizens even if their portal language differs.
+            if target_languages and p.category != "emergency" and p.language not in target_languages:
                 continue
 
             filtered_posters.append(p)
@@ -247,7 +254,7 @@ def get_available_posters(
                 "tone": p.tone,
                 "language": p.language,
                 "image_url": f"{settings.BACKEND_URL}/api/poster/{p.id}/image" if p.image_url.startswith("data:image/") else p.image_url,
-                "created_at": p.created_at.isoformat()
+                "created_at": utc_isoformat(p.created_at)
             }
             for p in filtered_posters[:20]
         ]
@@ -426,4 +433,3 @@ def get_poster_image(id: str):
             return RedirectResponse(url=image_url)
     finally:
         db.close()
-

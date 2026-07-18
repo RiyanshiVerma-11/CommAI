@@ -92,6 +92,14 @@ def setup_database():
             os.remove("./test_comm_platform.db")
         except PermissionError:
             pass
+            
+    # Delete test settings override file
+    test_settings_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "settings_test.json")
+    if os.path.exists(test_settings_path):
+        try:
+            os.remove(test_settings_path)
+        except Exception:
+            pass
 
 def get_auth_headers(email: str, password: str) -> dict:
     response = client.post(

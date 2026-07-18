@@ -74,7 +74,9 @@ class Settings:
 
     def load_overrides(self):
         import json
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "settings.json")
+        import sys
+        config_name = "settings_test.json" if "pytest" in sys.modules else "settings.json"
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), config_name)
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r") as f:
@@ -112,7 +114,9 @@ class Settings:
 
     def save_overrides(self, data: dict):
         import json
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "settings.json")
+        import sys
+        config_name = "settings_test.json" if "pytest" in sys.modules else "settings.json"
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), config_name)
         try:
             # Merge with existing file if it exists
             existing = {}

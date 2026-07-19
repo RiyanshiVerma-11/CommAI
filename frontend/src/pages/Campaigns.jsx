@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const Campaigns = ({ user, backendUrl, headers }) => {
+const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'create'
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -851,44 +851,18 @@ const Campaigns = ({ user, backendUrl, headers }) => {
 
   const handleGenerateCampaignPoster = async () => {
     if (!formTitle.trim()) return;
-    setInlinePosterLoading(true);
-    setInlinePosterError('');
-    setInlinePosterUrl('');
     const posterDesc = customBody || formDesc || formObjective || "Public awareness notice warning.";
     const posterCat = formType === 'emergency_alert' ? 'emergency' : 'awareness';
-    try {
-      const response = await fetch(`${backendUrl}/api/poster/generate`, {
-        method: 'POST',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formTitle,
-          description: posterDesc,
-          category: posterCat,
-          tone: inlinePosterTone,
-          language: inlinePosterLanguage
-        })
+    
+    if (setAutofillPosterData && setActiveTab) {
+      setAutofillPosterData({
+        title: formTitle,
+        description: posterDesc,
+        category: posterCat,
+        tone: inlinePosterTone,
+        language: inlinePosterLanguage
       });
-      if (!response.ok) {
-        throw new Error('Failed to generate campaign poster');
-      }
-      const data = await response.json();
-      
-      const compiledDataUrl = await overlayTextOnPoster(
-        data.image_url,
-        formTitle,
-        posterDesc,
-        posterCat,
-        inlinePosterLanguage
-      );
-
-      setInlinePosterUrl(compiledDataUrl);
-    } catch (err) {
-      setInlinePosterError(err.message || 'An error occurred while generating the poster.');
-    } finally {
-      setInlinePosterLoading(false);
+      setActiveTab('poster_studio');
     }
   };
 
@@ -2579,10 +2553,9 @@ const Campaigns = ({ user, backendUrl, headers }) => {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleGenerateCampaignPoster}
-                  disabled={inlinePosterLoading}
                   style={{ width: '100%', padding: '10px', fontSize: '0.85rem', fontWeight: '600' }}
                 >
-                  {inlinePosterLoading ? 'Generating Visual Poster...' : '✨ Generate & Attach Warning Flyer'}
+                  ✨ Generate Flyer in Poster Studio &rarr;
                 </button>
 
                 {inlinePosterError && (

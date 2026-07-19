@@ -308,6 +308,8 @@ function App() {
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            setActiveTab={setActiveTab}
+            setAutofillPosterData={setAutofillPosterData}
           />
         );
       case 'approvals':

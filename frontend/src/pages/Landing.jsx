@@ -9,6 +9,58 @@ import React, { useState, useEffect } from 'react';
 
 const LANGS = ['Hindi', 'Marathi', 'Tamil', 'Bengali', 'Telugu', 'Kannada'];
 
+const FOOTER_RESOURCES = {
+  'API Documentation': {
+    eyebrow: 'Developer tools',
+    title: 'API Documentation',
+    body: 'CommAI APIs use JSON payloads and bearer-token authentication. Integrate audience segments, templates, campaigns, delivery status, and audit records with your approved service account.',
+    details: ['Base URL: your CommAI deployment URL', 'Authentication: Bearer token', 'Formats: JSON requests and responses'],
+  },
+  'Developer sandbox': {
+    eyebrow: 'Developer tools',
+    title: 'Developer sandbox',
+    body: 'Use the interactive campaign simulator on this page to model audience reach, language selection, and delivery channels before connecting a production integration.',
+    details: ['No messages are sent from the simulator', 'Choose a segment, language, and channels', 'Estimated reach updates from your selected channels'],
+    action: { label: 'Open interactive sandbox', target: 'simulator' },
+  },
+  Changelog: {
+    eyebrow: 'Developer tools',
+    title: 'Changelog',
+    body: 'Recent platform updates include the interactive campaign simulator, delivery reach estimator, citizen feedback workflows, and integration diagnostics for connected services.',
+    details: ['Campaign planning and message safety improvements', 'Expanded multilingual communication support', 'Operational diagnostics and audit-trail enhancements'],
+  },
+  'Integration Diagnostics': {
+    eyebrow: 'Developer tools',
+    title: 'Integration Diagnostics',
+    body: 'Diagnostics are available to authorised operators in the platform settings. They check service connectivity and help validate SMTP, WhatsApp gateway, and AI service configuration.',
+    details: ['Available after operator sign-in', 'Checks connection status and latency', 'Does not dispatch campaigns or messages'],
+  },
+  'DPDP Act Privacy Policy': {
+    eyebrow: 'Compliance',
+    title: 'DPDP Act Privacy Policy',
+    body: 'CommAI processes personal data only for authorised public-information and campaign-delivery purposes. Access is role-based, activity is auditable, and data handling follows applicable DPDP obligations.',
+    details: ['Purpose limitation and data minimisation', 'Role-based access and audit logs', 'Consent and communication preferences are recorded'],
+  },
+  'Terms of Service': {
+    eyebrow: 'Compliance',
+    title: 'Terms of Service',
+    body: 'Use CommAI only for authorised, lawful communications. Account holders are responsible for campaign content, recipient permissions, and protecting their credentials.',
+    details: ['Use approved audience segments only', 'Keep account credentials secure', 'Follow applicable communications and privacy requirements'],
+  },
+  'Maker-Checker Guidelines': {
+    eyebrow: 'Compliance',
+    title: 'Maker-Checker Guidelines',
+    body: 'High-impact and emergency campaigns are subject to a four-eye review. A maker prepares the campaign, while an authorised checker independently approves or rejects it before dispatch.',
+    details: ['Required for emergency and high-reach campaigns', 'Approval decisions are recorded in the audit trail', 'Rejected campaigns must be corrected and resubmitted'],
+  },
+  'Consent registers': {
+    eyebrow: 'Compliance',
+    title: 'Consent registers',
+    body: 'Consent registers help operators maintain a traceable record of recipient communication permissions and preferences for each approved communication channel.',
+    details: ['Record consent status by recipient and channel', 'Respect opt-outs and suppression lists', 'Review registers before sending campaigns'],
+  },
+};
+
 const TRANSLATIONS = {
   farmers: {
     Hindi:   'प्रिय किसान, कृषि विभाग ने भारी बारिश की चेतावनी दी है। अपनी फसल सुरक्षित करें।',
@@ -181,6 +233,7 @@ function smoothScrollTo(id) {
 
 export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
   const [landingTheme, setLandingTheme] = useState(localStorage.getItem('landing-theme') || 'dark');
+  const [activeResource, setActiveResource] = useState(null);
   /* ── enable page scroll ── */
   useEffect(() => {
     document.documentElement.classList.add('landing-active');
@@ -1367,12 +1420,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {['API Documentation', 'Developer sandbox', 'Changelog', 'Integration Diagnostics'].map(link => (
-                  <a key={link} href="#" onClick={e => e.preventDefault()}
-                    style={{ textDecoration: 'none', color: '#ffffff', fontSize: '0.84rem', fontWeight: 500, transition: 'color 0.15s' }}
+                  <button key={link} type="button" onClick={() => setActiveResource(link)}
+                    style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: '#ffffff', fontFamily: 'inherit', fontSize: '0.84rem', fontWeight: 500, cursor: 'pointer', transition: 'color 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
                     onMouseLeave={e => e.currentTarget.style.color = '#ffffff'}>
                     {link}
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1382,12 +1435,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Compliance</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {['DPDP Act Privacy Policy', 'Terms of Service', 'Maker-Checker Guidelines', 'Consent registers'].map(link => (
-                  <a key={link} href="#" onClick={e => e.preventDefault()}
-                    style={{ textDecoration: 'none', color: '#ffffff', fontSize: '0.84rem', fontWeight: 500, transition: 'color 0.15s' }}
+                  <button key={link} type="button" onClick={() => setActiveResource(link)}
+                    style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: '#ffffff', fontFamily: 'inherit', fontSize: '0.84rem', fontWeight: 500, cursor: 'pointer', transition: 'color 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
                     onMouseLeave={e => e.currentTarget.style.color = '#ffffff'}>
                     {link}
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1404,6 +1457,35 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
           </div>
         </div>
       </footer>
+
+      {activeResource && (() => {
+        const resource = FOOTER_RESOURCES[activeResource];
+        return (
+          <div
+            role="presentation"
+            onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveResource(null); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(15, 23, 42, 0.64)' }}
+          >
+            <section role="dialog" aria-modal="true" aria-labelledby="footer-resource-title" style={{ width: 'min(100%, 590px)', borderRadius: 18, padding: '28px', background: '#fff', color: '#0f172a', boxShadow: '0 24px 60px rgba(15, 23, 42, 0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ color: '#2563eb', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{resource.eyebrow}</div>
+                  <h2 id="footer-resource-title" style={{ margin: '7px 0 0', fontSize: '1.45rem' }}>{resource.title}</h2>
+                </div>
+                <button type="button" aria-label="Close resource" onClick={() => setActiveResource(null)} style={{ border: 'none', background: '#f1f5f9', color: '#334155', borderRadius: 8, width: 34, height: 34, fontSize: '1.35rem', cursor: 'pointer' }}>×</button>
+              </div>
+              <p style={{ margin: '20px 0 16px', color: '#475569', lineHeight: 1.65 }}>{resource.body}</p>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#334155', lineHeight: 1.75 }}>
+                {resource.details.map(detail => <li key={detail}>{detail}</li>)}
+              </ul>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+                {resource.action && <button type="button" onClick={() => { setActiveResource(null); smoothScrollTo(resource.action.target); }} style={{ border: 'none', borderRadius: 8, padding: '10px 14px', background: '#2563eb', color: '#fff', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>{resource.action.label}</button>}
+                <button type="button" onClick={() => setActiveResource(null)} style={{ border: '1px solid #cbd5e1', borderRadius: 8, padding: '10px 14px', background: '#fff', color: '#334155', fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer' }}>Close</button>
+              </div>
+            </section>
+          </div>
+        );
+      })()}
 
     </div>
   );

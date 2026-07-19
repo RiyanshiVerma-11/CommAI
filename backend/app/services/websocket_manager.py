@@ -23,7 +23,7 @@ class ConnectionManager:
             "state": state,
             "role": role,
         })
-        logger.info(f"[WS] Client connected. Total: {len(self.active_connections)}")
+        logger.info(f"[WS] Client connected: user_id={user_id}, state={state}, role={role}. Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections = [
@@ -39,13 +39,11 @@ class ConnectionManager:
         target_state = message.get("target_state")
         disconnected = []
         for connection in self.active_connections:
-            # Global bulletins retain the historical broadcast behaviour. A
-            # state-scoped emergency is delivered only to authenticated audience
-            # sessions whose registered audience profile is in that state.
-            if target_state and (
-                connection["role"] != "audience" or connection["state"] != target_state
-            ):
-                continue
+            # Operators (admin/campaign_manager) always receive all bulletins.
+            # State-scoped emergencies are filtered only for audience sessions.
+            if target_state and connection["role"] not in ("admin", "campaign_manager"):
+                if connection["role"] != "audience" or connection["state"] != target_state:
+                    continue
             try:
                 await connection["websocket"].send_text(payload)
             except Exception:

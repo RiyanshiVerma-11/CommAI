@@ -92,20 +92,24 @@ async def websocket_bulletins(websocket: WebSocket):
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             user_id = payload.get("user_id")
             role = payload.get("role")
-            if not user_id or role != "audience":
-                raise JWTError("Bulletin sessions must be audience users")
+            if not user_id:
+                raise JWTError("Invalid token: no user_id")
 
             db = SessionLocal()
             try:
                 user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-                audience = db.query(Audience).filter(
-                    Audience.email == user.email,
-                    Audience.is_active == True,
-                    Audience.is_deleted == False,
-                ).first() if user else None
-                if not audience:
-                    raise JWTError("No active audience profile")
-                state = audience.state
+                if not user:
+                    raise JWTError("User not found or inactive")
+
+                # For audience users, resolve their state for state-scoped filtering
+                if role == "audience":
+                    audience = db.query(Audience).filter(
+                        Audience.email == user.email,
+                        Audience.is_active == True,
+                        Audience.is_deleted == False,
+                    ).first()
+                    if audience:
+                        state = audience.state
             finally:
                 db.close()
         except JWTError:

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 class CustomBaseModel(BaseModel):
     @field_validator(
         "created_at", "updated_at", "scheduled_at", "dispatched_at",
-        "timestamp", "sent_at", "last_refreshed",
+        "timestamp", "sent_at", "last_refreshed", "replied_at", "deleted_at",
         check_fields=False
     )
     @classmethod

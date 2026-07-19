@@ -108,22 +108,42 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
         throw new Error(statusText);
       }
       const data = await res.json();
-      setEmergencyContacts(data);
+      
+      let combinedData = data;
+      if (isAudience) {
+        try {
+          const queriesRes = await fetch(`${backendUrl}/api/queries`, { headers });
+          if (queriesRes.ok) {
+            const queriesData = await queriesRes.json();
+            const annotatedQueries = queriesData.map(q => ({ ...q, isSupportQuery: true }));
+            combinedData = [...data, ...annotatedQueries];
+            // Sort by created_at descending
+            combinedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          }
+        } catch (qErr) {
+          console.error("Failed to load support queries:", qErr);
+        }
+      }
+      
+      setEmergencyContacts(combinedData);
 
-      if (isAudience && activeSubTab === 'emergency') {
+      if (isAudience) {
         const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
         let updated = false;
-        data.forEach(ec => {
-          if (ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id)) {
+        combinedData.forEach(ec => {
+          const isTargetTab = (activeSubTab === 'emergency' && !ec.isSupportQuery) || (activeSubTab === 'queries' && ec.isSupportQuery);
+          if (isTargetTab && ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id)) {
             ackList.push(ec.id);
             updated = true;
           }
         });
         if (updated) {
           localStorage.setItem('acknowledged_emergencies', JSON.stringify(ackList));
-          if (setUnreadRepliesCount) {
-            setUnreadRepliesCount(0);
-          }
+        }
+        // Recalculate remaining total unread counts
+        const remainingUnread = combinedData.filter(ec => ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id));
+        if (setUnreadRepliesCount) {
+          setUnreadRepliesCount(remainingUnread.length);
         }
       }
     } catch (err) {
@@ -160,7 +180,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
       loadCampaigns();
     } else if (activeSubTab === 'submitted' && isAudience) {
       loadSubmittedFeedback();
-    } else if (activeSubTab === 'emergency') {
+    } else if (activeSubTab === 'emergency' || activeSubTab === 'queries') {
       loadEmergencyContacts();
     } else if (activeSubTab === 'dashboard' && !isAudience) {
       loadCampaigns(); // Load all active/completed campaigns to let managers select one
@@ -259,6 +279,22 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     }
   };
 
+  const unreadEmergencyCount = isAudience ? emergencyContacts.filter(
+    ec => !ec.isSupportQuery && ec.status === 'resolved' && ec.admin_reply && !JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]').includes(ec.id)
+  ).length : 0;
+
+  const unreadQueriesCount = isAudience ? emergencyContacts.filter(
+    ec => ec.isSupportQuery && ec.status === 'resolved' && ec.admin_reply && !JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]').includes(ec.id)
+  ).length : 0;
+
+  const displayedEmergencyContacts = isAudience
+    ? emergencyContacts.filter(ec => !ec.isSupportQuery)
+    : emergencyContacts;
+
+  const displayedSupportQueries = isAudience
+    ? emergencyContacts.filter(ec => ec.isSupportQuery)
+    : [];
+
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       
@@ -279,12 +315,12 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
               ⭐ My Feedback History
             </button>
             <button 
-              onClick={() => setActiveSubTab('emergency')}
-              className={`btn ${activeSubTab === 'emergency' ? 'btn-primary' : 'btn-dark'}`}
+              onClick={() => setActiveSubTab('queries')}
+              className={`btn ${activeSubTab === 'queries' ? 'btn-primary' : 'btn-dark'}`}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <span>🚨 Emergency Support</span>
-              {unreadRepliesCount > 0 && (
+              <span>💬 Chatbot Queries</span>
+              {unreadQueriesCount > 0 && (
                 <span 
                   style={{ 
                     background: '#ef4444', 
@@ -301,7 +337,34 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
                     boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
                   }}
                 >
-                  {unreadRepliesCount}
+                  {unreadQueriesCount}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setActiveSubTab('emergency')}
+              className={`btn ${activeSubTab === 'emergency' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <span>🚨 Emergency Support</span>
+              {unreadEmergencyCount > 0 && (
+                <span 
+                  style={{ 
+                    background: '#ef4444', 
+                    color: '#ffffff', 
+                    borderRadius: '50%', 
+                    width: '18px', 
+                    height: '18px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '0.7rem', 
+                    fontWeight: '800',
+                    lineHeight: '1',
+                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+                  }}
+                >
+                  {unreadEmergencyCount}
                 </span>
               )}
             </button>
@@ -550,6 +613,121 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
         </div>
       )}
 
+      {/* ─── AUDIENCE: CHATBOT SUPPORT QUERIES ─── */}
+      {activeSubTab === 'queries' && isAudience && (
+        <div className="animate-fade-in">
+          <h3 style={{ marginBottom: '8px', fontWeight: 800 }}>Chatbot Support Queries</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.4 }}>
+            Track open chatbot escalations and responses from campaign operators.
+          </p>
+          
+          {loading ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid hsl(var(--primary))', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '12px' }}></div>
+              <div>Loading chatbot support queries...</div>
+            </div>
+          ) : emergencyError ? (
+            <div className="glass-card" style={{ padding: '28px', textAlign: 'center' }}>
+              <div style={{ color: 'var(--danger, #ef4444)', fontSize: '0.92rem', marginBottom: '16px', fontWeight: 605 }}>
+                ⚠️ {emergencyError}
+              </div>
+              <button 
+                onClick={loadEmergencyContacts} 
+                className="btn btn-primary" 
+                style={{ padding: '8px 20px', fontSize: '0.85rem' }}
+              >
+                🔄 Retry
+              </button>
+            </div>
+          ) : displayedSupportQueries.length === 0 ? (
+            <div className="glass-card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              💬 No chatbot support queries found.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+              {displayedSupportQueries.map(ec => (
+                <GlassCard key={ec.id} style={{ padding: '24px', borderLeft: '4px solid hsl(var(--primary))' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                    <div>
+                      <h4 style={{ fontWeight: 800, fontSize: '1.05rem', margin: '0 0 4px 0' }}>{ec.subject}</h4>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        Submitted: {new Date(ec.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span className="badge" style={{
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        color: 'hsl(var(--primary))',
+                        border: '1px solid rgba(59, 130, 246, 0.3)'
+                      }}>
+                        Chatbot Escalation
+                      </span>
+                      <span className={`badge ${ec.status === 'resolved' ? 'badge-communicator' : 'badge-manager'}`} style={{ textTransform: 'uppercase' }}>
+                        {ec.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(0,0,0,0.1)', padding: '12px', borderRadius: '8px', margin: '10px 0 12px 0' }}>
+                    {ec.message}
+                  </p>
+
+                  {ec.admin_reply && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      background: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      marginBottom: '10px'
+                    }}>
+                      <span style={{ fontSize: '0.74rem', color: 'hsl(var(--primary))', fontWeight: '800', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        💬 Operator Response:
+                      </span>
+                      <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                        {ec.admin_reply}
+                      </p>
+                      {ec.replied_at && (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', alignSelf: 'flex-end', marginTop: '2px' }}>
+                          Replied on: {new Date(ec.replied_at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {ec.status === 'resolved' && (
+                    <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '12px' }}>
+                      {(!JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]').includes(ec.id)) ? (
+                        <button 
+                          onClick={() => {
+                            const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
+                            if (!ackList.includes(ec.id)) {
+                              ackList.push(ec.id);
+                              localStorage.setItem('acknowledged_emergencies', JSON.stringify(ackList));
+                              loadEmergencyContacts();
+                            }
+                          }}
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '6px 12px', fontSize: '0.78rem', background: 'var(--success)', borderColor: 'var(--success)' }}
+                        >
+                          ✓ Acknowledge Response
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 'bold' }}>✓ Response Acknowledged</span>
+                      )}
+                    </div>
+                  )}
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ─── AUDIENCE & MANAGERS: EMERGENCY SUPPORT CENTER ─── */}
       {activeSubTab === 'emergency' && (
         <div className="animate-fade-in">
@@ -640,18 +818,19 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
                     🔄 Retry
                   </button>
                 </div>
-              ) : emergencyContacts.length === 0 ? (
+              ) : displayedEmergencyContacts.length === 0 ? (
                 <div className="glass-card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   📪 Support queue is currently empty.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {emergencyContacts.map(ec => {
-                    const isUrgent = ec.urgency === 'urgent';
-                    const isCritical = ec.urgency === 'critical';
+                  {displayedEmergencyContacts.map(ec => {
+                    const isSupport = ec.isSupportQuery;
+                    const isUrgent = !isSupport && ec.urgency === 'urgent';
+                    const isCritical = !isSupport && ec.urgency === 'critical';
                     
                     return (
-                      <GlassCard key={ec.id} style={{ padding: '20px', borderLeft: `4px solid ${isCritical ? 'var(--danger)' : isUrgent ? 'var(--warning)' : 'var(--success)'}` }}>
+                      <GlassCard key={ec.id} style={{ padding: '20px', borderLeft: `4px solid ${isSupport ? 'hsl(var(--primary))' : isCritical ? 'var(--danger)' : isUrgent ? 'var(--warning)' : 'var(--success)'}` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                           <div>
                             <h4 style={{ fontWeight: 800, fontSize: '1rem', margin: '0 0 4px 0' }}>{ec.subject}</h4>
@@ -661,12 +840,22 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
                           </div>
                           
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span className="badge" style={{
-                              background: isCritical ? 'rgba(239, 68, 68, 0.12)' : isUrgent ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                              color: isCritical ? 'var(--danger)' : isUrgent ? 'var(--warning)' : 'var(--success)'
-                            }}>
-                              {ec.urgency.toUpperCase()}
-                            </span>
+                            {isSupport ? (
+                              <span className="badge" style={{
+                                background: 'rgba(59, 130, 246, 0.12)',
+                                color: 'hsl(var(--primary))',
+                                border: '1px solid rgba(59, 130, 246, 0.3)'
+                              }}>
+                                Support Query
+                              </span>
+                            ) : (
+                              <span className="badge" style={{
+                                background: isCritical ? 'rgba(239, 68, 68, 0.12)' : isUrgent ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                color: isCritical ? 'var(--danger)' : isUrgent ? 'var(--warning)' : 'var(--success)'
+                              }}>
+                                {ec.urgency.toUpperCase()}
+                              </span>
+                            )}
                             <span className={`badge ${ec.status === 'resolved' ? 'badge-communicator' : 'badge-manager'}`} style={{ textTransform: 'uppercase' }}>
                               {ec.status}
                             </span>
@@ -718,7 +907,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
                                 className="btn btn-primary btn-sm"
                                 style={{ padding: '6px 12px', fontSize: '0.78rem', background: 'var(--success)', borderColor: 'var(--success)' }}
                               >
-                                ✓ Acknowledge & Clear Notification Badge
+                                {isSupport ? '✓ Acknowledge Response' : '✓ Acknowledge & Clear Notification Badge'}
                               </button>
                             ) : (
                               <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 'bold' }}>✓ Response Acknowledged</span>

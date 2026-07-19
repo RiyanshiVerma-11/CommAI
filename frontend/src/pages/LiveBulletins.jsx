@@ -1,13 +1,64 @@
 import React, { useEffect, useState, useRef } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const LiveBulletins = ({ backendUrl }) => {
+const LiveBulletins = ({ backendUrl, user, token }) => {
   const [bulletins, setBulletins] = useState([]);
   const [status, setStatus] = useState('connecting');
   const [filterUrgency, setFilterUrgency] = useState('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
   
   const wsRef = useRef(null);
+
+  const fetchHistoricalBulletins = async () => {
+    setLoading(true);
+    try {
+      const headers = { 'Authorization': `Bearer ${token}` };
+      
+      const postersRes = await fetch(`${backendUrl}/api/poster/available`, { headers });
+      let postersData = [];
+      if (postersRes.ok) {
+        postersData = await postersRes.json();
+      }
+      
+      const contactsRes = await fetch(`${backendUrl}/api/emergency-contact`, { headers });
+      let contactsData = [];
+      if (contactsRes.ok) {
+        contactsData = await contactsRes.json();
+      }
+      
+      const formattedPosters = postersData.map(p => ({
+        id: p.id,
+        type: 'campaign_alert',
+        title: p.category === 'emergency' ? `🚨 EMERGENCY: ${p.title}` : p.title,
+        message: p.description,
+        urgency: p.category === 'emergency' ? 'critical' : 'normal',
+        created_at: p.created_at
+      }));
+      
+      const formattedContacts = contactsData.map(c => ({
+        id: c.id,
+        type: 'emergency_contact',
+        title: `🆘 Urgent Support Request: ${c.subject}`,
+        message: c.message,
+        urgency: c.urgency || 'normal',
+        created_at: c.created_at
+      }));
+      
+      const combined = [...formattedPosters, ...formattedContacts];
+      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setBulletins(combined);
+    } catch (err) {
+      console.error("Failed to fetch historical bulletins:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistoricalBulletins();
+  }, [backendUrl, token]);
 
   // Play a synthesized chime using Web Audio API (extremely reliable, zero assets needed!)
   const playChime = (urgency) => {
@@ -63,7 +114,10 @@ const LiveBulletins = ({ backendUrl }) => {
   useEffect(() => {
     // Resolve ws/wss protocol from backendUrl
     const rawUrl = backendUrl || 'http://localhost:8001';
-    const wsUrl = rawUrl.replace(/^http/, 'ws') + '/ws/bulletins';
+    let wsUrl = rawUrl.replace(/^http/, 'ws') + '/ws/bulletins';
+    if (token) {
+      wsUrl += `?token=${encodeURIComponent(token)}`;
+    }
 
     const connectWebSocket = () => {
       setStatus('connecting');
@@ -81,17 +135,20 @@ const LiveBulletins = ({ backendUrl }) => {
           // Play notification sound
           playChime(data.urgency || (data.campaign_type === 'emergency_alert' ? 'critical' : 'normal'));
           
-          setBulletins((prev) => [
-            {
-              id: data.id || Math.random().toString(36).slice(2, 9),
-              type: data.type || 'campaign_alert',
-              title: data.title || data.subject || 'Broadcast Alert',
-              message: data.message || data.description || '',
-              urgency: data.urgency || (data.campaign_type === 'emergency_alert' ? 'critical' : 'normal'),
-              created_at: data.created_at || new Date().toISOString()
-            },
-            ...prev
-          ]);
+          setBulletins((prev) => {
+            if (data.id && prev.some(b => b.id === data.id)) return prev;
+            return [
+              {
+                id: data.id || Math.random().toString(36).slice(2, 9),
+                type: data.type || 'campaign_alert',
+                title: data.title || data.subject || 'Broadcast Alert',
+                message: data.message || data.description || '',
+                urgency: data.urgency || (data.campaign_type === 'emergency_alert' ? 'critical' : 'normal'),
+                created_at: data.created_at || new Date().toISOString()
+              },
+              ...prev
+            ];
+          });
         } catch (err) {
           console.error('Error parsing WS message:', err);
         }
@@ -116,7 +173,7 @@ const LiveBulletins = ({ backendUrl }) => {
         wsRef.current.close();
       }
     };
-  }, [backendUrl]);
+  }, [backendUrl, token]);
 
   const filteredBulletins = bulletins.filter(b => {
     if (filterUrgency === 'all') return true;
@@ -207,7 +264,12 @@ const LiveBulletins = ({ backendUrl }) => {
 
       {/* Bulletins Feed */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {filteredBulletins.length === 0 ? (
+        {loading ? (
+          <GlassCard style={{ padding: '40px', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
+            <div style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid hsl(var(--primary))', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '12px' }}></div>
+            <p style={{ fontSize: '0.85rem' }}>Loading active bulletins feed...</p>
+          </GlassCard>
+        ) : filteredBulletins.length === 0 ? (
           <GlassCard style={{ padding: '40px', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '48px', height: '48px', margin: '0 auto 12px', opacity: 0.4 }}>
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />

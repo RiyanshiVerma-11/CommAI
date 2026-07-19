@@ -184,12 +184,23 @@ def _dispatch_campaign_worker(campaign_id: str):
         if campaign.campaign_type == "emergency_alert":
             import asyncio
             from app.services.websocket_manager import bulletin_manager
+
+            # Strip template placeholders from broadcast content since bulletins
+            # go to all recipients at once and cannot be personalised per-user.
+            def strip_placeholders(text):
+                if not text:
+                    return ""
+                result = re.sub(r'\{\{(\w+)\}\}', '', text)
+                result = re.sub(r'\{(\w+)\}', '', result)
+                # Collapse any resulting double-spaces
+                return re.sub(r'  +', ' ', result).strip()
+
             payload = {
                 "type": "campaign_alert",
                 "id": campaign.id,
-                "title": campaign.title,
-                "description": campaign.description,
-                "objective": campaign.objective,
+                "title": strip_placeholders(campaign.title),
+                "description": strip_placeholders(campaign.description),
+                "objective": strip_placeholders(campaign.objective),
                 "campaign_type": campaign.campaign_type,
                 "created_at": datetime.datetime.utcnow().isoformat()
             }

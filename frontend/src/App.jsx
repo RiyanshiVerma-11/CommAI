@@ -179,8 +179,22 @@ function App() {
         });
         if (response.ok) {
           const data = await response.json();
+          let combinedData = data;
+          
+          try {
+            const queriesResponse = await fetch(`${BACKEND_URL}/api/queries`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (queriesResponse.ok) {
+              const queriesData = await queriesResponse.json();
+              combinedData = [...combinedData, ...queriesData];
+            }
+          } catch (qErr) {
+            console.error('Error polling support queries:', qErr);
+          }
+
           const ackList = JSON.parse(localStorage.getItem('acknowledged_emergencies') || '[]');
-          const unread = data.filter(ec => ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id));
+          const unread = combinedData.filter(ec => ec.status === 'resolved' && ec.admin_reply && !ackList.includes(ec.id));
           
           setUnreadRepliesCount(prev => {
             if (unread.length > prev) {
@@ -409,6 +423,8 @@ function App() {
         return (
           <LiveBulletins
             backendUrl={BACKEND_URL}
+            user={user}
+            token={token}
           />
         );
       default:

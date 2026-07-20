@@ -122,6 +122,7 @@ def populate_knowledge_base(db):
         "Campaigns go through a workflow: Draft, Pending Approval, Scheduled, Active, Completed. Admins approve campaigns before they are sent.",
         "Templates support personalization with placeholder variables like first_name, city, district, and state that are replaced with actual audience data during delivery.",
         "Emergency alerts can be submitted by citizens and are reviewed by campaign managers. Critical alerts trigger immediate response protocols.",
+        "Citizens can contact a campaign manager or operator directly by submitting an Emergency Contact request or raising a Support Query ticket from their CommAI dashboard. Campaign managers receive these requests in real-time and reply to them directly.",
         "The platform supports 22 official Indian languages for translations including Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, and more.",
         "Campaign feedback allows audience members to rate campaigns from 1-5 stars and provide comments. Managers can view aggregated feedback analytics.",
         "The platform includes compliance checks for spam phrases, sensitive language, readability, and proper placeholder formatting.",

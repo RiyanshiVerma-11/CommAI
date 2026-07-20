@@ -2,13 +2,55 @@ import React, { useEffect, useState, useRef } from 'react';
 import GlassCard from '../components/GlassCard';
 
 const LiveBulletins = ({ backendUrl, user, token }) => {
+  const interpolateText = (text) => {
+    if (!text || !user) return text || '';
+    const replacements = {
+      first_name: user.first_name || user.full_name?.split(' ')[0] || '',
+      last_name: user.last_name || user.full_name?.slice(user.full_name?.indexOf(' ') + 1) || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      city: user.city || '',
+      district: user.district || '',
+      state: user.state || '',
+      occupation: user.occupation || '',
+      age: user.age ? String(user.age) : '',
+      gender: user.gender || '',
+      organization: user.organization || '',
+      department: user.department || '',
+      designation: user.designation || '',
+    };
+    let result = text;
+    Object.entries(replacements).forEach(([key, value]) => {
+      const regexDouble = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+      const regexSingle = new RegExp(`\\{\\s*${key}\\s*\\}`, 'gi');
+      result = result.replace(regexDouble, value).replace(regexSingle, value);
+    });
+    return result;
+  };
+
   const [bulletins, setBulletins] = useState([]);
   const [status, setStatus] = useState('connecting');
   const [filterUrgency, setFilterUrgency] = useState('all');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false); // start disabled to force user interaction
   const [loading, setLoading] = useState(true);
   
   const wsRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  const toggleSound = () => {
+    if (!soundEnabled) {
+      if (!audioCtxRef.current) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          audioCtxRef.current = new AudioContext();
+        }
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    }
+    setSoundEnabled(!soundEnabled);
+  };
 
   const fetchHistoricalBulletins = async () => {
     setLoading(true);
@@ -46,7 +88,13 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
       }));
       
       const combined = [...formattedPosters, ...formattedContacts];
-      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      combined.sort((a, b) => {
+        const da = new Date(a.created_at);
+        const db = new Date(b.created_at);
+        const ta = isNaN(da.getTime()) ? 0 : da.getTime();
+        const tb = isNaN(db.getTime()) ? 0 : db.getTime();
+        return tb - ta;
+      });
       
       setBulletins(combined);
     } catch (err) {
@@ -62,11 +110,9 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
 
   // Play a synthesized chime using Web Audio API (extremely reliable, zero assets needed!)
   const playChime = (urgency) => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || !audioCtxRef.current) return;
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      const ctx = audioCtxRef.current;
       
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -85,17 +131,16 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
         
         // Second beep
         setTimeout(() => {
-          const ctx2 = new AudioContext();
-          const osc2 = ctx2.createOscillator();
-          const gain2 = ctx2.createGain();
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
           osc2.connect(gain2);
-          gain2.connect(ctx2.destination);
+          gain2.connect(ctx.destination);
           osc2.type = 'sawtooth';
-          osc2.frequency.setValueAtTime(880, ctx2.currentTime);
-          gain2.gain.setValueAtTime(0.15, ctx2.currentTime);
-          gain2.gain.exponentialRampToValueAtTime(0.01, ctx2.currentTime + 0.4);
+          osc2.frequency.setValueAtTime(880, ctx.currentTime);
+          gain2.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
           osc2.start();
-          osc2.stop(ctx2.currentTime + 0.45);
+          osc2.stop(ctx.currentTime + 0.45);
         }, 150);
       } else {
         osc.type = 'sine';
@@ -222,13 +267,13 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
           
           {/* Sound Toggle */}
           <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={toggleSound}
             style={{
               padding: '8px 12px',
               borderRadius: '8px',
               border: '1px solid var(--border-color-glass)',
               background: soundEnabled ? 'hsl(var(--primary) / 8%)' : 'rgba(255,255,255,0.03)',
-              color: 'white',
+              color: 'black',
               fontSize: '0.78rem',
               fontWeight: '600',
               cursor: 'pointer',
@@ -318,17 +363,20 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
                       }}></span>
                     )}
                     <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: isCritical ? 'hsl(var(--danger))' : 'white' }}>
-                      {b.title}
+                      {interpolateText(b.title)}
                     </h4>
                   </div>
                   
                   <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', fontWeight: '600' }}>
-                    {new Date(b.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    {(() => {
+                      const d = new Date(b.created_at);
+                      return !isNaN(d.getTime()) ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                    })()}
                   </span>
                 </div>
 
                 <p style={{ margin: '0 0 12px', fontSize: '0.85rem', lineHeight: '1.5', color: 'hsl(var(--text-secondary))' }}>
-                  {b.message}
+                  {interpolateText(b.message)}
                 </p>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem' }}>

@@ -95,6 +95,7 @@ def on_startup():
 async def websocket_bulletins(websocket: WebSocket):
     token = websocket.query_params.get("token")
     user_id = state = role = None
+    preferred_languages = []
     if token:
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -109,6 +110,13 @@ async def websocket_bulletins(websocket: WebSocket):
                 if not user:
                     raise JWTError("User not found or inactive")
 
+                # Resolve preferred languages from User table first
+                if user.preferred_languages:
+                    try:
+                        preferred_languages = json.loads(user.preferred_languages)
+                    except Exception:
+                        pass
+
                 # For audience users, resolve their state for state-scoped filtering
                 if role == "audience":
                     audience = db.query(Audience).filter(
@@ -118,13 +126,18 @@ async def websocket_bulletins(websocket: WebSocket):
                     ).first()
                     if audience:
                         state = audience.state
+                        if audience.preferred_languages:
+                            try:
+                                preferred_languages = json.loads(audience.preferred_languages)
+                            except Exception:
+                                pass
             finally:
                 db.close()
         except JWTError:
             await websocket.close(code=1008)
             return
 
-    await bulletin_manager.connect(websocket, user_id=user_id, state=state, role=role)
+    await bulletin_manager.connect(websocket, user_id=user_id, state=state, role=role, preferred_languages=preferred_languages)
     try:
         while True:
             # Keep connection alive, listen for any client messages (pings)

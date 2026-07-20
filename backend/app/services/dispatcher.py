@@ -448,6 +448,26 @@ def _dispatch_campaign_worker(campaign_id: str):
                     translated_subject_raw = dynamic_translations[target_lang].get("subject", "")
                     translated_body_raw = dynamic_translations[target_lang].get("body", "")
 
+                # Guarantee translation by fallback on-the-fly translation if missing
+                if not translated_body_raw and settings.GROQ_API_KEY:
+                    try:
+                        from app.services.translation_service import translate_text
+                        logger.info(f"[DISPATCHER] Translating on-the-fly for {member.first_name} {member.last_name} to '{target_lang}'")
+                        t_subject = ""
+                        if template.subject_template:
+                            t_subject = translate_text(template.subject_template, target_lang, template.default_language)
+                        t_body = translate_text(template.body_template, target_lang, template.default_language)
+                        if t_body:
+                            translated_subject_raw = t_subject
+                            translated_body_raw = t_body
+                            # Cache it so other members with same language reuse it
+                            dynamic_translations[target_lang] = {
+                                "subject": t_subject,
+                                "body": t_body
+                            }
+                    except Exception as ex:
+                        logger.error(f"[DISPATCHER] Failed dynamic inline translation for '{target_lang}': {ex}")
+
             if translated_body_raw:
                 subject_to_send = interpolate_template(translated_subject_raw, member)
                 body_to_send = interpolate_template(translated_body_raw, member)

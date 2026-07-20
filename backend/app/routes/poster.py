@@ -243,21 +243,37 @@ def get_available_posters(
                 continue
 
             filtered_posters.append(p)
-            
+
+        user_lang = target_languages[0] if target_languages else "English"
+
         from app.config import settings
-        return [
-            {
+        from app.services.translation_service import translate_text
+        
+        results = []
+        for p in filtered_posters[:20]:
+            title = p.title
+            description = p.description
+            
+            # Translate if user language is different from poster language
+            if user_lang and user_lang.lower() != p.language.lower():
+                try:
+                    title = translate_text(p.title, user_lang, p.language)
+                    description = translate_text(p.description, user_lang, p.language)
+                except Exception as ex:
+                    logging.getLogger("commai").error(f"[POSTER-AVAILABLE] Translation failed for poster {p.id}: {ex}")
+
+            results.append({
                 "id": p.id,
-                "title": p.title,
-                "description": p.description,
+                "title": title,
+                "description": description,
                 "category": p.category,
                 "tone": p.tone,
-                "language": p.language,
+                "language": user_lang,
                 "image_url": f"{settings.BACKEND_URL}/api/poster/{p.id}/image" if p.image_url.startswith("data:image/") else p.image_url,
                 "created_at": utc_isoformat(p.created_at)
-            }
-            for p in filtered_posters[:20]
-        ]
+            })
+
+        return results
     finally:
         db.close()
 
@@ -310,11 +326,44 @@ def dispatch_poster_in_background(
         
         inline_image = poster.image_url if poster.image_url.startswith("data:image/") else None
 
+        # Local translation cache for this dispatch session
+        translations_cache = {}
+
         logging.getLogger("commai").info(f"[POSTER-DISPATCH] Start dispatching poster {poster_id} to {len(audience_members)} users via {channels}")
         for member in audience_members:
+            # Resolve preferred languages
+            pref_langs = []
+            if member.preferred_languages:
+                try:
+                    pref_langs = json.loads(member.preferred_languages) if isinstance(member.preferred_languages, str) else member.preferred_languages
+                except Exception:
+                    pref_langs = []
+
+            # Determine target language (default is English)
+            target_lang = "English"
+            if pref_langs and isinstance(pref_langs, list) and len(pref_langs) > 0:
+                target_lang = pref_langs[0].strip()
+
+            member_subject = subject
+            member_body = body
+
+            if target_lang and target_lang.lower() != "english":
+                if target_lang not in translations_cache:
+                    try:
+                        from app.services.translation_service import translate_text
+                        t_subject = translate_text(subject, target_lang, "English")
+                        t_body = translate_text(body, target_lang, "English")
+                        translations_cache[target_lang] = (t_subject, t_body)
+                        logging.getLogger("commai").info(f"[POSTER-DISPATCH] Pre-translated poster to {target_lang}")
+                    except Exception as e:
+                        logging.getLogger("commai").error(f"[POSTER-DISPATCH] Failed translating poster to {target_lang}: {e}")
+                        translations_cache[target_lang] = (subject, body)
+                
+                member_subject, member_body = translations_cache[target_lang]
+
             for channel in channels:
                 try:
-                    dispatch_to_channel(channel, member, subject, body, inline_image_base64=inline_image)
+                    dispatch_to_channel(channel, member, member_subject, member_body, inline_image_base64=inline_image)
                 except Exception as ex:
                     logging.getLogger("commai").error(f"[POSTER-DISPATCH] Failed channel {channel} for {member.email or member.phone}: {ex}")
     except Exception as e:

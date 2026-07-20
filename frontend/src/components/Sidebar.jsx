@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount, queriesCount }) => {
+const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount, queriesCount, bulletinCount }) => {
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -354,6 +354,27 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
                         }}
                       >
                         {queriesCount}
+                      </span>
+                    )}
+                    {item.id === 'live_bulletins' && bulletinCount > 0 && (
+                      <span 
+                        style={{ 
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)', 
+                          color: '#ffffff', 
+                          borderRadius: '50%', 
+                          width: '20px', 
+                          height: '20px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.75rem', 
+                          fontWeight: '800',
+                          lineHeight: '1',
+                          boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
+                          animation: 'pulse 2s infinite'
+                        }}
+                      >
+                        {bulletinCount}
                       </span>
                     )}
                   </span>

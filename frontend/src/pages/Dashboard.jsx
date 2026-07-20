@@ -15,7 +15,33 @@ const formatAlertDateTime = (timestamp) => {
   }).format(date)} IST`;
 };
 
-const Dashboard = ({ user, setActiveTab, backendUrl, headers, token }) => {
+const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCount }) => {
+  const interpolateText = (text) => {
+    if (!text || !user) return text || '';
+    const replacements = {
+      first_name: user.first_name || user.full_name?.split(' ')[0] || '',
+      last_name: user.last_name || user.full_name?.slice(user.full_name?.indexOf(' ') + 1) || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      city: user.city || '',
+      district: user.district || '',
+      state: user.state || '',
+      occupation: user.occupation || '',
+      age: user.age ? String(user.age) : '',
+      gender: user.gender || '',
+      organization: user.organization || '',
+      department: user.department || '',
+      designation: user.designation || '',
+    };
+    let result = text;
+    Object.entries(replacements).forEach(([key, value]) => {
+      const regexDouble = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+      const regexSingle = new RegExp(`\\{\\s*${key}\\s*\\}`, 'gi');
+      result = result.replace(regexDouble, value).replace(regexSingle, value);
+    });
+    return result;
+  };
+
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -101,91 +127,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token }) => {
   useEffect(() => {
     fetchStats();
     fetchPosters();
-  }, [fetchStats, fetchPosters]);
-
-  const playChime = useCallback((urgency) => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.15); // E5
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.6);
-      }
-    } catch (e) {
-      console.warn("Web Audio chime failed to execute:", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.role !== 'audience') return;
-
-    const rawUrl = backendUrl || 'http://localhost:8001';
-    const wsUrl = rawUrl.replace(/^http/, 'ws') + `/ws/bulletins?token=${encodeURIComponent(token)}`;
-
-    let ws;
-    let reconnectTimeout;
-
-    const connect = () => {
-      ws = new WebSocket(wsUrl);
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'campaign_alert') {
-            playChime(data.urgency || 'normal');
-
-            if (data.urgency === 'critical' || data.urgency === 'urgent') {
-              setLiveCriticalAlerts(current => {
-                if (current.some(alert => alert.id === data.id)) return current;
-                return [{
-                  id: data.id,
-                  title: data.title || 'Emergency alert',
-                  description: data.message || data.description || '',
-                  urgency: data.urgency,
-                  created_at: data.created_at || new Date().toISOString(),
-                }, ...current].slice(0, 20);
-              });
-              setAlertTab('emergency');
-            }
-            
-            setNewPosterNotification({
-              id: data.id,
-              title: data.title || 'New Visual Poster Alert',
-              description: data.message || '',
-              image_url: `${backendUrl}/api/poster/${data.id}/image`
-            });
-
-            // Automatically refresh the available posters list in UI
-            fetchPosters();
-          }
-        } catch (err) {
-          console.error('Error parsing WS message in Dashboard:', err);
-        }
-      };
-
-      ws.onclose = () => {
-        reconnectTimeout = setTimeout(connect, 4000);
-      };
-    };
-
-    connect();
-
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
-  }, [backendUrl, token, user?.role, fetchPosters, playChime]);
+  }, [fetchStats, fetchPosters, bulletinCount]);
 
 
   if (loading) {
@@ -544,8 +486,8 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token }) => {
                         : '🚨'}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>{poster.title}</h4>
-                      <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{poster.description.slice(0, 70)}...</p>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>{interpolateText(poster.title)}</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{interpolateText(poster.description).slice(0, 70)}...</p>
                       {poster.created_at && <p style={{ margin: '5px 0 0', fontSize: '0.68rem', color: 'hsl(var(--text-muted))' }}>{formatAlertDateTime(poster.created_at)}</p>}
                       <button
                         onClick={() => setFullscreenPoster(poster)}
@@ -614,8 +556,8 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token }) => {
               ) : (
                 <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'hsl(var(--danger) / 12%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'hsl(var(--danger))' }}>🚨</div>
               )}
-              <h3 style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{fullscreenPoster.title}</h3>
-              <p style={{ color: 'hsl(var(--text-muted))', marginTop: '8px', fontSize: '0.88rem', textAlign: 'center', lineHeight: '1.4' }}>{fullscreenPoster.description}</p>
+              <h3 style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{interpolateText(fullscreenPoster.title)}</h3>
+              <p style={{ color: 'hsl(var(--text-muted))', marginTop: '8px', fontSize: '0.88rem', textAlign: 'center', lineHeight: '1.4' }}>{interpolateText(fullscreenPoster.description)}</p>
               <button 
                 onClick={() => setFullscreenPoster(null)}
                 style={{

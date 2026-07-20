@@ -226,12 +226,45 @@ def get_campaigns_for_audience(
     )
     feedback_campaign_ids = {f.campaign_id for f in user_feedback}
 
+    # Resolve target preferred language of the logged in user
+    pref_langs = []
+    if current_user.preferred_languages:
+        try:
+            import json
+            pref_langs = json.loads(current_user.preferred_languages) if isinstance(current_user.preferred_languages, str) else current_user.preferred_languages
+        except Exception:
+            pass
+
+    if current_user.role == "audience":
+        from app.models import Audience
+        aud = db.query(Audience).filter(Audience.email == current_user.email, Audience.is_deleted == False).first()
+        if aud and aud.preferred_languages:
+            try:
+                import json
+                pref_langs = json.loads(aud.preferred_languages) if isinstance(aud.preferred_languages, str) else aud.preferred_languages
+            except Exception:
+                pass
+
+    user_lang = pref_langs[0] if pref_langs else "English"
+
     result = []
     for c in campaigns:
+        title = c.title
+        description = c.description
+
+        if user_lang and user_lang.lower() != "english":
+            try:
+                from app.services.translation_service import translate_text
+                title = translate_text(c.title, user_lang, "English")
+                if c.description:
+                    description = translate_text(c.description, user_lang, "English")
+            except Exception:
+                pass
+
         result.append({
             "id": c.id,
-            "title": c.title,
-            "description": c.description,
+            "title": title,
+            "description": description,
             "campaign_type": c.campaign_type,
             "status": c.status,
             "created_at": c.created_at.isoformat() if c.created_at else None,

@@ -198,6 +198,7 @@ def dispatch_state_emergency_in_background(
     from app.database import SessionLocal
     from app.models import Audience
     from app.services.dispatcher import dispatch_to_channel
+    import json
 
     db = SessionLocal()
     try:
@@ -216,11 +217,44 @@ def dispatch_state_emergency_in_background(
         subject = f"🚨 EMERGENCY ALERT: {title}"
         body = description
 
+        # Local cache for translations to avoid hitting the LLM API repeatedly for the same language
+        translations_cache = {}
+
         logging.getLogger("commai").info(f"[MAP-EMERGENCY] Start dispatching alert to {len(audience_members)} users via {channels}")
         for member in audience_members:
+            # Resolve preferred languages
+            pref_langs = []
+            if member.preferred_languages:
+                try:
+                    pref_langs = json.loads(member.preferred_languages) if isinstance(member.preferred_languages, str) else member.preferred_languages
+                except Exception:
+                    pref_langs = []
+
+            # Determine target language (default is English)
+            target_lang = "English"
+            if pref_langs and isinstance(pref_langs, list) and len(pref_langs) > 0:
+                target_lang = pref_langs[0].strip()
+
+            member_subject = subject
+            member_body = body
+
+            if target_lang and target_lang.lower() != "english":
+                if target_lang not in translations_cache:
+                    try:
+                        from app.services.translation_service import translate_text
+                        t_subject = translate_text(subject, target_lang, "English")
+                        t_body = translate_text(body, target_lang, "English")
+                        translations_cache[target_lang] = (t_subject, t_body)
+                        logging.getLogger("commai").info(f"[MAP-EMERGENCY] Pre-translated alert to {target_lang}")
+                    except Exception as e:
+                        logging.getLogger("commai").error(f"[MAP-EMERGENCY] Failed translating to {target_lang}: {e}")
+                        translations_cache[target_lang] = (subject, body)
+                
+                member_subject, member_body = translations_cache[target_lang]
+
             for channel in channels:
                 try:
-                    dispatch_to_channel(channel, member, subject, body)
+                    dispatch_to_channel(channel, member, member_subject, member_body)
                 except Exception as ex:
                     logging.getLogger("commai").error(f"[MAP-EMERGENCY] Failed channel {channel} for {member.email or member.phone}: {ex}")
     except Exception as e:

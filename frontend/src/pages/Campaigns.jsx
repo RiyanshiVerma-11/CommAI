@@ -1151,9 +1151,14 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
   };
 
-  const filteredCampaigns = listTab === 'all'
-    ? campaigns
-    : campaigns.filter(c => c.status === 'draft');
+  const filteredCampaigns = campaigns.filter(c => {
+    if (listTab === 'all') return true;
+    if (listTab === 'ongoing') return c.status === 'active' || c.status === 'scheduled' || c.status === 'pending_approval';
+    if (listTab === 'past') return c.status === 'completed';
+    if (listTab === 'drafts') return c.status === 'draft';
+    if (listTab === 'cancelled') return c.status === 'cancelled';
+    return true;
+  });
 
   return (
     <div className="animate-fade-in">
@@ -1179,22 +1184,41 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       {viewMode === 'list' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Tabs Filter Header */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px', flexWrap: 'wrap' }}>
             <button 
               className={`btn ${listTab === 'all' ? 'btn-primary' : 'btn-dark'}`}
               style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={() => setListTab('all')}
             >
-              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.95rem', height: '0.95rem' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
               All Campaigns ({campaigns.length})
+            </button>
+            <button 
+              className={`btn ${listTab === 'ongoing' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('ongoing')}
+            >
+              🔄 Ongoing ({campaigns.filter(c => c.status === 'active' || c.status === 'scheduled' || c.status === 'pending_approval').length})
+            </button>
+            <button 
+              className={`btn ${listTab === 'past' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('past')}
+            >
+              ✅ Past / Completed ({campaigns.filter(c => c.status === 'completed').length})
             </button>
             <button 
               className={`btn ${listTab === 'drafts' ? 'btn-primary' : 'btn-dark'}`}
               style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={() => setListTab('drafts')}
             >
-              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.95rem', height: '0.95rem' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
-              Drafts Board ({campaigns.filter(c => c.status === 'draft').length})
+              📝 Drafts ({campaigns.filter(c => c.status === 'draft').length})
+            </button>
+            <button 
+              className={`btn ${listTab === 'cancelled' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('cancelled')}
+            >
+              🚫 Cancelled ({campaigns.filter(c => c.status === 'cancelled').length})
             </button>
           </div>
 
@@ -1869,6 +1893,38 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
               ) : (
                 /* ══════════════════════ NORMAL MANUAL FORM ══════════════════════ */
                 <>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '700', color: 'hsl(var(--primary))' }}>Select Campaign Template (Optional Pre-fill)</label>
+                    <select
+                      className="form-control"
+                      value={selectedTplId}
+                      onChange={(e) => {
+                        const tplId = e.target.value;
+                        setSelectedTplId(tplId);
+                        if (tplId && tplId !== 'custom') {
+                          const activeTpl = templates.find(t => t.id === tplId);
+                          if (activeTpl) {
+                            setFormTitle(activeTpl.title);
+                            setFormObjective(activeTpl.description || activeTpl.title);
+                            setCustomSubject(activeTpl.subject_template || '');
+                            setCustomBody(activeTpl.body_template || '');
+                            if (activeTpl.channel) {
+                              setSelectedChannels([activeTpl.channel]);
+                            }
+                          }
+                        }
+                      }}
+                      style={{ border: '1px solid rgba(76, 140, 252, 0.4)', background: 'rgba(76, 140, 252, 0.05)' }}
+                    >
+                      <option value="">-- Choose Template --</option>
+                      <option value="custom">-- Write Custom Message (Direct) --</option>
+                      {templates.map(tpl => (
+                        <option key={tpl.id} value={tpl.id}>
+                          [{tpl.channel.toUpperCase()}] {tpl.title} ({tpl.default_language})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="form-group">
                     <label className="form-label">Campaign Title *</label>
                     <input type="text" className="form-control" placeholder="e.g. Swachh Bharat Ludhiana Awareness 2026" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />

@@ -36,9 +36,9 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
   const [newPasswordReset, setNewPasswordReset] = useState('');
 
   const demoAccounts = [
-    { label: '🛡️ Admin Account', email: 'admin@comm.ai', password: 'AdminPassword123!' },
-    { label: '💼 Campaign Manager', email: 'manager@comm.ai', password: 'ManagerPassword123!' },
-    { label: '📣 Audience Member', email: 'audience@comm.ai', password: 'AudiencePass123!' }
+    { label: '🛡️ Admin Account', email: 'admin@example.com', password: 'AdminPassword123!' },
+    { label: '💼 Campaign Manager', email: 'manager@example.com', password: 'ManagerPassword123!' },
+    { label: '📣 Audience Member', email: 'audience@example.com', password: 'AudiencePass123!' }
   ];
 
   const handlePreFill = (demo) => {
@@ -829,7 +829,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
               <input
                 type="email"
                 className="form-control"
-                placeholder="operator@comm.ai"
+                placeholder="operator@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
@@ -877,7 +877,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                 <input
                   type="email"
                   className="form-control"
-                  placeholder="operator@comm.ai"
+                  placeholder="operator@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
@@ -953,7 +953,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
               <input
                 type="email"
                 className="form-control"
-                placeholder="operator@comm.ai"
+                placeholder="operator@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}

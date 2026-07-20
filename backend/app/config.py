@@ -15,13 +15,13 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", _default_db)
     
     # Pre-seeded Operator Credentials
-    ADMIN_EMAIL: str = "admin@comm.ai"
+    ADMIN_EMAIL: str = "admin@example.com"
     ADMIN_PASSWORD: str = "AdminPassword123!"
     
-    MANAGER_EMAIL: str = "manager@comm.ai"
+    MANAGER_EMAIL: str = "manager@example.com"
     MANAGER_PASSWORD: str = "ManagerPassword123!"
     
-    AUDIENCE_EMAIL: str = "audience@comm.ai"
+    AUDIENCE_EMAIL: str = "audience@example.com"
     AUDIENCE_PASSWORD: str = "AudiencePass123!"
 
     # --- SMTP Email Configuration (Gmail) ---

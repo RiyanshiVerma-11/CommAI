@@ -355,4 +355,4 @@ For immediate launch without installing Python/Node dependencies on your host ma
    npm run dev
    ```
 - Open `http://localhost:5173` in your browser.
-- **Admin login**: `admin@comm.ai` / `AdminPassword123!` (OTP bypass code: `123456`)
+- **Admin login**: `admin@example.com` / `AdminPassword123!` (OTP bypass code: `123456`)

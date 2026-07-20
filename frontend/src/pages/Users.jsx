@@ -428,7 +428,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
                       className="text-input" 
                       value={formEmail} 
                       onChange={(e) => setFormEmail(e.target.value)} 
-                      placeholder="operator@comm.ai"
+                      placeholder="operator@example.com"
                     />
                   </div>
 

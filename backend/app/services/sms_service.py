@@ -52,11 +52,36 @@ def send_sms(
     if not clean_phone:
         return False, "Invalid or missing recipient phone number"
 
-    # Retrieve SMS gateway key from environment if not provided
+    # Option 1: Twilio SMS Gateway Integration (Free Trial with $15 credits, no DLT required)
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID") or getattr(settings, "TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN") or getattr(settings, "TWILIO_AUTH_TOKEN", "")
+    twilio_from = os.getenv("TWILIO_PHONE_NUMBER") or getattr(settings, "TWILIO_PHONE_NUMBER", "")
+
+    if twilio_sid and twilio_token and twilio_from:
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
+            to_phone = f"+{clean_phone}"
+            payload = {
+                "From": twilio_from,
+                "To": to_phone,
+                "Body": message
+            }
+            logger.info(f"[SMS] Dispatching Twilio SMS to {to_phone}...")
+            resp = requests.post(url, data=payload, auth=(twilio_sid, twilio_token), timeout=10)
+            if resp.status_code in [200, 201]:
+                logger.info(f"[SMS] Successfully delivered Twilio SMS to {to_phone}")
+                return True, ""
+            else:
+                err_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
+                err_msg = err_data.get("message", f"HTTP {resp.status_code}: {resp.text}")
+                logger.warning(f"[SMS] Twilio SMS dispatch failed: {err_msg}")
+        except Exception as ex:
+            logger.error(f"[SMS] Twilio dispatch exception: {ex}")
+
+    # Option 2: Fast2SMS HTTP API Integration (India SMS Gateway)
     if not api_key:
         api_key = os.getenv("FAST2SMS_API_KEY") or os.getenv("SMS_API_KEY") or getattr(settings, "SMS_API_KEY", "")
 
-    # Option 1: Fast2SMS HTTP API Integration (India SMS Gateway)
     if api_key:
         try:
             url = "https://www.fast2sms.com/dev/bulkV2"
@@ -76,11 +101,11 @@ def send_sms(
         except Exception as ex:
             logger.error(f"[SMS] Fast2SMS gateway dispatch error: {ex}")
 
-    # Option 2: Fallback to Email Notification with [SMS ALERT] prefix if email exists
+    # Option 3: Fallback to Email Notification with [SMS ALERT] prefix if email exists
     if email:
         sms_subject = f"[SMS ALERT] {subject or 'Emergency Notification'}"
         sms_body = (
-            f"--- SMS Alert (Delivered to {clean_phone}) ---\n\n"
+            f"--- SMS Alert (Delivered to +{clean_phone}) ---\n\n"
             f"{message}\n\n"
             f"-----------------------------------------\n"
             f"This SMS alert was dispatched to registered mobile number: +{clean_phone}"
@@ -89,6 +114,6 @@ def send_sms(
         success, error = send_email(email, sms_subject, sms_body)
         return success, error
 
-    # Option 3: Console Mock Log Delivery
+    # Option 4: Console Mock Log Delivery
     logger.info(f"[SMS MOCK] To Phone: +{clean_phone} | Message: {message[:100]}...")
     return True, "delivered_mock"

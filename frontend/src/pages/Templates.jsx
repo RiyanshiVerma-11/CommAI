@@ -4,6 +4,7 @@ import GlassCard from '../components/GlassCard';
 const Templates = ({ user, backendUrl, headers }) => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [cardLanguages, setCardLanguages] = useState({});
   
   // Filters
   const [filterChan, setFilterChan] = useState('');
@@ -55,7 +56,7 @@ const Templates = ({ user, backendUrl, headers }) => {
 
   const languages = ["English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"];
   const categories = ["emergency", "awareness", "education", "announcement"];
-  const channels = ["email", "sms", "whatsapp", "push", "website"];
+  const channels = ["email", "sms", "whatsapp", "push", "website", "telegram"];
   
   const placeholders = [
     { label: 'Recipient Name', tag: '{{first_name}}' },
@@ -253,9 +254,25 @@ const Templates = ({ user, backendUrl, headers }) => {
     }
   };
 
-  const renderChannelMockup = (tpl) => {
-    const isMobileChannel = ['sms', 'whatsapp', 'push'].includes(tpl.channel);
+  const renderChannelMockup = (tpl, chosenLang = null) => {
+    const isMobileChannel = ['sms', 'whatsapp', 'push', 'telegram'].includes(tpl.channel);
     
+    let subject = tpl.subject_template;
+    let body = tpl.body_template;
+
+    if (chosenLang && chosenLang !== tpl.default_language) {
+      let parsed = {};
+      try {
+        parsed = typeof tpl.translations === 'string' ? JSON.parse(tpl.translations || '{}') : (tpl.translations || {});
+      } catch {
+        parsed = {};
+      }
+      if (parsed[chosenLang]) {
+        if (parsed[chosenLang].subject) subject = parsed[chosenLang].subject;
+        if (parsed[chosenLang].body) body = parsed[chosenLang].body;
+      }
+    }
+
     if (tpl.channel === 'email') {
       return (
         <div className="email-mockup animate-fade-in" style={{ flexGrow: 1, minHeight: '200px', borderRadius: '12px', border: '1px solid var(--border-color-glass)' }}>
@@ -275,10 +292,10 @@ const Templates = ({ user, backendUrl, headers }) => {
           </div>
           <div className="email-content-wrapper" style={{ padding: '16px' }}>
             <div className="email-headers" style={{ gap: '6px', paddingBottom: '12px' }}>
-              {tpl.subject_template && (
+              {subject && (
                 <div className="email-header-line">
                   <span className="email-header-label" style={{ width: '60px', fontWeight: '700' }}>Subject:</span>
-                  <span className="email-header-val" style={{ fontWeight: '700', color: 'hsl(var(--text-primary))' }}>{tpl.subject_template}</span>
+                  <span className="email-header-val" style={{ fontWeight: '700', color: 'hsl(var(--text-primary))' }}>{subject}</span>
                 </div>
               )}
               <div className="email-header-line">
@@ -286,7 +303,7 @@ const Templates = ({ user, backendUrl, headers }) => {
                 <span className="email-header-val">Alert Portal &lt;alert@{user.organization ? user.organization.toLowerCase().replace(/\s+/g, '') : 'comm'}.gov.in&gt;</span>
               </div>
             </div>
-            <div className="email-body-text" style={{ whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)', color: 'hsl(var(--text-secondary))', fontSize: '0.82rem', lineHeight: '1.5' }}>{tpl.body_template}</div>
+            <div className="email-body-text" style={{ whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)', color: 'hsl(var(--text-secondary))', fontSize: '0.82rem', lineHeight: '1.5' }}>{body}</div>
           </div>
         </div>
       );
@@ -314,7 +331,46 @@ const Templates = ({ user, backendUrl, headers }) => {
                     <span>now</span>
                   </div>
                   <div className="push-title" style={{ fontSize: '0.75rem', fontWeight: '700', color: '#fff' }}>{tpl.title}</div>
-                  <div className="push-body" style={{ fontSize: '0.72rem', lineHeight: '1.4', color: 'rgba(255,255,255,0.85)' }}>{tpl.body_template}</div>
+                  <div className="push-body" style={{ fontSize: '0.72rem', lineHeight: '1.4', color: 'rgba(255,255,255,0.85)' }}>{body}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (tpl.channel === 'telegram') {
+        return (
+          <div className="phone-mockup animate-fade-in" style={{ height: '210px', width: '100%', minHeight: 'auto', borderBottomWidth: '11px', borderRadius: '20px' }}>
+            <div className="phone-status-bar" style={{ height: '24px', padding: '6px 16px 0 16px' }}>
+              <span style={{ fontWeight: '700' }}>10:42 AM</span>
+              <span>📶 🔋</span>
+            </div>
+            <div className="phone-screen">
+              <div className="phone-app-header" style={{ height: '36px', padding: '0 12px', gap: '8px', background: '#2481cc', display: 'flex', alignItems: 'center' }}>
+                <div className="phone-avatar" style={{ width: '20px', height: '20px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                  <span style={{ fontSize: '0.65rem' }}>📢</span>
+                </div>
+                <div className="phone-header-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div className="phone-header-title" style={{ fontSize: '0.75rem', fontWeight: '700', color: '#fff', lineHeight: 1 }}>Gov Alert Bot</div>
+                  <div className="phone-header-subtitle" style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>bot</div>
+                </div>
+              </div>
+              <div className="phone-chat-bg" style={{ background: '#0e1621', padding: '8px', height: 'calc(100% - 36px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+                <div style={{
+                  background: '#182533',
+                  color: '#f5f5f5',
+                  padding: '8px 12px',
+                  borderRadius: '12px 12px 12px 0px',
+                  maxWidth: '85%',
+                  fontSize: '0.72rem',
+                  lineHeight: '1.4',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                  margin: '4px 0',
+                  textAlign: 'left'
+                }}>
+                  {body}
+                  <div style={{ textAlign: 'right', fontSize: '0.55rem', color: '#7f91a4', marginTop: '4px' }}>10:42 AM</div>
                 </div>
               </div>
             </div>
@@ -352,7 +408,7 @@ const Templates = ({ user, backendUrl, headers }) => {
             </div>
             <div className={`phone-body ${isWA ? 'whatsapp' : ''}`} style={{ justifyContent: 'flex-start', padding: '10px' }}>
               <div className={`phone-bubble ${bubbleClass}`} style={{ padding: '6px 10px', fontSize: '0.72rem', borderTopLeftRadius: '0px', borderTopRightRadius: '10px', borderBottomRightRadius: '10px', borderBottomLeftRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{tpl.body_template}</div>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{body}</div>
                 <div className="phone-bubble-time" style={{ fontSize: '0.55rem', textAlign: 'right', marginTop: '3px', opacity: 0.7 }}>10:42 AM</div>
               </div>
             </div>
@@ -382,7 +438,7 @@ const Templates = ({ user, backendUrl, headers }) => {
               </svg>
               <strong style={{ fontSize: '0.65rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Public Security Advisory</strong>
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#f1f5f9', whiteSpace: 'pre-wrap', lineHeight: '1.35' }}>{tpl.body_template}</div>
+            <div style={{ fontSize: '0.78rem', color: '#f1f5f9', whiteSpace: 'pre-wrap', lineHeight: '1.35' }}>{body}</div>
           </div>
         </div>
       </div>
@@ -493,7 +549,7 @@ const Templates = ({ user, backendUrl, headers }) => {
               </div>
 
               <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                {renderChannelMockup(tpl)}
+                {renderChannelMockup(tpl, cardLanguages[tpl.id] || tpl.default_language)}
               </div>
 
               {(() => {
@@ -504,15 +560,45 @@ const Templates = ({ user, backendUrl, headers }) => {
                   parsedTranslations = {};
                 }
                 const translatedLanguages = Object.keys(parsedTranslations).filter(lang => parsedTranslations[lang] && parsedTranslations[lang].body);
+                const currentActiveLang = cardLanguages[tpl.id] || tpl.default_language;
                 
                 return translatedLanguages.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '-8px', marginBottom: '8px', padding: '8px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
                     <div style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', width: '100%', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                       <span>🌐</span>
-                      <span>AI Pre-translations ({translatedLanguages.length}):</span>
+                      <span>AI Pre-translations ({translatedLanguages.length}) — Click to preview:</span>
                     </div>
+                    {/* Default Language selector badge */}
+                    <span 
+                      style={{ 
+                        fontSize: '0.68rem', 
+                        padding: '2px 6px', 
+                        background: currentActiveLang === tpl.default_language ? 'rgba(37,99,235,0.25)' : 'rgba(255,255,255,0.02)', 
+                        border: currentActiveLang === tpl.default_language ? '1px solid hsl(var(--accent))' : '1px solid rgba(255,255,255,0.1)', 
+                        color: currentActiveLang === tpl.default_language ? '#fff' : 'hsl(var(--text-muted))', 
+                        borderRadius: '4px', 
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setCardLanguages({ ...cardLanguages, [tpl.id]: tpl.default_language })}
+                    >
+                      {tpl.default_language} (Default)
+                    </span>
                     {translatedLanguages.map(l => (
-                      <span key={l} style={{ fontSize: '0.68rem', padding: '2px 6px', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', color: 'hsl(var(--accent))', borderRadius: '4px', fontWeight: '500' }}>
+                      <span 
+                        key={l} 
+                        style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '2px 6px', 
+                          background: currentActiveLang === l ? 'rgba(37,99,235,0.25)' : 'rgba(37,99,235,0.08)', 
+                          border: currentActiveLang === l ? '1px solid hsl(var(--accent))' : '1px solid rgba(37,99,235,0.15)', 
+                          color: currentActiveLang === l ? '#fff' : 'hsl(var(--accent))', 
+                          borderRadius: '4px', 
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setCardLanguages({ ...cardLanguages, [tpl.id]: l })}
+                      >
                         {l}
                       </span>
                     ))}
@@ -521,9 +607,12 @@ const Templates = ({ user, backendUrl, headers }) => {
               })()}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'hsl(var(--text-muted))', borderTop: '1px solid var(--border-color-glass)', paddingTop: '12px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span 
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                  onClick={() => setCardLanguages({ ...cardLanguages, [tpl.id]: tpl.default_language })}
+                >
                   <svg className="svg-icon" style={{ width: '11px', height: '11px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                  {tpl.default_language} • v{tpl.version}
+                  Showing: {cardLanguages[tpl.id] || tpl.default_language} (v{tpl.version})
                 </span>
                 {['admin', 'campaign_manager'].includes(user.role) && (
                   <div style={{ display: 'flex', gap: '8px' }}>

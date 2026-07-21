@@ -3,7 +3,7 @@ import json
 import datetime
 from io import StringIO
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlalchemy import or_, and_, text
+from sqlalchemy import or_, and_, text, func as sqla_func
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 
@@ -282,14 +282,13 @@ def delete_audience(
     db: Session = Depends(get_db),
     current_user = Depends(require_admin)
 ):
-    aud = db.query(Audience).filter(Audience.id == id, Audience.is_deleted == False).first()
+    aud = db.query(Audience).filter(Audience.id == id).first()
     if not aud:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audience member not found")
         
-    aud.is_deleted = True
-    aud.deleted_at = datetime.datetime.utcnow()
+    db.delete(aud)
     db.commit()
-    return {"message": "Audience member soft deleted successfully", "id": id}
+    return {"message": "Audience member permanently deleted successfully", "id": id}
 
 
 @router.patch("/audiences/{id}", response_model=AudienceResponse)
@@ -525,13 +524,13 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
     Translates a segment's criteria dictionary into SQLAlchemy filter expressions.
     Supported fields in criteria:
     - language: string (checks inside preferred_languages array text)
-    - occupation: list of strings (matches IN)
-    - state: list of strings (matches IN)
-    - district: list of strings (matches IN)
+    - occupation: list of strings (matches IN, case-insensitive)
+    - state: list of strings (matches IN, case-insensitive)
+    - district: list of strings (matches IN, case-insensitive)
     - age_gte: int (matches age >= val)
     - age_lte: int (matches age <= val)
-    - gender: list of strings (matches IN)
-    - organization: list of strings (matches IN)
+    - gender: list of strings (matches IN, case-insensitive)
+    - organization: list of strings (matches IN, case-insensitive)
     """
     filters = []
     
@@ -540,20 +539,26 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
     if lang:
         filters.append(Audience.preferred_languages.like(f'%"{lang}"%'))
         
-    # Occupation List
+    # Occupation List (case-insensitive)
     occupations = filter_criteria.get("occupations")
     if occupations and isinstance(occupations, list):
-        filters.append(Audience.occupation.in_(occupations))
+        lower_occs = [o.lower() for o in occupations if isinstance(o, str)]
+        if lower_occs:
+            filters.append(sqla_func.lower(Audience.occupation).in_(lower_occs))
         
-    # State List
+    # State List (case-insensitive)
     states = filter_criteria.get("states")
     if states and isinstance(states, list):
-        filters.append(Audience.state.in_(states))
+        lower_states = [s.lower() for s in states if isinstance(s, str)]
+        if lower_states:
+            filters.append(sqla_func.lower(Audience.state).in_(lower_states))
         
-    # District List
+    # District List (case-insensitive)
     districts = filter_criteria.get("districts")
     if districts and isinstance(districts, list):
-        filters.append(Audience.district.in_(districts))
+        lower_dists = [d.lower() for d in districts if isinstance(d, str)]
+        if lower_dists:
+            filters.append(sqla_func.lower(Audience.district).in_(lower_dists))
         
     # Age constraints
     age_gte = filter_criteria.get("age_gte")
@@ -564,15 +569,19 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
     if age_lte is not None:
         filters.append(Audience.age <= int(age_lte))
         
-    # Gender List
+    # Gender List (case-insensitive)
     genders = filter_criteria.get("genders")
     if genders and isinstance(genders, list):
-        filters.append(Audience.gender.in_(genders))
+        lower_genders = [g.lower() for g in genders if isinstance(g, str)]
+        if lower_genders:
+            filters.append(sqla_func.lower(Audience.gender).in_(lower_genders))
         
-    # Organization List
+    # Organization List (case-insensitive)
     orgs = filter_criteria.get("organizations")
     if orgs and isinstance(orgs, list):
-        filters.append(Audience.organization.in_(orgs))
+        lower_orgs = [o.lower() for o in orgs if isinstance(o, str)]
+        if lower_orgs:
+            filters.append(sqla_func.lower(Audience.organization).in_(lower_orgs))
         
     if filters:
         # Evaluate logical operator. Default to AND.
@@ -592,13 +601,18 @@ def list_segments(
     segments = db.query(Segment).order_by(Segment.created_at.desc()).all()
     results = []
     for s in segments:
+        criteria = json.loads(s.filter_criteria) if s.filter_criteria else {}
+        base_query = db.query(Audience).filter(Audience.is_deleted == False, Audience.is_active == True)
+        eval_query = build_segment_filter_query(criteria, base_query)
+        live_size = eval_query.count()
+
         results.append(SegmentResponse(
             id=s.id,
             name=s.name,
             description=s.description,
-            filter_criteria=json.loads(s.filter_criteria),
+            filter_criteria=criteria,
             is_dynamic=s.is_dynamic,
-            estimated_size=s.estimated_size,
+            estimated_size=live_size,
             last_refreshed=s.last_refreshed,
             created_at=s.created_at
         ))

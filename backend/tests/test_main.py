@@ -425,7 +425,7 @@ class TestAudienceCRUD:
 
         response = client.delete(f"/api/audiences/{del_id}", headers=admin_headers)
         assert response.status_code == 200
-        assert "soft deleted" in response.json()["message"]
+        assert "permanently deleted" in response.json()["message"]
 
         # Verify it's gone from list
         get_resp = client.get(f"/api/audiences/{del_id}", headers=admin_headers)

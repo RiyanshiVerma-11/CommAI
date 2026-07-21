@@ -33,6 +33,13 @@ class Settings:
     # --- WhatsApp Configuration (CallMeBot) ---
     CALLMEBOT_DEFAULT_APIKEY: str = os.getenv("CALLMEBOT_DEFAULT_APIKEY", "")
 
+    # --- Telegram Configuration ---
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+
+    # --- Firebase FCM Configuration ---
+    FCM_SERVICE_ACCOUNT_JSON: str = os.getenv("FCM_SERVICE_ACCOUNT_JSON", "")
+
     # --- Groq Translation Configuration ---
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
 
@@ -49,6 +56,8 @@ class Settings:
     DAILY_CAP_EMAIL: int = 5000
     DAILY_CAP_SMS: int = 5000
     DAILY_CAP_WHATSAPP: int = 5000
+    DAILY_CAP_TELEGRAM: int = 5000
+    DAILY_CAP_PUSH: int = 5000
 
     # --- External backend URL (for emails and hyperlinks) ---
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8001")
@@ -70,7 +79,7 @@ class Settings:
     
     CATEGORIES = ["emergency", "awareness", "education", "announcement"]
     
-    CHANNELS = ["email", "sms", "whatsapp", "push", "website"]
+    CHANNELS = ["email", "sms", "whatsapp", "push", "website", "telegram"]
 
     def load_overrides(self):
         import json
@@ -92,6 +101,11 @@ class Settings:
                 self.SMTP_EMAIL = data.get("SMTP_EMAIL") or self.SMTP_EMAIL
                 self.SMTP_APP_PASSWORD = data.get("SMTP_APP_PASSWORD") or self.SMTP_APP_PASSWORD
                 self.CALLMEBOT_DEFAULT_APIKEY = data.get("CALLMEBOT_DEFAULT_APIKEY") or self.CALLMEBOT_DEFAULT_APIKEY
+                
+                self.TELEGRAM_BOT_TOKEN = data.get("TELEGRAM_BOT_TOKEN") or self.TELEGRAM_BOT_TOKEN
+                self.TELEGRAM_CHAT_ID = data.get("TELEGRAM_CHAT_ID") or self.TELEGRAM_CHAT_ID
+                self.FCM_SERVICE_ACCOUNT_JSON = data.get("FCM_SERVICE_ACCOUNT_JSON") or self.FCM_SERVICE_ACCOUNT_JSON
+                
                 self.GROQ_API_KEY = data.get("GROQ_API_KEY") or self.GROQ_API_KEY
                 self.GROQ_API_KEY_SECONDARY = data.get("GROQ_API_KEY_SECONDARY") or self.GROQ_API_KEY_SECONDARY
                 self.GEMINI_API_KEY = data.get("GEMINI_API_KEY") or self.GEMINI_API_KEY
@@ -109,6 +123,14 @@ class Settings:
                 cap_wa = data.get("DAILY_CAP_WHATSAPP")
                 if cap_wa is not None and cap_wa != "":
                     self.DAILY_CAP_WHATSAPP = int(cap_wa)
+                    
+                cap_tg = data.get("DAILY_CAP_TELEGRAM")
+                if cap_tg is not None and cap_tg != "":
+                    self.DAILY_CAP_TELEGRAM = int(cap_tg)
+                    
+                cap_push = data.get("DAILY_CAP_PUSH")
+                if cap_push is not None and cap_push != "":
+                    self.DAILY_CAP_PUSH = int(cap_push)
             except Exception as e:
                 print(f"[CONFIG] Error loading settings overrides: {e}")
 

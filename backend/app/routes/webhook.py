@@ -184,3 +184,17 @@ def get_conversation_thread(
             for m in messages
         ],
     }
+
+
+@router.post("/telegram")
+def handle_telegram_webhook(update: dict):
+    """
+    Receive inbound Telegram Bot webhook update events.
+    """
+    from app.services.telegram_bot_listener import process_telegram_update
+    from app.config import settings
+    import os
+
+    token = settings.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN")
+    process_telegram_update(update, token)
+    return {"status": "ok"}

@@ -9,7 +9,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
   // Constants seeded from config
   const languages = ["English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"];
   const occupations = ["Farmer", "Student", "Teacher", "Healthcare Worker", "NGO Worker", "Administrator", "General Public", "Business Owner"];
-  const channels = ["email", "sms", "whatsapp", "push", "website"];
+  const channels = ["email", "sms", "whatsapp", "push", "website", "telegram"];
 
   // --- 1. AUDIENCE LIST STATES ---
   const [audiences, setAudiences] = useState([]);
@@ -42,6 +42,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
   const [formChannels, setFormChannels] = useState(['email']);
   const [formError, setFormError] = useState('');
   const [formCustomFields, setFormCustomFields] = useState([]); // Array of { key: '', value: '' }
+  const [formTelegramUser, setFormTelegramUser] = useState('');
 
   // --- 2. CSV IMPORT STATES ---
   const [csvFile, setCsvFile] = useState(null);
@@ -213,6 +214,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
     setFormDesig('');
     setFormChannels(['email']);
     setFormCustomFields([]);
+    setFormTelegramUser('');
     setFormError('');
     setModalOpen(true);
   };
@@ -235,6 +237,8 @@ const Audiences = ({ user, backendUrl, headers }) => {
     setFormDesig(aud.designation || '');
     setFormChannels(aud.preferred_channels);
     setFormCustomFields(aud.custom_fields ? Object.entries(aud.custom_fields).map(([k, v]) => ({ key: k, value: String(v) })) : []);
+    const tgVal = aud.custom_fields?.telegram_username || aud.custom_fields?.telegram_chat_id || '';
+    setFormTelegramUser(tgVal);
     setFormError('');
     setModalOpen(true);
   };
@@ -253,6 +257,15 @@ const Audiences = ({ user, backendUrl, headers }) => {
         customFieldsDict[f.key.trim()] = f.value;
       }
     });
+
+    if (formTelegramUser && formTelegramUser.trim()) {
+      const val = formTelegramUser.trim();
+      if (val.startsWith('@') || isNaN(val)) {
+        customFieldsDict['telegram_username'] = val;
+      } else {
+        customFieldsDict['telegram_chat_id'] = val;
+      }
+    }
 
     const payload = {
       first_name: formFirst,
@@ -708,7 +721,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                             <button className="btn btn-dark" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc' }} onClick={() => handleAutoTag(aud.id)} title="AI Auto-Tag Profile">
                               ✨ Tag
                             </button>
-                            {user.role === 'admin' && (
+                            {['admin', 'campaign_manager'].includes(user.role) && (
                               <button className="btn btn-danger" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', background: 'rgba(244, 63, 94, 0.15)' }} onClick={() => handleDeleteAudience(aud.id)} title="Delete Profile">
                                 <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '1rem', height: '1rem', color: 'hsl(var(--danger))' }}>
                                   <polyline points="3 6 5 6 21 6" />
@@ -1181,7 +1194,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label className="form-label">Phone Number *</label>
                   <input type="text" className="form-control" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="e.g. +919876543210" required />
@@ -1189,6 +1202,10 @@ const Audiences = ({ user, backendUrl, headers }) => {
                 <div className="form-group">
                   <label className="form-label">Email Address</label>
                   <input type="email" className="form-control" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="e.g. sita@health.org" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Telegram Handle / ID</label>
+                  <input type="text" className="form-control" value={formTelegramUser} onChange={(e) => setFormTelegramUser(e.target.value)} placeholder="e.g. @username or 1339647710" />
                 </div>
               </div>
 
@@ -1327,14 +1344,32 @@ const Audiences = ({ user, backendUrl, headers }) => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <button type="button" className="btn btn-dark" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                  {editId ? 'Save Changes' : 'Create Profile'}
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                <div>
+                  {editId && (
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={() => {
+                        handleDeleteAudience(editId);
+                        setModalOpen(false);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      Delete Profile
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button type="button" className="btn btn-dark" onClick={() => setModalOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    {editId ? 'Save Changes' : 'Create Profile'}
+                  </button>
+                </div>
               </div>
             </form>
           </GlassCard>

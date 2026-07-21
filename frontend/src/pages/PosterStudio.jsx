@@ -1406,7 +1406,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                       Delivery Channels
                     </span>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {['email', 'whatsapp', 'sms', 'push'].map((chan) => {
+                      {['email', 'whatsapp', 'sms', 'push', 'telegram'].map((chan) => {
                         const isChanSelected = selectedChannels.includes(chan);
                         return (
                           <label key={chan} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', textTransform: 'capitalize', color: 'hsl(var(--text-primary))', cursor: 'pointer' }}>

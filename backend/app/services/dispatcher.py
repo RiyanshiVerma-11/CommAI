@@ -24,6 +24,8 @@ from app.database import SessionLocal
 from app.models import Campaign, Segment, Audience, Template, DeliveryLog
 from app.services.email_service import send_email
 from app.services.whatsapp_service import send_whatsapp
+from app.services.telegram_service import send_telegram
+from app.services.fcm_service import send_fcm_push, is_fcm_configured
 from app.routes.audience import build_segment_filter_query
 from app.config import settings
 
@@ -132,13 +134,47 @@ def dispatch_to_channel(
         return success, error, "sms"
 
     elif channel == "push":
+        # Check for per-recipient FCM token in custom_fields
+        fcm_token = None
+        if audience.custom_fields:
+            try:
+                custom = json.loads(audience.custom_fields) if isinstance(audience.custom_fields, str) else audience.custom_fields
+                fcm_token = custom.get("fcm_token")
+            except (json.JSONDecodeError, AttributeError):
+                pass
+
+        if fcm_token and is_fcm_configured():
+            success, error = send_fcm_push(fcm_token, subject, body)
+            if success:
+                return True, "delivered_fcm", "push"
+            else:
+                return False, f"FCM error: {error}", "push"
+
         # Fallback: Send push notification content as email
         if not audience.email:
-            return False, "No email for push fallback delivery", "push"
+            return False, "No email or FCM token for push delivery", "push"
         push_subject = f"🔔 [PUSH] {subject}"
         push_body = f"--- Push Notification ---\n\n{body}\n\n--- This push notification was delivered via email ---"
         success, error = send_email(audience.email, push_subject, push_body)
         return success, error, "push"
+
+    elif channel == "telegram":
+        # Check for per-recipient telegram_chat_id or telegram_username in custom_fields
+        chat_id = None
+        if audience.custom_fields:
+            try:
+                custom = json.loads(audience.custom_fields) if isinstance(audience.custom_fields, str) else audience.custom_fields
+                chat_id = custom.get("telegram_chat_id") or custom.get("telegram_username")
+                if chat_id and isinstance(chat_id, str) and not chat_id.replace('-', '').isdigit() and not chat_id.startswith("@"):
+                    chat_id = f"@{chat_id}"
+            except (json.JSONDecodeError, AttributeError):
+                pass
+
+        if not chat_id:
+            return False, "No Telegram Chat ID or Username linked to profile", "telegram"
+
+        success, error = send_telegram(chat_id, body)
+        return success, error, "telegram"
 
     elif channel == "website":
         # Website channel: log-only, no direct delivery target
@@ -265,7 +301,9 @@ def _dispatch_campaign_worker(campaign_id: str):
         caps = {
             "email": settings.DAILY_CAP_EMAIL,
             "sms": settings.DAILY_CAP_SMS,
-            "whatsapp": settings.DAILY_CAP_WHATSAPP
+            "whatsapp": settings.DAILY_CAP_WHATSAPP,
+            "telegram": settings.DAILY_CAP_TELEGRAM,
+            "push": settings.DAILY_CAP_PUSH
         }
         
         caps_breached = []
@@ -432,12 +470,33 @@ def _dispatch_campaign_worker(campaign_id: str):
                 )
 
                 # Log the delivery
+                rec_info = member.phone
+                if channel in ["email", "sms", "push"]:
+                    rec_info = member.email or "No Email"
+                    if channel == "push" and success and actual_channel == "push":
+                        if member.custom_fields:
+                            try:
+                                custom = json.loads(member.custom_fields) if isinstance(member.custom_fields, str) else member.custom_fields
+                                fcm_tok = custom.get("fcm_token")
+                                if fcm_tok:
+                                    rec_info = f"FCM:{fcm_tok[:15]}..."
+                            except Exception:
+                                pass
+                elif channel == "telegram":
+                    rec_info = settings.TELEGRAM_CHAT_ID or "No Chat ID"
+                    if member.custom_fields:
+                        try:
+                            custom = json.loads(member.custom_fields) if isinstance(member.custom_fields, str) else member.custom_fields
+                            rec_info = custom.get("telegram_chat_id") or settings.TELEGRAM_CHAT_ID or "No Chat ID"
+                        except Exception:
+                            pass
+
                 log = DeliveryLog(
                     campaign_id=campaign_id,
                     audience_id=member.id,
                     channel=actual_channel,
                     status="sent" if success else "failed",
-                    recipient_info=member.email if channel in ["email", "sms", "push"] else member.phone,
+                    recipient_info=rec_info,
                     error_message=error if not success else None,
                     sent_at=datetime.datetime.utcnow()
                 )

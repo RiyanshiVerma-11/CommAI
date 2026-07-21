@@ -630,7 +630,7 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: '600', fontSize: '0.85rem' }}>Channels</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                      {['email', 'whatsapp', 'sms', 'push'].map(ch => (
+                      {['email', 'whatsapp', 'sms', 'push', 'telegram'].map(ch => (
                         <label key={ch} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', cursor: 'pointer', color: 'hsl(var(--text-secondary))' }}>
                           <input
                             type="checkbox"
@@ -644,7 +644,7 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
                             }}
                             style={{ accentColor: 'hsl(var(--primary))' }}
                           />
-                          {ch === 'email' ? '📧 Email' : ch === 'whatsapp' ? '💬 WhatsApp' : ch === 'sms' ? '📱 SMS' : '🚀 Push'}
+                          {ch === 'email' ? '📧 Email' : ch === 'whatsapp' ? '💬 WhatsApp' : ch === 'sms' ? '📱 SMS' : ch === 'push' ? '🚀 Push' : '📢 Telegram'}
                         </label>
                       ))}
                     </div>

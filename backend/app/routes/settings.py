@@ -13,6 +13,8 @@ from app.models import Blacklist, DeliveryLog
 from app.schemas import BlacklistCreate, BlacklistResponse
 from app.services.email_service import test_smtp_connection, send_email
 from app.services.whatsapp_service import test_whatsapp_connection
+from app.services.telegram_service import test_telegram_connection
+from app.services.fcm_service import test_fcm_connection, is_fcm_configured
 
 router = APIRouter(prefix="/settings", tags=["System Settings"])
 
@@ -22,9 +24,14 @@ class SettingsUpdateSchema(BaseModel):
     CALLMEBOT_DEFAULT_APIKEY: Optional[str] = ""
     DEFAULT_COUNTRY_CODE: Optional[str] = "91"
     GROQ_API_KEY: Optional[str] = ""
+    TELEGRAM_BOT_TOKEN: Optional[str] = ""
+    TELEGRAM_CHAT_ID: Optional[str] = ""
+    FCM_SERVICE_ACCOUNT_JSON: Optional[str] = ""
     DAILY_CAP_EMAIL: Optional[int] = 5000
     DAILY_CAP_SMS: Optional[int] = 5000
     DAILY_CAP_WHATSAPP: Optional[int] = 5000
+    DAILY_CAP_TELEGRAM: Optional[int] = 5000
+    DAILY_CAP_PUSH: Optional[int] = 5000
 
 class TestEmailRequest(BaseModel):
     email: str
@@ -32,6 +39,14 @@ class TestEmailRequest(BaseModel):
 class TestWhatsAppRequest(BaseModel):
     phone: str
     apikey: Optional[str] = None
+
+class TestTelegramRequest(BaseModel):
+    chat_id: str
+    token: Optional[str] = None
+
+class TestFCMRequest(BaseModel):
+    token: str
+    service_account_json: Optional[str] = None
 
 @router.get("")
 def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str, Any]:
@@ -42,12 +57,19 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
         "CALLMEBOT_DEFAULT_APIKEY": settings.CALLMEBOT_DEFAULT_APIKEY,
         "DEFAULT_COUNTRY_CODE": settings.DEFAULT_COUNTRY_CODE,
         "GROQ_API_KEY": "****************" if settings.GROQ_API_KEY else "",
+        "TELEGRAM_BOT_TOKEN": "****************" if settings.TELEGRAM_BOT_TOKEN else "",
+        "TELEGRAM_CHAT_ID": settings.TELEGRAM_CHAT_ID,
+        "FCM_SERVICE_ACCOUNT_JSON": "****************" if settings.FCM_SERVICE_ACCOUNT_JSON else "",
         "DAILY_CAP_EMAIL": settings.DAILY_CAP_EMAIL,
         "DAILY_CAP_SMS": settings.DAILY_CAP_SMS,
         "DAILY_CAP_WHATSAPP": settings.DAILY_CAP_WHATSAPP,
+        "DAILY_CAP_TELEGRAM": settings.DAILY_CAP_TELEGRAM,
+        "DAILY_CAP_PUSH": settings.DAILY_CAP_PUSH,
         "is_smtp_configured": bool(settings.SMTP_EMAIL and settings.SMTP_APP_PASSWORD),
         "is_whatsapp_configured": bool(settings.CALLMEBOT_DEFAULT_APIKEY),
-        "is_groq_configured": bool(settings.GROQ_API_KEY)
+        "is_groq_configured": bool(settings.GROQ_API_KEY),
+        "is_telegram_configured": bool(settings.TELEGRAM_BOT_TOKEN),
+        "is_fcm_configured": is_fcm_configured()
     }
 
 @router.post("")
@@ -71,13 +93,26 @@ def update_settings(
         update_data["GROQ_API_KEY"] = settings_in.GROQ_API_KEY
     elif settings_in.GROQ_API_KEY == "":
         update_data["GROQ_API_KEY"] = ""
+
+    if settings_in.TELEGRAM_BOT_TOKEN and settings_in.TELEGRAM_BOT_TOKEN != "****************":
+        update_data["TELEGRAM_BOT_TOKEN"] = settings_in.TELEGRAM_BOT_TOKEN
+    elif settings_in.TELEGRAM_BOT_TOKEN == "":
+        update_data["TELEGRAM_BOT_TOKEN"] = ""
+
+    if settings_in.FCM_SERVICE_ACCOUNT_JSON and settings_in.FCM_SERVICE_ACCOUNT_JSON != "****************":
+        update_data["FCM_SERVICE_ACCOUNT_JSON"] = settings_in.FCM_SERVICE_ACCOUNT_JSON
+    elif settings_in.FCM_SERVICE_ACCOUNT_JSON == "":
+        update_data["FCM_SERVICE_ACCOUNT_JSON"] = ""
         
     update_data["SMTP_EMAIL"] = settings_in.SMTP_EMAIL
     update_data["CALLMEBOT_DEFAULT_APIKEY"] = settings_in.CALLMEBOT_DEFAULT_APIKEY
     update_data["DEFAULT_COUNTRY_CODE"] = settings_in.DEFAULT_COUNTRY_CODE
+    update_data["TELEGRAM_CHAT_ID"] = settings_in.TELEGRAM_CHAT_ID
     update_data["DAILY_CAP_EMAIL"] = settings_in.DAILY_CAP_EMAIL
     update_data["DAILY_CAP_SMS"] = settings_in.DAILY_CAP_SMS
     update_data["DAILY_CAP_WHATSAPP"] = settings_in.DAILY_CAP_WHATSAPP
+    update_data["DAILY_CAP_TELEGRAM"] = settings_in.DAILY_CAP_TELEGRAM
+    update_data["DAILY_CAP_PUSH"] = settings_in.DAILY_CAP_PUSH
     
     success = settings.save_overrides(update_data)
     if not success:
@@ -141,6 +176,52 @@ def run_test_whatsapp(
         )
     return {"message": msg}
 
+@router.post("/test-telegram")
+def run_test_telegram(
+    request: TestTelegramRequest,
+    current_user = Depends(require_manager_or_higher)
+):
+    token = request.token
+    if not token or token == "****************":
+        token = settings.TELEGRAM_BOT_TOKEN
+        
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Telegram Bot Token is not configured. Please save it first."
+        )
+        
+    success, msg = test_telegram_connection(request.chat_id, token)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return {"message": msg}
+
+@router.post("/test-fcm")
+def run_test_fcm(
+    request: TestFCMRequest,
+    current_user = Depends(require_manager_or_higher)
+):
+    service_account_json = request.service_account_json
+    if not service_account_json or service_account_json == "****************":
+        service_account_json = settings.FCM_SERVICE_ACCOUNT_JSON
+        
+    if not service_account_json:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="FCM Service Account JSON is not configured. Please save it first."
+        )
+        
+    success, msg = test_fcm_connection(request.token, service_account_json)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return {"message": msg}
+
 
 @router.get("/diagnostics")
 def run_system_diagnostics(
@@ -186,7 +267,15 @@ def run_system_diagnostics(
     whatsapp_ok = bool(settings.CALLMEBOT_DEFAULT_APIKEY)
     whatsapp_msg = "Connected" if whatsapp_ok else "Not Configured"
 
-    # 4. Delivery failure logs check in past 1 hr
+    # 4. Telegram Check
+    telegram_ok = bool(settings.TELEGRAM_BOT_TOKEN)
+    telegram_msg = "Connected" if telegram_ok else "Not Configured"
+
+    # 5. FCM Check
+    fcm_ok = is_fcm_configured()
+    fcm_msg = "Connected" if fcm_ok else "Not Configured"
+
+    # 6. Delivery failure logs check in past 1 hr
     one_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
     recent_logs = db.query(DeliveryLog).filter(DeliveryLog.sent_at >= one_hour_ago).all()
     total_recent = len(recent_logs)
@@ -197,6 +286,8 @@ def run_system_diagnostics(
         "smtp": {"ok": smtp_ok, "msg": smtp_msg},
         "groq": {"ok": groq_ok, "msg": groq_msg, "latency_ms": groq_latency},
         "whatsapp": {"ok": whatsapp_ok, "msg": whatsapp_msg},
+        "telegram": {"ok": telegram_ok, "msg": telegram_msg},
+        "fcm": {"ok": fcm_ok, "msg": fcm_msg},
         "metrics": {
             "recent_sent_count": total_recent,
             "recent_failed_count": failed_recent,

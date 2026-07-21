@@ -82,6 +82,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def on_startup():
+    try:
+        from app.services.telegram_bot_listener import start_telegram_polling
+        start_telegram_polling()
+    except Exception as ex:
+        print(f"[STARTUP] Telegram polling start exception: {ex}")
+
 # WebSocket bulletins endpoint
 @app.websocket("/ws/bulletins")
 async def websocket_bulletins(websocket: WebSocket):

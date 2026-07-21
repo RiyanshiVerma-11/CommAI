@@ -584,7 +584,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
                 <div className="form-group" style={{ marginBottom: '16px' }}>
                   <label className="form-label" style={{ fontWeight: '600' }}>Preferred Delivery Channels</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '6px' }}>
-                    {['email', 'sms', 'whatsapp', 'push', 'website'].map(channel => {
+                    {['email', 'sms', 'whatsapp', 'push', 'website', 'telegram'].map(channel => {
                       const isSelected = preferredChannels.includes(channel);
                       return (
                         <div

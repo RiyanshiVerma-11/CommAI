@@ -182,7 +182,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     { value: 'organizational_announcement', label: 'Organizational Announcement' }
   ];
 
-  const channelsList = ["email", "sms", "whatsapp", "push", "website"];
+  const channelsList = ["email", "sms", "whatsapp", "push", "website", "telegram"];
 
   const aiTones = [
     { value: 'formal', label: 'Formal' },
@@ -949,7 +949,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       ? (selectedChannels.length > 0 ? selectedChannels[0] : 'email')
       : activeTpl.channel;
 
-    const isMobileChannel = ['sms', 'whatsapp', 'push'].includes(chType);
+    const isMobileChannel = ['sms', 'whatsapp', 'push', 'telegram'].includes(chType);
 
     if (chType === 'email') {
       return (
@@ -1010,6 +1010,45 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   </div>
                   <div className="push-title" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#fff' }}>{formTitle || "Awareness advisory"}</div>
                   <div className="push-body" style={{ fontSize: '0.75rem', lineHeight: '1.4', color: 'rgba(255,255,255,0.85)' }}>{body}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (chType === 'telegram') {
+        return (
+          <div className="phone-mockup animate-fade-in" style={{ height: '260px', width: '100%', minHeight: 'auto', borderBottomWidth: '11px', borderRadius: '24px' }}>
+            <div className="phone-status-bar" style={{ height: '26px', padding: '8px 20px 0 20px' }}>
+              <span style={{ fontWeight: '700' }}>10:42 AM</span>
+              <span>📶 🔋</span>
+            </div>
+            <div className="phone-screen">
+              <div className="phone-app-header" style={{ height: '42px', padding: '0 16px', gap: '10px', background: '#2481cc', display: 'flex', alignItems: 'center' }}>
+                <div className="phone-avatar" style={{ width: '24px', height: '24px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                  <span style={{ fontSize: '0.75rem' }}>📢</span>
+                </div>
+                <div className="phone-header-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div className="phone-header-title" style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff', lineHeight: 1 }}>Gov Alert Bot</div>
+                  <div className="phone-header-subtitle" style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>bot</div>
+                </div>
+              </div>
+              <div className="phone-chat-bg" style={{ background: '#0e1621', padding: '10px', height: 'calc(100% - 42px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden' }}>
+                <div style={{
+                  background: '#182533',
+                  color: '#f5f5f5',
+                  padding: '10px 14px',
+                  borderRadius: '14px 14px 14px 0px',
+                  maxWidth: '85%',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.4',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                  margin: '6px 0',
+                  textAlign: 'left'
+                }}>
+                  {body}
+                  <div style={{ textAlign: 'right', fontSize: '0.6rem', color: '#7f91a4', marginTop: '6px' }}>10:42 AM</div>
                 </div>
               </div>
             </div>

@@ -5,11 +5,16 @@ const Settings = ({ user, backendUrl, headers }) => {
   const [smtpEmail, setSmtpEmail] = useState('');
   const [smtpPassword, setSmtpPassword] = useState('');
   const [callMeBotKey, setCallMeBotKey] = useState('');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [fcmServiceAccountJson, setFcmServiceAccountJson] = useState('');
   const [defaultCountryCode, setDefaultCountryCode] = useState('91');
   const [groqApiKey, setGroqApiKey] = useState('');
   const [dailyCapEmail, setDailyCapEmail] = useState(5000);
   const [dailyCapSms, setDailyCapSms] = useState(5000);
   const [dailyCapWhatsapp, setDailyCapWhatsapp] = useState(5000);
+  const [dailyCapTelegram, setDailyCapTelegram] = useState(5000);
+  const [dailyCapPush, setDailyCapPush] = useState(5000);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,13 +50,19 @@ const Settings = ({ user, backendUrl, headers }) => {
   // Test states
   const [testEmail, setTestEmail] = useState('');
   const [testPhone, setTestPhone] = useState('');
+  const [testTelegramChatId, setTestTelegramChatId] = useState('');
+  const [testFcmToken, setTestFcmToken] = useState('');
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testWaLoading, setTestWaLoading] = useState(false);
+  const [testTelegramLoading, setTestTelegramLoading] = useState(false);
+  const [testFcmLoading, setTestFcmLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showGroqKey, setShowGroqKey] = useState(false);
+  const [showTelegramToken, setShowTelegramToken] = useState(false);
+  const [showFcmJson, setShowFcmJson] = useState(false);
   
   // Health & Diagnostics states
-  const [health, setHealth] = useState({ smtp: false, whatsapp: false, groq: false });
+  const [health, setHealth] = useState({ smtp: false, whatsapp: false, groq: false, telegram: false, fcm: false });
   const [diagnostics, setDiagnostics] = useState(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
 
@@ -70,16 +81,23 @@ const Settings = ({ user, backendUrl, headers }) => {
       setSmtpEmail(data.SMTP_EMAIL || '');
       setSmtpPassword(data.SMTP_APP_PASSWORD || '');
       setCallMeBotKey(data.CALLMEBOT_DEFAULT_APIKEY || '');
+      setTelegramBotToken(data.TELEGRAM_BOT_TOKEN || '');
+      setTelegramChatId(data.TELEGRAM_CHAT_ID || '');
+      setFcmServiceAccountJson(data.FCM_SERVICE_ACCOUNT_JSON || '');
       setGroqApiKey(data.GROQ_API_KEY || '');
       setDefaultCountryCode(data.DEFAULT_COUNTRY_CODE || '91');
       setDailyCapEmail(data.DAILY_CAP_EMAIL || 5000);
       setDailyCapSms(data.DAILY_CAP_SMS || 5000);
       setDailyCapWhatsapp(data.DAILY_CAP_WHATSAPP || 5000);
+      setDailyCapTelegram(data.DAILY_CAP_TELEGRAM || 5000);
+      setDailyCapPush(data.DAILY_CAP_PUSH || 5000);
       
       setHealth({
         smtp: data.is_smtp_configured,
         whatsapp: data.is_whatsapp_configured,
-        groq: data.is_groq_configured
+        groq: data.is_groq_configured,
+        telegram: data.is_telegram_configured,
+        fcm: data.is_fcm_configured
       });
       if (user && user.email) {
         setTestEmail(user.email);
@@ -251,11 +269,16 @@ const Settings = ({ user, backendUrl, headers }) => {
       SMTP_EMAIL: smtpEmail,
       SMTP_APP_PASSWORD: smtpPassword,
       CALLMEBOT_DEFAULT_APIKEY: callMeBotKey,
+      TELEGRAM_BOT_TOKEN: telegramBotToken,
+      TELEGRAM_CHAT_ID: telegramChatId,
+      FCM_SERVICE_ACCOUNT_JSON: fcmServiceAccountJson,
       DEFAULT_COUNTRY_CODE: defaultCountryCode,
       GROQ_API_KEY: groqApiKey,
       DAILY_CAP_EMAIL: parseInt(dailyCapEmail),
       DAILY_CAP_SMS: parseInt(dailyCapSms),
-      DAILY_CAP_WHATSAPP: parseInt(dailyCapWhatsapp)
+      DAILY_CAP_WHATSAPP: parseInt(dailyCapWhatsapp),
+      DAILY_CAP_TELEGRAM: parseInt(dailyCapTelegram),
+      DAILY_CAP_PUSH: parseInt(dailyCapPush)
     };
 
     try {
@@ -417,6 +440,58 @@ const Settings = ({ user, backendUrl, headers }) => {
       setMessage({ text: err.message, type: 'danger' });
     } finally {
       setTestWaLoading(false);
+    }
+  };
+
+  const handleTestTelegram = async () => {
+    if (!testTelegramChatId) {
+      setMessage({ text: 'Please enter a target Chat ID for Telegram testing', type: 'warning' });
+      return;
+    }
+    setTestTelegramLoading(true);
+    setMessage({ text: '', type: '' });
+    try {
+      const response = await fetch(`${backendUrl}/api/settings/test-telegram`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ chat_id: testTelegramChatId, token: telegramBotToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Telegram test failed');
+      setMessage({ text: data.message || 'Telegram test message sent successfully!', type: 'success' });
+    } catch (err) {
+      setMessage({ text: err.message, type: 'danger' });
+    } finally {
+      setTestTelegramLoading(false);
+    }
+  };
+
+  const handleTestFcm = async () => {
+    if (!testFcmToken) {
+      setMessage({ text: 'Please enter a device registration token for FCM testing', type: 'warning' });
+      return;
+    }
+    setTestFcmLoading(true);
+    setMessage({ text: '', type: '' });
+    try {
+      const response = await fetch(`${backendUrl}/api/settings/test-fcm`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token: testFcmToken, service_account_json: fcmServiceAccountJson })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'FCM test failed');
+      setMessage({ text: data.message || 'FCM test message sent successfully!', type: 'success' });
+    } catch (err) {
+      setMessage({ text: err.message, type: 'danger' });
+    } finally {
+      setTestFcmLoading(false);
     }
   };
 
@@ -593,7 +668,7 @@ const Settings = ({ user, backendUrl, headers }) => {
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: '600', marginBottom: '8px' }}>Preferred Delivery Channels</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {['email', 'sms', 'whatsapp', 'push', 'website'].map(channel => {
+                  {['email', 'sms', 'whatsapp', 'push', 'website', 'telegram'].map(channel => {
                     const isSelected = preferredChannels.includes(channel);
                     return (
                       <div
@@ -1003,6 +1078,151 @@ const Settings = ({ user, backendUrl, headers }) => {
                 </div>
               </GlassCard>
 
+              {/* Telegram Alert Bot Setup Card */}
+              <GlassCard>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.5rem' }}>📢</span>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0 }}>Telegram Alert Bot Setup</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', margin: '2px 0 0' }}>Used for real-time Telegram alert delivery</p>
+                    </div>
+                  </div>
+                  <span className={`badge ${health.telegram ? 'badge-communicator' : 'badge-danger'}`} style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                    {health.telegram ? 'Active' : 'Unconfigured'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Telegram Bot Token</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showTelegramToken ? 'text' : 'password'}
+                        className="form-control"
+                        placeholder={telegramBotToken ? '****************' : '123456:ABC-DEF...'}
+                        value={telegramBotToken}
+                        onChange={(e) => setTelegramBotToken(e.target.value)}
+                        style={{ paddingRight: '40px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTelegramToken(!showTelegramToken)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'hsl(var(--text-muted))',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          padding: 0
+                        }}
+                      >
+                        {showTelegramToken ? '👁' : '👁‍🗨'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Default Chat ID (Testing/Alerts)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. 123456789"
+                      value={telegramChatId}
+                      onChange={(e) => setTelegramChatId(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '12px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  color: 'hsl(var(--text-secondary))'
+                }}>
+                  <strong style={{ color: 'hsl(var(--primary))', display: 'block', marginBottom: '4px' }}>🤖 How to set up a Telegram Alert Bot (100% Free):</strong>
+                  1. Search for <strong>@BotFather</strong> on Telegram and start a chat.<br />
+                  2. Send <code>/newbot</code>, choose a display name, and a unique username ending in "bot".<br />
+                  3. Copy the token provided by BotFather (looks like <code>123456:ABC-DEF...</code>) and paste it above.<br />
+                  4. Search for your bot on Telegram, click <strong>Start</strong>, and send a message (e.g. "hello").<br />
+                  5. Open <code>https://api.telegram.org/bot&lt;YOUR_TOKEN&gt;/getUpdates</code> in a browser and find the <code>"chat":{"{\"id\":123456789}"}</code> value.<br />
+                  6. Save that value as the Default Chat ID above, or in any recipient's <strong>custom fields</strong> as <code>{"{ \"telegram_chat_id\": \"123456789\" }"}</code>.
+                </div>
+              </GlassCard>
+
+              {/* Firebase FCM Push Notifications Setup Card */}
+              <GlassCard>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.5rem' }}>🔔</span>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0 }}>Firebase FCM Push Setup</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', margin: '2px 0 0' }}>Used for real-time mobile/web push notifications</p>
+                    </div>
+                  </div>
+                  <span className={`badge ${health.fcm ? 'badge-communicator' : 'badge-danger'}`} style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                    {health.fcm ? 'Active' : 'Unconfigured'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Service Account private key JSON</label>
+                    <div style={{ position: 'relative' }}>
+                      <textarea
+                        className="form-control"
+                        rows="4"
+                        placeholder={fcmServiceAccountJson ? '****************' : 'Paste the entire contents of your service-account-private-key.json here'}
+                        value={fcmServiceAccountJson}
+                        onChange={(e) => setFcmServiceAccountJson(e.target.value)}
+                        style={{ fontFamily: 'monospace', fontSize: '0.8rem', paddingRight: '40px', resize: 'vertical' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowFcmJson(!showFcmJson)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '10px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'hsl(var(--text-muted))',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          padding: 0
+                        }}
+                      >
+                        {showFcmJson ? '👁' : '👁‍🗨'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '12px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  color: 'hsl(var(--text-secondary))'
+                }}>
+                  <strong style={{ color: 'hsl(var(--primary))', display: 'block', marginBottom: '4px' }}>🚀 How to get FCM Credentials:</strong>
+                  1. Visit <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'hsl(var(--accent))', textDecoration: 'underline' }}>console.firebase.google.com</a> and create/select a project.<br />
+                  2. Click the gear icon (Project Settings) and navigate to the <strong>Service Accounts</strong> tab.<br />
+                  3. Click <strong>Generate new private key</strong> and download the JSON file.<br />
+                  4. Paste the entire content of that JSON file into the text area above and save.<br />
+                  5. Store individual device registration tokens in recipient <strong>custom fields</strong> as <code>{"{ \"fcm_token\": \"DEVICE_REGISTRATION_TOKEN\" }"}</code>.
+                </div>
+              </GlassCard>
+
               {/* 🎛️ DAILY CHANNEL CAPS CARD */}
               <GlassCard>
                 <div style={{ borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px', marginBottom: '20px' }}>
@@ -1036,6 +1256,24 @@ const Settings = ({ user, backendUrl, headers }) => {
                       className="form-control" 
                       value={dailyCapWhatsapp} 
                       onChange={(e) => setDailyCapWhatsapp(e.target.value)} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Telegram Daily Cap</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      value={dailyCapTelegram} 
+                      onChange={(e) => setDailyCapTelegram(e.target.value)} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Push Daily Cap</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      value={dailyCapPush} 
+                      onChange={(e) => setDailyCapPush(e.target.value)} 
                     />
                   </div>
                 </div>
@@ -1106,6 +1344,52 @@ const Settings = ({ user, backendUrl, headers }) => {
                     disabled={testWaLoading}
                   >
                     {testWaLoading ? 'Sending...' : 'Test WhatsApp'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Test Telegram */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', margin: 0, fontWeight: '600', color: 'hsl(var(--text-primary))' }}>Verify Telegram Bot</h4>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Recipient Chat ID (e.g. 123456789)"
+                    value={testTelegramChatId}
+                    onChange={(e) => setTestTelegramChatId(e.target.value)}
+                    style={{ flexGrow: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={handleTestTelegram}
+                    disabled={testTelegramLoading}
+                  >
+                    {testTelegramLoading ? 'Sending...' : 'Test Telegram'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Test FCM Push */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.95rem', margin: 0, fontWeight: '600', color: 'hsl(var(--text-primary))' }}>Verify Firebase Push (FCM)</h4>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="FCM Device Registration Token"
+                    value={testFcmToken}
+                    onChange={(e) => setTestFcmToken(e.target.value)}
+                    style={{ flexGrow: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={handleTestFcm}
+                    disabled={testFcmLoading}
+                  >
+                    {testFcmLoading ? 'Sending...' : 'Test Push'}
                   </button>
                 </div>
               </div>

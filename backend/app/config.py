@@ -37,6 +37,9 @@ class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
+    # --- SMS Gateway Configuration (Fast2SMS) ---
+    FAST2SMS_API_KEY: str = os.getenv("FAST2SMS_API_KEY", "")
+
     # --- Firebase FCM Configuration ---
     FCM_SERVICE_ACCOUNT_JSON: str = os.getenv("FCM_SERVICE_ACCOUNT_JSON", "")
 

@@ -144,3 +144,12 @@ def test_dispatcher_telegram_fallback(monkeypatch):
     assert len(called) == 1
     assert called[0][0] == "998877"
     assert called[0][1] == "Hello John"
+
+
+def test_sms_service_mock_delivery():
+    """Verify send_sms mock delivery when no external gateway is configured."""
+    from app.services.sms_service import send_sms
+    success, msg = send_sms("+919876543210", "Test SMS Content")
+    assert success is True
+    assert msg == "delivered_mock"
+

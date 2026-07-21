@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import Campaign, Segment, Audience, Template, DeliveryLog
 from app.services.email_service import send_email
+from app.services.sms_service import send_sms
 from app.services.whatsapp_service import send_whatsapp
 from app.services.telegram_service import send_telegram
 from app.services.fcm_service import send_fcm_push, is_fcm_configured
@@ -125,12 +126,7 @@ def dispatch_to_channel(
         return success, error, "whatsapp"
 
     elif channel == "sms":
-        # Fallback: Send SMS content as email with [SMS] prefix
-        if not audience.email:
-            return False, "No email for SMS fallback delivery", "sms"
-        sms_subject = f"[SMS ALERT] {subject}"
-        sms_body = f"--- SMS Content (delivered via email) ---\n\n{body}\n\n--- Original SMS intended for: {audience.phone} ---"
-        success, error = send_email(audience.email, sms_subject, sms_body)
+        success, error = send_sms(audience.phone, body, email=audience.email, subject=subject)
         return success, error, "sms"
 
     elif channel == "push":

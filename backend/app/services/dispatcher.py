@@ -467,7 +467,9 @@ def _dispatch_campaign_worker(campaign_id: str):
 
                 # Log the delivery
                 rec_info = member.phone
-                if channel in ["email", "sms", "push"]:
+                if channel in ["email"]:
+                    rec_info = member.email or "No Email"
+                elif channel == "push" and success and actual_channel == "push":
                     rec_info = member.email or "No Email"
                     if channel == "push" and success and actual_channel == "push":
                         if member.custom_fields:

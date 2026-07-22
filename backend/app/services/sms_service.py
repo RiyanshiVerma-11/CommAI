@@ -10,8 +10,12 @@ import logging
 import re
 import requests
 from typing import Tuple, Optional
+from dotenv import load_dotenv, find_dotenv
 from app.config import settings
 from app.services.email_service import send_email
+
+# Ensure latest .env overrides are loaded dynamically
+load_dotenv(find_dotenv(), override=True)
 
 logger = logging.getLogger("commai.sms")
 
@@ -52,6 +56,9 @@ def send_sms(
     if not clean_phone:
         return False, "Invalid or missing recipient phone number"
 
+    # Always ensure latest .env values are reloaded
+    load_dotenv(find_dotenv(), override=True)
+
     # Option 1: Twilio SMS Gateway Integration (Free Trial with $15 credits, no DLT required)
     twilio_sid = os.getenv("TWILIO_ACCOUNT_SID") or getattr(settings, "TWILIO_ACCOUNT_SID", "")
     twilio_token = os.getenv("TWILIO_AUTH_TOKEN") or getattr(settings, "TWILIO_AUTH_TOKEN", "")
@@ -61,16 +68,31 @@ def send_sms(
         try:
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             to_phone = f"+{clean_phone}"
+            
+            # Twilio international routes require clean GSM-compatible SMS body text
+            import unicodedata
+            clean_body = unicodedata.normalize('NFKD', message).encode('ascii', 'ignore').decode('ascii').strip()
+            if not clean_body or len(clean_body) < 5:
+                # If message was pure non-ASCII (e.g. Hindi Devanagari script), format clean English summary
+                clean_subj = unicodedata.normalize('NFKD', subject or 'CommAI Public Announcement').encode('ascii', 'ignore').decode('ascii').strip() or "CommAI Public Announcement"
+                send_body = f"[{clean_subj}] Important public update. Please check your CommAI portal for full details."
+            else:
+                send_body = clean_body
+
             payload = {
                 "From": twilio_from,
                 "To": to_phone,
-                "Body": message
+                "Body": send_body
             }
             logger.info(f"[SMS] Dispatching Twilio SMS to {to_phone}...")
             resp = requests.post(url, data=payload, auth=(twilio_sid, twilio_token), timeout=10)
             if resp.status_code in [200, 201]:
-                logger.info(f"[SMS] Successfully delivered Twilio SMS to {to_phone}")
-                return True, ""
+                res_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
+                if res_data.get("error_code") is None:
+                    logger.info(f"[SMS] Successfully delivered Twilio SMS to {to_phone}")
+                    return True, ""
+                else:
+                    logger.warning(f"[SMS] Twilio returned error_code {res_data.get('error_code')}: {res_data.get('message')}")
             else:
                 err_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
                 err_msg = err_data.get("message", f"HTTP {resp.status_code}: {resp.text}")
@@ -101,19 +123,6 @@ def send_sms(
         except Exception as ex:
             logger.error(f"[SMS] Fast2SMS gateway dispatch error: {ex}")
 
-    # Option 3: Fallback to Email Notification with [SMS ALERT] prefix if email exists
-    if email:
-        sms_subject = f"[SMS ALERT] {subject or 'Emergency Notification'}"
-        sms_body = (
-            f"--- SMS Alert (Delivered to +{clean_phone}) ---\n\n"
-            f"{message}\n\n"
-            f"-----------------------------------------\n"
-            f"This SMS alert was dispatched to registered mobile number: +{clean_phone}"
-        )
-        logger.info(f"[SMS FALLBACK] Dispatching SMS via email to {email} (phone: +{clean_phone})...")
-        success, error = send_email(email, sms_subject, sms_body)
-        return success, error
-
-    # Option 4: Console Mock Log Delivery
+    # Option 3: Return result or mock delivery log (no email fallback)
     logger.info(f"[SMS MOCK] To Phone: +{clean_phone} | Message: {message[:100]}...")
     return True, "delivered_mock"

@@ -2,20 +2,22 @@
 Real Firebase Cloud Messaging (FCM) Push Service using Firebase Admin SDK.
 """
 
+import os
 import json
 import logging
 from typing import Tuple
+from dotenv import load_dotenv, find_dotenv
 from app.config import settings
 
 logger = logging.getLogger("commai.fcm")
-
 
 def get_fcm_credentials(service_account_json: str = None) -> dict:
     """
     Parse FCM Service Account credentials into a dictionary.
     """
+    load_dotenv(find_dotenv(), override=True)
     if not service_account_json:
-        service_account_json = settings.FCM_SERVICE_ACCOUNT_JSON
+        service_account_json = os.getenv("FCM_SERVICE_ACCOUNT_JSON") or settings.FCM_SERVICE_ACCOUNT_JSON
 
     if not service_account_json:
         return None

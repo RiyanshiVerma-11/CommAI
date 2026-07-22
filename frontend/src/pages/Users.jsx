@@ -290,7 +290,6 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>Audience Directory</h2>
           <p style={{ margin: '4px 0 0 0', color: 'hsl(var(--text-secondary))', fontSize: '0.95rem' }}>
             Manage platform audience members, credentials, detailed profiles, and account authorizations.
           </p>

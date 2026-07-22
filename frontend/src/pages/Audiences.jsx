@@ -511,7 +511,6 @@ const Audiences = ({ user, backendUrl, headers }) => {
     <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Audience & Segments</h1>
           <p style={{ color: 'hsl(var(--text-secondary))' }}>Manage target citizen demographics and dynamic filter criteria.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>

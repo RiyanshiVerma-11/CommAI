@@ -15,11 +15,14 @@ services:
       - SECRET_KEY=72210fafca4045a19f2a95b15deb9108comm-ai-secret-key-super-secure
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
-      - "5173:80"
+      - "5173:5173"
     depends_on:
       - backend
     environment:

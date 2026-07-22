@@ -110,9 +110,6 @@ const SupportQueries = ({ user, backendUrl, headers }) => {
     <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-            Support & Confusion Queries
-          </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '4px 0 0' }}>
             Answer general questions, troubleshoot template confusion, and assist users navigating campaigns.
           </p>

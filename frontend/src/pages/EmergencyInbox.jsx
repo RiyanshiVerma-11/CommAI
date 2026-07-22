@@ -139,7 +139,6 @@ const EmergencyInbox = ({ user, backendUrl, headers }) => {
     <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Emergency Communications Inbox</h1>
           <p style={{ color: 'hsl(var(--text-secondary))' }}>
             Monitor and respond to direct emergency requests submitted by citizen profiles in real-time.
           </p>

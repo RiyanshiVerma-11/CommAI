@@ -58,20 +58,6 @@ function App() {
     }
   }, [theme]);
 
-  // Force light theme on landing page
-  useEffect(() => {
-    if (!token || !user) {
-      document.documentElement.classList.add('light-theme');
-    } else {
-      // Restore user's saved theme preference inside the app
-      if (theme === 'light') {
-        document.documentElement.classList.add('light-theme');
-      } else {
-        document.documentElement.classList.remove('light-theme');
-      }
-    }
-  }, [token, user, theme]);
-
   // Compile auth headers
   const authHeaders = {
     'Authorization': `Bearer ${token}`
@@ -512,6 +498,8 @@ function App() {
     if (view === 'landing') {
       return (
         <Landing 
+          theme={theme}
+          toggleTheme={toggleTheme}
           onNavigateToLogin={() => {
             setView('login');
             setViewRegister(false);
@@ -525,6 +513,8 @@ function App() {
     }
     return (
       <Login 
+        theme={theme}
+        toggleTheme={toggleTheme}
         onLoginSuccess={handleLoginSuccess} 
         backendUrl={BACKEND_URL} 
         onBackToLanding={() => setView('landing')}
@@ -694,25 +684,31 @@ function App() {
     }
   };
 
-  const getHeaderTitle = () => {
+  const getHeaderBreadcrumb = () => {
     switch (activeTab) {
-      case 'dashboard': return user?.role === 'audience' ? 'Your Portal' : 'Dashboard Overview';
-      case 'audiences': return 'Audience & Segment Management';
-      case 'templates': return 'Templates Library';
-      case 'campaigns': return 'Campaign Planner Wizard';
-      case 'approvals': return 'Maker-Checker Approvals Queue';
-      case 'audit_logs': return 'Operator Audit Trail Logs';
-      case 'users': return 'Audience Directory';
-      case 'managers': return 'Campaign Managers Directory';
-      case 'settings': return 'System Integration Parameters';
-      case 'emergency_inbox': return 'Emergency Communications Inbox';
-      case 'support_queries': return 'Support & Confusion Queries Desk';
-      case 'feedback': return 'Campaign Feedback & Assistance';
-      case 'poster_studio': return 'AI Visual Poster Studio';
-      case 'sentiment_map': return 'Geographic Sentiment Alarms Map';
-      case 'citizen_conversations': return 'Citizen Interactive RAG Chat';
-      case 'live_bulletins': return 'Live Emergency Alert Bulletins';
-      default: return 'CommAI Platform';
+      case 'dashboard': return { category: 'Core Dashboard', item: user?.role === 'audience' ? 'Your Portal' : 'Overview' };
+      case 'live_bulletins': return { category: 'Core Dashboard', item: 'Live Bulletins' };
+      
+      case 'campaigns': return { category: 'Campaign Planner', item: 'Wizard' };
+      case 'templates': return { category: 'Campaign Planner', item: 'Templates Library' };
+      case 'approvals': return { category: 'Campaign Planner', item: 'Approvals Queue' };
+      case 'poster_studio': return { category: 'Campaign Planner', item: 'Poster Studio' };
+      
+      case 'audiences': return { category: 'Outreach & Insights', item: 'Audience & Segments' };
+      case 'sentiment_map': return { category: 'Outreach & Insights', item: 'Sentiment Alarms Map' };
+      case 'feedback': return { category: 'Outreach & Insights', item: 'Campaign Feedback' };
+      
+      case 'emergency_inbox': return { category: 'Emergency & Chat', item: 'Emergency Inbox' };
+      case 'support_queries': return { category: 'Emergency & Chat', item: 'Support Queries Desk' };
+      case 'citizen_conversations': return { category: 'Emergency & Chat', item: 'Citizen Chat' };
+      
+      case 'users': return { category: 'System Governance', item: 'Audience Directory' };
+      case 'managers': return { category: 'System Governance', item: 'Managers Directory' };
+      case 'audit_logs': return { category: 'System Governance', item: 'Audit Trail Logs' };
+      
+      case 'settings': return { category: 'Preferences', item: 'System Settings' };
+      
+      default: return { category: 'CommAI', item: 'Platform' };
     }
   };
 
@@ -771,8 +767,10 @@ function App() {
               )}
             </button>
 
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '700' }}>
-              {getHeaderTitle()}
+            <h2 style={{ fontSize: '1.35rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, letterSpacing: '-0.01em' }}>
+              <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>{getHeaderBreadcrumb().category}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'hsl(var(--text-secondary))', opacity: 0.6 }}><polyline points="9 18 15 12 9 6"></polyline></svg>
+              <span>{getHeaderBreadcrumb().item}</span>
             </h2>
           </div>
 

@@ -87,8 +87,7 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Operational Audit Trails</h1>
+      <div style={{ marginBottom: '24px' }}>
         <p style={{ color: 'hsl(var(--text-secondary))' }}>Inspect system events, campaign creations, configuration edits, and user logs.</p>
       </div>
 

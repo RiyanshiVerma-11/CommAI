@@ -499,7 +499,6 @@ const Settings = ({ user, backendUrl, headers }) => {
     return (
       <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '40px' }}>
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Personal Profile & Preferences Settings</h1>
           <p style={{ color: 'hsl(var(--text-secondary))' }}>Configure your regional languages, demographics, and notification delivery channel choices.</p>
         </div>
 
@@ -714,8 +713,7 @@ const Settings = ({ user, backendUrl, headers }) => {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '40px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>System Integration Settings</h1>
+      <div style={{ marginTop: '48px' }}>
         <p style={{ color: 'hsl(var(--text-secondary))' }}>Configure API connections, send rate caps, and suppression registries.</p>
       </div>
 

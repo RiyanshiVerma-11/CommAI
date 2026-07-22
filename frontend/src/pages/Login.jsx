@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister }) => {
+const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, theme = 'dark', toggleTheme }) => {
   const [isRegister, setIsRegister] = useState(initialRegister || false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -296,8 +296,8 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
       overflowY: 'auto'
     }}>
       <GlassCard className="animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '36px', margin: 'auto' }}>
-        {onBackToLanding && (
-          <div style={{ marginBottom: '24px', textAlign: 'left', width: '100%' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          {onBackToLanding ? (
             <span 
               onClick={onBackToLanding}
               style={{
@@ -315,8 +315,46 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister })
             >
               ← Back to Overview
             </span>
-          </div>
-        )}
+          ) : <div />}
+
+          {toggleTheme && (
+            <button
+              onClick={toggleTheme}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border-color-glass)',
+                borderRadius: '10px',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                color: 'hsl(var(--text-secondary))',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                transition: 'var(--transition-fast)'
+              }}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  </svg>
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                  <span>Dark</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', flexShrink: 0 }}>

@@ -130,7 +130,6 @@ const Managers = ({ user, backendUrl, headers }) => {
     <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Campaign Managers Directory</h1>
           <p style={{ color: 'hsl(var(--text-secondary))' }}>Manage and monitor all campaign manager accounts on the platform.</p>
         </div>
       </div>

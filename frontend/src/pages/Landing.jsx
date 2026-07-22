@@ -231,8 +231,7 @@ function smoothScrollTo(id) {
   else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
-  const [landingTheme, setLandingTheme] = useState(localStorage.getItem('landing-theme') || 'dark');
+export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme = 'dark', toggleTheme }) {
   const [activeResource, setActiveResource] = useState(null);
   /* ── enable page scroll ── */
   useEffect(() => {
@@ -309,19 +308,19 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
     white:      '#ffffff',
     border:     '#e2e8f0',
     borderHov:  '#cbd5e1',
-    borderFocus:'#93c5fd',
+    borderFocus:'#818cf8',
     text:       '#0f172a',
     textSec:    '#334155',
     textMuted:  '#64748b',
-    blue:       '#2563eb',
-    blueDark:   '#1d4ed8',
-    blueLight:  '#eff6ff',
-    blueMid:    '#bfdbfe',
-    green:      '#16a34a',
+    blue:       '#4f46e5',
+    blueDark:   '#3730a3',
+    blueLight:  '#eef2ff',
+    blueMid:    '#c7d2fe',
+    green:      '#0d9488',
     greenLight: '#f0fdf4',
     amber:      '#d97706',
     amberLight: '#fffbeb',
-    red:        '#dc2626',
+    red:        '#e11d48',
     shadow:     '0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05)',
     shadowLg:   '0 4px 6px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.08)',
     radius:     16,
@@ -329,30 +328,30 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
   };
 
   const T_dark = {
-    bg:         '#111522',
-    white:      'rgba(20, 26, 46, 0.65)',
+    bg:         '#090d16',
+    white:      'rgba(18, 24, 39, 0.75)',
     border:     'rgba(255, 255, 255, 0.08)',
     borderHov:  'rgba(255, 255, 255, 0.16)',
-    borderFocus:'rgba(95, 160, 250, 0.5)',
-    text:       '#ffffff',
-    textSec:    'rgba(255, 255, 255, 0.72)',
-    textMuted:  'rgba(255, 255, 255, 0.45)',
-    blue:       '#3b82f6',
-    blueDark:   '#2563eb',
-    blueLight:  'rgba(59, 130, 246, 0.12)',
-    blueMid:    'rgba(59, 130, 246, 0.3)',
-    green:      '#10b981',
-    greenLight: 'rgba(16, 185, 129, 0.12)',
+    borderFocus:'rgba(99, 102, 241, 0.5)',
+    text:       '#f8fafc',
+    textSec:    'rgba(248, 250, 252, 0.75)',
+    textMuted:  'rgba(248, 250, 252, 0.45)',
+    blue:       '#6366f1',
+    blueDark:   '#4f46e5',
+    blueLight:  'rgba(99, 102, 241, 0.15)',
+    blueMid:    'rgba(99, 102, 241, 0.35)',
+    green:      '#14b8a6',
+    greenLight: 'rgba(20, 184, 166, 0.15)',
     amber:      '#f59e0b',
-    amberLight: 'rgba(245, 158, 11, 0.12)',
-    red:        '#ef4444',
+    amberLight: 'rgba(245, 158, 11, 0.15)',
+    red:        '#f43f5e',
     shadow:     '0 8px 32px rgba(0, 0, 0, 0.4)',
     shadowLg:   '0 16px 48px rgba(0, 0, 0, 0.65)',
     radius:     16,
     radiusSm:   10,
   };
 
-  const T = landingTheme === 'dark' ? T_dark : T_light;
+  const T = theme === 'dark' ? T_dark : T_light;
 
   const NAV_LINKS = [
     { id: 'platform', label: 'Product' },
@@ -363,12 +362,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
   ];
 
   return (
-    <div style={{ background: landingTheme === 'dark' ? 'linear-gradient(135deg, #05070f 0%, #0c0f1d 50%, #05070f 100%)' : '#f4f6fb', color: T.text, fontFamily: "'Outfit','Inter',system-ui,sans-serif", minHeight: '100vh', transition: 'background 0.3s, color 0.3s' }}>
+    <div style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #05070f 0%, #0c0f1d 50%, #05070f 100%)' : '#f4f6fb', color: T.text, fontFamily: "'Outfit','Inter',system-ui,sans-serif", minHeight: '100vh', transition: 'background 0.3s, color 0.3s' }}>
 
       {/* ══════════════════════ NAVBAR ══════════════════════ */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
-        background: landingTheme === 'dark'
+        background: theme === 'dark'
           ? (scrolled ? 'rgba(5, 7, 15, 0.92)' : 'rgba(5, 7, 15, 0.7)')
           : (scrolled ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.75)'),
         backdropFilter: 'blur(20px)',
@@ -402,13 +401,13 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
                   borderRadius: T.radiusSm,
                   fontSize: '0.9rem',
                   fontWeight: isActive ? 700 : 500,
-                  color: isActive ? T.blue : (landingTheme === 'dark' ? '#ffffff' : '#0f172a'),
+                  color: isActive ? T.blue : (theme === 'dark' ? '#ffffff' : '#0f172a'),
                   cursor: 'pointer',
                   transition: 'all .2s cubic-bezier(0.4, 0, 0.2, 1)',
                   fontFamily: 'inherit',
                 }}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = landingTheme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'; e.currentTarget.style.color = T.text; }}}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = landingTheme === 'dark' ? '#ffffff' : '#0f172a'; }}}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'; e.currentTarget.style.color = T.text; }}}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = theme === 'dark' ? '#ffffff' : '#0f172a'; }}}
               >
                 {label}
               </button>
@@ -420,11 +419,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           {/* Theme toggle icon button */}
           <button 
-            onClick={() => {
-              const newTheme = landingTheme === 'dark' ? 'light' : 'dark';
-              setLandingTheme(newTheme);
-              localStorage.setItem('landing-theme', newTheme);
-            }}
+            onClick={toggleTheme}
             style={{ 
               background: 'none', 
               cursor: 'pointer', 
@@ -438,11 +433,11 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               transition: 'background 0.2s',
               border: `1px solid ${T.border}`
             }}
-            title={`Switch to ${landingTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            onMouseEnter={e => e.currentTarget.style.background = landingTheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            onMouseEnter={e => e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}
           >
-            {landingTheme === 'dark' ? (
+            {theme === 'dark' ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
@@ -537,11 +532,11 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
           <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:22, overflow:'hidden', boxShadow:'0 24px 70px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08)', position: 'relative', transform:'rotate(1.2deg)' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}></div>
             {/* Fake window chrome */}
-            <div style={{ background: landingTheme==='dark'?'rgba(255,255,255,0.01)':'#f8fafc', borderBottom:`1px solid ${T.border}`, padding:'14px 20px', display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ background: theme==='dark'?'rgba(255,255,255,0.01)':'#f8fafc', borderBottom:`1px solid ${T.border}`, padding:'14px 20px', display:'flex', alignItems:'center', gap:8 }}>
               <div style={{ display:'flex', gap:6 }}>
                 {['#ff5f57','#ffbd2e','#28c840'].map(c => <div key={c} style={{ width:11, height:11, borderRadius:'50%', background:c }}></div>)}
               </div>
-              <div style={{ flex:1, background: landingTheme==='dark'?'rgba(255,255,255,0.04)':'#e2e8f0', borderRadius:6, height:24, display:'flex', alignItems:'center', paddingLeft:12, fontSize:'0.75rem', color:T.textMuted, fontFamily: 'monospace' }}>
+              <div style={{ flex:1, background: theme==='dark'?'rgba(255,255,255,0.04)':'#e2e8f0', borderRadius:6, height:24, display:'flex', alignItems:'center', paddingLeft:12, fontSize:'0.75rem', color:T.textMuted, fontFamily: 'monospace' }}>
                 localhost:5173 — Campaign Manager
               </div>
             </div>
@@ -569,7 +564,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
                     <span style={{ fontWeight:700, fontSize:'0.9rem', color:T.text }}>{row.name}</span>
                     <span style={{ fontSize:'0.82rem', fontWeight:800, color:row.color }}>{row.pct}%</span>
                   </div>
-                  <div style={{ height:5, borderRadius:4, background: landingTheme==='dark'?'rgba(255,255,255,0.06)':'#e2e8f0', overflow:'hidden' }}>
+                  <div style={{ height:5, borderRadius:4, background: theme==='dark'?'rgba(255,255,255,0.06)':'#e2e8f0', overflow:'hidden' }}>
                     <div style={{ width:`${row.pct}%`, height:'100%', background:row.color, borderRadius:4, transition:'width 0.6s ease' }}></div>
                   </div>
                   <div style={{ fontSize:'0.78rem', color:T.textMuted, marginTop:9 }}>{row.label}</div>
@@ -598,7 +593,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
       {/* ══════════════════════ TRUST BADGES & TESTIMONIAL ══════════════════════ */}
       <section style={{ 
         borderBottom: `1px solid ${T.border}`, 
-        background: landingTheme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.01)',
+        background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : 'rgba(0, 0, 0, 0.01)',
         padding: '50px 40px',
         position: 'relative'
       }}>
@@ -660,7 +655,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
 
       {/* ══════════════════════ PLATFORM FEATURES ══════════════════════ */}
       <section id="platform" style={{ 
-        background: landingTheme === 'dark' 
+        background: theme === 'dark' 
           ? 'linear-gradient(180deg, #0e121e 0%, #05070f 100%)' 
           : 'linear-gradient(180deg, #ffffff 0%, #f4f6fb 100%)', 
         borderTop: `1px solid ${T.border}`, 
@@ -693,7 +688,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
       </section>
 
       {/* ══════════════════════ AI SPOTLIGHT ══════════════════════ */}
-      <section id="emergency-alerts" style={{ padding: '100px 40px', background: landingTheme === 'dark' ? 'linear-gradient(135deg, #170b12 0%, #080b15 56%, #101228 100%)' : 'linear-gradient(135deg, #fff5f5 0%, #f8faff 60%, #f5f3ff 100%)', borderBottom: `1px solid ${T.border}` }}>
+      <section id="emergency-alerts" style={{ padding: '100px 40px', background: theme === 'dark' ? 'linear-gradient(135deg, #170b12 0%, #080b15 56%, #101228 100%)' : 'linear-gradient(135deg, #fff5f5 0%, #f8faff 60%, #f5f3ff 100%)', borderBottom: `1px solid ${T.border}` }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           <div style={{ maxWidth: 700, marginBottom: 48 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: T.red, background: `${T.red}12`, border: `1px solid ${T.red}30`, borderRadius: 20, padding: '6px 12px', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.09em', textTransform: 'uppercase' }}>Emergency response</span>
@@ -920,12 +915,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
               </div>
 
               {/* WhatsApp-style bubble */}
-              <div style={{ background: landingTheme === 'dark' ? '#025c4c' : '#d9fdd3', borderRadius:'0 16px 16px 16px', padding:'14px 18px', marginBottom:10, position:'relative', maxWidth:'95%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontSize:'0.75rem', color: landingTheme === 'dark' ? '#32d4b4' : '#128c7e', fontWeight:700, marginBottom:6, letterSpacing:'0.03em' }}>CommAI Alert · {SEGMENTS[segment].label}</div>
-                <p style={{ fontSize:'0.92rem', color: landingTheme === 'dark' ? '#e9edef' : '#303030', lineHeight:1.6, margin:0, fontWeight: 400 }}>
+              <div style={{ background: theme === 'dark' ? '#025c4c' : '#d9fdd3', borderRadius:'0 16px 16px 16px', padding:'14px 18px', marginBottom:10, position:'relative', maxWidth:'95%', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize:'0.75rem', color: theme === 'dark' ? '#32d4b4' : '#128c7e', fontWeight:700, marginBottom:6, letterSpacing:'0.03em' }}>CommAI Alert · {SEGMENTS[segment].label}</div>
+                <p style={{ fontSize:'0.92rem', color: theme === 'dark' ? '#e9edef' : '#303030', lineHeight:1.6, margin:0, fontWeight: 400 }}>
                   {TRANSLATIONS[segment][lang]}
                 </p>
-                <div style={{ fontSize:'0.7rem', color: landingTheme === 'dark' ? '#53bdeb' : '#34b7f1', textAlign:'right', marginTop:8, fontWeight: 550 }}>✓✓ Dispatched</div>
+                <div style={{ fontSize:'0.7rem', color: theme === 'dark' ? '#53bdeb' : '#34b7f1', textAlign:'right', marginTop:8, fontWeight: 550 }}>✓✓ Dispatched</div>
               </div>
               <div style={{ fontSize:'0.75rem', color:T.textMuted }}>Sent via {channels.includes('whatsapp') ? 'WhatsApp API' : channels[0]?.toUpperCase() || 'SMS'} · {new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div>
             </div>
@@ -969,7 +964,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
 
       {/* ══════════════════════ REAL-WORLD USE CASES ══════════════════════ */}
       <section id="use-cases" style={{ 
-        background: landingTheme === 'dark' ? 'linear-gradient(180deg, #05070f 0%, #0c101f 100%)' : 'linear-gradient(180deg, #f4f6fb 0%, #ffffff 100%)', 
+        background: theme === 'dark' ? 'linear-gradient(180deg, #05070f 0%, #0c101f 100%)' : 'linear-gradient(180deg, #f4f6fb 0%, #ffffff 100%)', 
         borderTop: `1px solid ${T.border}`, 
         borderBottom: `1px solid ${T.border}`, 
         padding: '100px 40px' 
@@ -1254,7 +1249,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister }) {
 
       {/* ══════════════════════ SECURITY & COMPLIANCE ══════════════════════ */}
       <section id="security-compliance" style={{ 
-        background: landingTheme === 'dark' ? '#0b0f19' : '#f8fafc',
+        background: theme === 'dark' ? '#0b0f19' : '#f8fafc',
         borderTop: `1px solid ${T.border}`,
         borderBottom: `1px solid ${T.border}`,
         padding: '100px 40px'

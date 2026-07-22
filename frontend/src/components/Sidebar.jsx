@@ -170,6 +170,19 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
       roles: ['admin', 'campaign_manager', 'audience']
     },
     {
+      id: 'operator_chat',
+      label: 'Operator Staff Chat',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
+    {
       id: 'live_bulletins',
       label: 'Live Bulletins',
       icon: (
@@ -213,7 +226,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     {
       id: 'support',
       label: 'Emergency & Chat',
-      items: ['emergency_inbox', 'support_queries', 'citizen_conversations']
+      items: ['emergency_inbox', 'operator_chat', 'support_queries', 'citizen_conversations']
     },
     {
       id: 'governance',

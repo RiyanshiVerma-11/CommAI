@@ -44,6 +44,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   const [evalReach, setEvalReach] = useState({ target: 0, reach: 0 });
   const [evalLoading, setEvalLoading] = useState(false);
   const [segmentPreviewUsers, setSegmentPreviewUsers] = useState([]);
+  const [showSegmentUsersModal, setShowSegmentUsersModal] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
 
@@ -2042,6 +2043,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>EST. IMPACT REACH</span>
                         <span className="reach-card-value">{evalReach.reach}</span>
                         <span style={{ display: 'block', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>of {evalReach.target} members</span>
+                        <button type="button" className="pill-chip" style={{ marginTop: '10px', fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(255,255,255,0.05)' }} onClick={() => setShowSegmentUsersModal(true)}>Check Audience</button>
                       </div>
                     )}
                   </div>
@@ -2983,6 +2985,42 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
               </div>
             )}
           </GlassCard>
+        </div>
+      )}
+      {/* Segment Users Modal */}
+      {showSegmentUsersModal && (
+        <div className="modal-overlay animate-fade-in" onClick={() => setShowSegmentUsersModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0 }}>Target Audience Preview</h3>
+              <button className="icon-btn" onClick={() => setShowSegmentUsersModal(false)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {segmentPreviewUsers.length === 0 ? (
+                <p style={{ color: 'hsl(var(--text-muted))', textAlign: 'center', padding: '20px 0' }}>No users found in this segment.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {segmentPreviewUsers.map((user, idx) => (
+                    <div key={idx} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div style={{ fontWeight: '600', marginBottom: '4px' }}>{user.name || 'Unknown Citizen'}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {user.phone && <span>📞 {user.phone}</span>}
+                        {user.email && <span>✉️ {user.email}</span>}
+                        {user.language_preference && <span style={{ textTransform: 'capitalize' }}>🌐 {user.language_preference}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {evalReach.target > segmentPreviewUsers.length && (
+                    <div style={{ textAlign: 'center', padding: '10px 0', fontSize: '0.85rem', color: 'hsl(var(--text-muted))', fontStyle: 'italic' }}>
+                      Showing {segmentPreviewUsers.length} of {evalReach.target} total members...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

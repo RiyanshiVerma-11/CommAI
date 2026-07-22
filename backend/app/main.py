@@ -18,6 +18,7 @@ from app.routes import feedback as feedback_router
 from app.routes import poster as poster_router
 from app.routes import sentiment_map as sentiment_map_router
 from app.routes import webhook as webhook_router
+from app.routes import operator_chat
 from fastapi import WebSocket, WebSocketDisconnect
 from app.services.websocket_manager import bulletin_manager
 
@@ -165,6 +166,7 @@ api_router.include_router(queries_router.router)
 api_router.include_router(poster_router.router)
 api_router.include_router(sentiment_map_router.router)
 api_router.include_router(webhook_router.router)
+api_router.include_router(operator_chat.router)
 
 
 # --- DASHBOARD METRICS ROUTE ---

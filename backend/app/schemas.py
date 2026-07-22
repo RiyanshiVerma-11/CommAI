@@ -430,3 +430,23 @@ class SupportQueryReply(CustomBaseModel):
     admin_reply: str = Field(..., min_length=1)
     status: Optional[str] = Field(default="acknowledged", description="One of: open, acknowledged, resolved")
 
+
+# --- OPERATOR CHAT SCHEMAS ---
+
+class OperatorMessageCreate(CustomBaseModel):
+    message: str = Field(..., min_length=1)
+    channel: Optional[str] = Field(default="general")
+
+class OperatorMessageResponse(CustomBaseModel):
+    id: str
+    sender_id: str
+    sender_name: str
+    sender_role: str
+    channel: str
+    message: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+

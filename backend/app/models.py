@@ -265,5 +265,21 @@ class Poster(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
+class OperatorMessage(Base):
+    """Internal chat messages strictly between Admins and Campaign Managers."""
+    __tablename__ = "operator_messages"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    sender_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    sender_name = Column(String(255), nullable=False)
+    sender_role = Column(String(50), nullable=False)  # admin or campaign_manager
+    channel = Column(String(50), default="general", nullable=False)  # general, urgent, announcements
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    sender = relationship("User")
+
+
+
 
 

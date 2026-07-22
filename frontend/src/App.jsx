@@ -19,6 +19,7 @@ import PosterStudio from './pages/PosterStudio';
 import SentimentMap from './pages/SentimentMap';
 import CitizenConversations from './pages/CitizenConversations';
 import LiveBulletins from './pages/LiveBulletins';
+import OperatorChat from './pages/OperatorChat';
 
 
 
@@ -679,6 +680,17 @@ function App() {
             token={token}
           />
         );
+      case 'operator_chat':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Operator Staff Chat is strictly restricted to Admins and Campaign Managers.</div>;
+        }
+        return (
+          <OperatorChat
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+          />
+        );
       default:
         return <div>Tab not found</div>;
     }
@@ -699,6 +711,7 @@ function App() {
       case 'feedback': return { category: 'Outreach & Insights', item: 'Campaign Feedback' };
       
       case 'emergency_inbox': return { category: 'Emergency & Chat', item: 'Emergency Inbox' };
+      case 'operator_chat': return { category: 'Emergency & Chat', item: 'Operator Staff Chat' };
       case 'support_queries': return { category: 'Emergency & Chat', item: 'Support Queries Desk' };
       case 'citizen_conversations': return { category: 'Emergency & Chat', item: 'Citizen Chat' };
       

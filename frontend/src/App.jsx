@@ -143,41 +143,177 @@ function App() {
   const [queriesCount, setQueriesCount] = useState(0);
   const [unreadRepliesCount, setUnreadRepliesCount] = useState(0);
   const [bulletinCount, setBulletinCount] = useState(0);
+  const [operatorChatCount, setOperatorChatCount] = useState(0);
   const [liveAlert, setLiveAlert] = useState(null);
   const activeSirenRef = useRef(null);
 
-  // Play a pleasant chime notification
-  const playChime = (urgency) => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        
-        if (urgency === 'critical') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(880, ctx.currentTime);
-          gain.gain.setValueAtTime(0.15, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.45);
-        } else {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-          osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.15); // E5
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.6);
-        }
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (activeTab === 'operator_chat') {
+      setOperatorChatCount(0);
+    }
+  }, [activeTab]);
+
+  // Audio Context reference & unlock listener for modern browsers
+  const audioCtxRef = useRef(null);
+
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        audioCtxRef.current = new AudioCtx();
       }
-    } catch (e) {
-      console.warn("Chime play error:", e);
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return audioCtxRef.current;
+  };
+
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      getAudioContext();
+    };
+    window.addEventListener('click', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
+
+  // Real-time Notification System & Audio Sound Settings
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('commai_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    // Default initial notification to show count badge immediately
+    return [
+      {
+        id: 'init_welcome_1',
+        type: 'info',
+        title: '🔔 CommAI Gateway Active',
+        message: 'Real-time alert engine connected and monitoring communications.',
+        timestamp: new Date().toISOString(),
+        read: false,
+        linkTab: 'dashboard'
+      }
+    ];
+  });
+
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem('comm_notification_sound') !== 'disabled';
+  });
+  const [notificationFilter, setNotificationFilter] = useState('all');
+
+  const toggleSound = () => {
+    const nextState = !soundEnabled;
+    setSoundEnabled(nextState);
+    localStorage.setItem('comm_notification_sound', nextState ? 'enabled' : 'disabled');
+    if (nextState) {
+      playSound('chime');
     }
   };
+
+  // Play real-time audio sound alert using Web Audio API
+  const playSound = (urgency = 'normal') => {
+    if (localStorage.getItem('comm_notification_sound') === 'disabled') return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      const now = ctx.currentTime;
+      if (urgency === 'critical' || urgency === 'emergency') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.55);
+      } else if (urgency === 'chat' || urgency === 'message') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else {
+        // High crisp double chime (D5 -> A5)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      }
+    } catch (e) {
+      console.warn("Audio chime play error:", e);
+    }
+  };
+
+  const playChime = (urgency) => {
+    playSound(urgency === 'critical' ? 'critical' : 'normal');
+  };
+
+  const addNotification = (item) => {
+    const newNotif = {
+      id: item.id || `notif_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      type: item.type || 'info',
+      title: item.title || 'System Notification',
+      message: item.message || '',
+      timestamp: item.timestamp || new Date().toISOString(),
+      read: false,
+      linkTab: item.linkTab || null
+    };
+
+    setNotifications(prev => {
+      if (prev.some(n => n.id === newNotif.id)) return prev;
+      const updated = [newNotif, ...prev.slice(0, 49)];
+      try { localStorage.setItem('commai_notifications', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
+    playSound(item.type);
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      try { localStorage.setItem('commai_notifications', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    try { localStorage.setItem('commai_notifications', JSON.stringify([])); } catch (e) {}
+  };
+
+  const markNotificationRead = (id) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
+      try { localStorage.setItem('commai_notifications', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  };
+
+  const totalUnreadNotifications = notifications.filter(n => !n.read).length;
 
   // Play a synthesized dual-tone siren
   const playSiren = () => {
@@ -292,6 +428,12 @@ function App() {
           
           if (data.type === 'campaign_alert') {
             setBulletinCount(prev => prev + 1);
+            addNotification({
+              type: 'bulletin',
+              title: '📢 Live Bulletin Alert',
+              message: data.title || data.message || 'New campaign bulletin broadcasted.',
+              linkTab: 'live_bulletins'
+            });
             
             // If critical/urgent, trigger popup alert modal
             if (data.urgency === 'critical' || data.urgency === 'urgent') {
@@ -302,13 +444,48 @@ function App() {
                 urgency: data.urgency,
                 created_at: data.created_at || new Date().toISOString(),
               });
-            } else {
-              playChime('normal');
             }
           } else if (data.type === 'emergency_contact') {
             if (user.role === 'admin' || user.role === 'campaign_manager') {
               setEmergencyCount(prev => prev + 1);
-              playChime('critical');
+              addNotification({
+                type: 'emergency',
+                title: '🚨 Emergency Assistance Request',
+                message: `New SOS emergency report from ${data.citizen_name || 'Citizen'}`,
+                linkTab: 'emergency_inbox'
+              });
+            }
+          } else if (data.type === 'operator_chat') {
+            if (user.role === 'admin' || user.role === 'campaign_manager') {
+              const isDm = data.channel && data.channel.startsWith('dm:');
+              let isTargetOfDm = false;
+              if (isDm) {
+                const parts = data.channel.split(':');
+                if (parts.length === 3 && (parts[1] === user.id || parts[2] === user.id)) {
+                  isTargetOfDm = true;
+                }
+              }
+
+              if (!isDm || isTargetOfDm) {
+                if (data.sender_id !== user.id) {
+                  if (activeTabRef.current !== 'operator_chat') {
+                    setOperatorChatCount(prev => prev + 1);
+                  }
+                  addNotification({
+                    id: `op_${data.id}_${Date.now()}`,
+                    type: 'operator_chat',
+                    title: isDm ? `🔒 Private DM from ${data.sender_name}` : `💬 Staff Chat (#${data.channel || 'general'})`,
+                    message: isDm ? data.message : `${data.sender_name}: ${data.message}`,
+                    timestamp: data.created_at || new Date().toISOString(),
+                    linkTab: 'operator_chat'
+                  });
+                }
+                window.dispatchEvent(new CustomEvent('commai_operator_chat_msg', { detail: data }));
+              }
+            }
+          } else if (data.type === 'operator_chat_delete') {
+            if (user.role === 'admin' || user.role === 'campaign_manager') {
+              window.dispatchEvent(new CustomEvent('commai_operator_chat_delete', { detail: data }));
             }
           }
         } catch (err) {
@@ -393,7 +570,7 @@ function App() {
     }
   }, [activeTab]);
 
-  // Poll for admin/manager unread counts
+  // Poll for admin/manager unread counts & sync notifications in real-time
   useEffect(() => {
     if (!token || !user) return;
     if (user.role !== 'admin' && user.role !== 'campaign_manager') return;
@@ -406,6 +583,18 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           setEmergencyCount(data.length);
+
+          // Real-time sync open items to notifications
+          data.forEach(item => {
+            addNotification({
+              id: `ec_${item.id}`,
+              type: 'emergency',
+              title: '🚨 Emergency Assistance Request',
+              message: `${item.citizen_name || 'Citizen'}: ${item.message || 'Urgent SOS assistance requested'} (${item.category || 'General'})`,
+              timestamp: item.created_at || new Date().toISOString(),
+              linkTab: 'emergency_inbox'
+            });
+          });
         }
       } catch (err) {
         console.error('Error fetching emergency count:', err);
@@ -420,6 +609,18 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           setQueriesCount(data.length);
+
+          // Real-time sync open queries to notifications
+          data.forEach(item => {
+            addNotification({
+              id: `query_${item.id}`,
+              type: 'query',
+              title: '💬 Support Query Pending',
+              message: `${item.name || 'Citizen'}: ${item.subject || item.message || 'Support query awaiting response'}`,
+              timestamp: item.created_at || new Date().toISOString(),
+              linkTab: 'support_queries'
+            });
+          });
         }
       } catch (err) {
         console.error('Error fetching queries count:', err);
@@ -431,7 +632,7 @@ function App() {
     const interval = setInterval(() => {
       fetchCount();
       fetchQueriesCount();
-    }, 5000); // Poll every 5 seconds for real-time notification
+    }, 5000);
     return () => clearInterval(interval);
   }, [token, user]);
 
@@ -742,6 +943,7 @@ function App() {
         emergencyCount={user?.role === 'audience' ? unreadRepliesCount : emergencyCount}
         queriesCount={queriesCount}
         bulletinCount={bulletinCount}
+        operatorChatCount={operatorChatCount}
       />
       <div className="main-content">
         <header className="header">
@@ -824,6 +1026,177 @@ function App() {
                   <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                 </svg>
               </div>
+            </div>
+            
+            <span style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
+            
+            {/* Notification Bell Symbol & Drawer (Placed after theme symbols) */}
+            <div className="notification-container" style={{ position: 'relative' }}>
+              <button 
+                className="notification-bell-btn" 
+                onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+                title={`Notifications (${totalUnreadNotifications} Unread)`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {totalUnreadNotifications > 0 && (
+                  <span className="notification-badge-pulse" style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    color: '#ffffff',
+                    fontSize: '0.68rem',
+                    fontWeight: '800',
+                    minWidth: '18px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    border: '2px solid var(--bg-dark, #090b14)'
+                  }}>
+                    {totalUnreadNotifications > 99 ? '99+' : totalUnreadNotifications}
+                  </span>
+                )}
+              </button>
+
+              {notificationDrawerOpen && (
+                <>
+                  <div className="dropdown-backdrop" onClick={() => setNotificationDrawerOpen(false)} />
+                  <div className="notification-drawer-card">
+                    <div className="notification-drawer-header">
+                      <div className="notification-drawer-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px', color: 'hsl(var(--primary))' }}>
+                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span>Notifications</span>
+                        {totalUnreadNotifications > 0 && (
+                          <span className="badge badge-admin" style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px' }}>
+                            {totalUnreadNotifications} new
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="notification-drawer-actions">
+                        <button
+                          className="notif-action-btn"
+                          onClick={() => {
+                            playSound('critical');
+                            addNotification({
+                              type: 'bulletin',
+                              title: '🔔 Live Sound & Alert Verified',
+                              message: 'Real-time notification audio chime and count badge working smoothly!',
+                              linkTab: 'dashboard'
+                            });
+                          }}
+                          title="Test Real-Time Notification Sound & Count"
+                          style={{ color: 'hsl(var(--primary))', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          ▶ Test Sound
+                        </button>
+
+                        <button 
+                          className="notif-action-btn" 
+                          onClick={toggleSound}
+                          title={soundEnabled ? "Mute Sound Alerts" : "Enable Sound Alerts"}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          {soundEnabled ? '🔔 Sound ON' : '🔕 Sound OFF'}
+                        </button>
+                        {notifications.length > 0 && (
+                          <>
+                            <button className="notif-action-btn" onClick={markAllNotificationsRead}>Mark read</button>
+                            <button className="notif-action-btn" onClick={clearAllNotifications}>Clear</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="notification-tabs">
+                      <button 
+                        className={`notif-tab-btn ${notificationFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setNotificationFilter('all')}
+                      >
+                        All ({notifications.length})
+                      </button>
+                      <button 
+                        className={`notif-tab-btn ${notificationFilter === 'emergency' ? 'active' : ''}`}
+                        onClick={() => setNotificationFilter('emergency')}
+                      >
+                        🚨 Emergencies ({notifications.filter(n => n.type === 'emergency').length})
+                      </button>
+                      <button 
+                        className={`notif-tab-btn ${notificationFilter === 'bulletin' ? 'active' : ''}`}
+                        onClick={() => setNotificationFilter('bulletin')}
+                      >
+                        📢 Bulletins ({notifications.filter(n => n.type === 'bulletin').length})
+                      </button>
+                      <button 
+                        className={`notif-tab-btn ${notificationFilter === 'query' ? 'active' : ''}`}
+                        onClick={() => setNotificationFilter('query')}
+                      >
+                        💬 Queries ({notifications.filter(n => n.type === 'query').length})
+                      </button>
+                      {(user?.role === 'admin' || user?.role === 'campaign_manager') && (
+                        <button 
+                          className={`notif-tab-btn ${notificationFilter === 'operator_chat' ? 'active' : ''}`}
+                          onClick={() => setNotificationFilter('operator_chat')}
+                        >
+                          💬 Staff Chat ({notifications.filter(n => n.type === 'operator_chat').length})
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="notif-list">
+                      {notifications
+                        .filter(n => notificationFilter === 'all' || n.type === notificationFilter)
+                        .map(notif => (
+                          <div 
+                            key={notif.id}
+                            className={`notif-item ${!notif.read ? 'unread' : ''}`}
+                            onClick={() => {
+                              markNotificationRead(notif.id);
+                              if (notif.linkTab) {
+                                setActiveTab(notif.linkTab);
+                                setNotificationDrawerOpen(false);
+                              }
+                            }}
+                          >
+                            <div className={`notif-icon-box notif-icon-${notif.type || 'info'}`}>
+                              {notif.type === 'emergency' ? '🚨' : notif.type === 'bulletin' ? '📢' : (notif.type === 'query' || notif.type === 'operator_chat') ? '💬' : 'ℹ️'}
+                            </div>
+
+                            <div className="notif-content">
+                              <div className="notif-title">
+                                <span>{notif.title}</span>
+                                {!notif.read && <span className="notif-unread-dot" />}
+                              </div>
+                              <div className="notif-message">{notif.message}</div>
+                              <div className="notif-time">
+                                {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                      {notifications.filter(n => notificationFilter === 'all' || n.type === notificationFilter).length === 0 && (
+                        <div className="notif-empty">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '32px', height: '32px', opacity: 0.5 }}>
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                          </svg>
+                          <span>No notifications in this category</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             
             <span style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>

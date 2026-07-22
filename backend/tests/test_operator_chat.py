@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.auth import create_access_token
-from app.database import SessionLocal
+from app.auth import create_access_token, get_password_hash
+from app.database import SessionLocal, Base, engine
 from app.models import User, OperatorMessage
 
 client = TestClient(app)
@@ -11,15 +11,29 @@ def get_token_for_role(email: str, role: str, user_id: str):
     return create_access_token(data={"sub": email, "role": role, "user_id": user_id})
 
 def test_operator_chat_access_control():
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # Create test users if missing
+        # Seed test users if missing
         admin = db.query(User).filter(User.role == "admin").first()
-        manager = db.query(User).filter(User.role == "campaign_manager").first()
-        audience = db.query(User).filter(User.role == "audience").first()
+        if not admin:
+            admin = User(email="admin_op@example.test", hashed_password=get_password_hash("pass"), full_name="Admin Op", role="admin", is_active=True)
+            db.add(admin)
 
-        if not admin or not manager or not audience:
-            pytest.skip("Test users not seeded in DB")
+        manager = db.query(User).filter(User.role == "campaign_manager").first()
+        if not manager:
+            manager = User(email="mgr_op@example.test", hashed_password=get_password_hash("pass"), full_name="Manager Op", role="campaign_manager", is_active=True)
+            db.add(manager)
+
+        audience = db.query(User).filter(User.role == "audience").first()
+        if not audience:
+            audience = User(email="aud_op@example.test", hashed_password=get_password_hash("pass"), full_name="Audience Op", role="audience", is_active=True)
+            db.add(audience)
+
+        db.commit()
+        db.refresh(admin)
+        db.refresh(manager)
+        db.refresh(audience)
 
         admin_token = get_token_for_role(admin.email, admin.role, admin.id)
         manager_token = get_token_for_role(manager.email, manager.role, manager.id)

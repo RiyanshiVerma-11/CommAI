@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount, queriesCount, bulletinCount }) => {
+const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _sidebarCollapsed, setSidebarCollapsed, closeMobileSidebar, emergencyCount, queriesCount, bulletinCount, operatorChatCount }) => {
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -388,6 +388,27 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
                         }}
                       >
                         {bulletinCount}
+                      </span>
+                    )}
+                    {item.id === 'operator_chat' && operatorChatCount > 0 && (
+                      <span 
+                        style={{ 
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
+                          color: '#ffffff', 
+                          borderRadius: '50%', 
+                          width: '20px', 
+                          height: '20px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.75rem', 
+                          fontWeight: '800',
+                          lineHeight: '1',
+                          boxShadow: '0 2px 5px rgba(239, 68, 68, 0.4)',
+                          animation: 'pulse 2s infinite'
+                        }}
+                      >
+                        {operatorChatCount}
                       </span>
                     )}
                   </span>

@@ -702,7 +702,7 @@ function App() {
       case 'campaigns': return 'Campaign Planner Wizard';
       case 'approvals': return 'Maker-Checker Approvals Queue';
       case 'audit_logs': return 'Operator Audit Trail Logs';
-      case 'users': return 'Operator User Directory';
+      case 'users': return 'Audience Directory';
       case 'managers': return 'Campaign Managers Directory';
       case 'settings': return 'System Integration Parameters';
       case 'emergency_inbox': return 'Emergency Communications Inbox';

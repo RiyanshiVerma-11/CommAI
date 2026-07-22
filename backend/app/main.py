@@ -1,4 +1,5 @@
 import datetime
+import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,11 +44,12 @@ def add_missing_columns():
         except Exception:
             pass
 
-        # Add preferred_languages column to users table if missing
-        try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN preferred_languages TEXT"))
-        except Exception:
-            pass
+        # Add preferred_languages, is_deleted, deleted_at columns to users table if missing
+        for col, col_type in [("preferred_languages", "TEXT"), ("is_deleted", "BOOLEAN DEFAULT 0 NOT NULL"), ("deleted_at", "DATETIME")]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
 
         # Add admin_reply and replied_at columns to emergency_contacts table if missing
         for col, col_type in [("admin_reply", "TEXT"), ("replied_at", "DATETIME")]:
@@ -304,6 +306,7 @@ def get_dashboard_stats(
 def get_managers_detailed(
     search: str = None,
     is_active: str = None,
+    is_deleted: str = "false",
     db: Session = Depends(get_db),
     current_user = Depends(require_any_authenticated)
 ) -> list:
@@ -315,6 +318,11 @@ def get_managers_detailed(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     query = db.query(User).filter(User.role == "campaign_manager")
+
+    if is_deleted == "true":
+        query = query.filter(User.is_deleted == True)
+    elif is_deleted == "false":
+        query = query.filter(User.is_deleted == False)
 
     if is_active == "true":
         query = query.filter(User.is_active == True)
@@ -375,6 +383,8 @@ def get_managers_detailed(
             "designation": mgr.designation,
             "preferred_languages": langs,
             "is_active": mgr.is_active,
+            "is_deleted": getattr(mgr, "is_deleted", False),
+            "deleted_at": mgr.deleted_at.isoformat() if getattr(mgr, "deleted_at", None) else None,
             "created_at": mgr.created_at.isoformat() if mgr.created_at else None,
             "updated_at": mgr.updated_at.isoformat() if mgr.updated_at else None,
             "campaigns_created": campaigns_created,

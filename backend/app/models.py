@@ -19,6 +19,8 @@ class User(Base):
     designation = Column(String(255), nullable=True)
     preferred_languages = Column(Text, nullable=True)  # JSON serialized array of strings, e.g., '["Hindi", "English"]'
     is_active = Column(Boolean, default=True, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     

@@ -208,8 +208,12 @@ def verify_otp(verify_in: OTPVerify, db: Session = Depends(get_db)):
     }
 
 @router.get("/me", response_model=UserResponse)
-def read_current_user(current_user: User = Depends(get_current_user)) -> Any:
-    return current_user
+def read_current_user(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Any:
+    from app.routes.users import format_user_response
+    return format_user_response(current_user, db)
 
 @router.get("/profile/audience", response_model=Dict[str, Any])
 def get_my_audience_profile(

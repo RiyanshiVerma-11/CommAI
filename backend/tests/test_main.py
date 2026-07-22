@@ -256,10 +256,12 @@ class TestRBAC:
         response = client.get("/api/users", headers=aud_headers)
         assert response.status_code == 403
 
-    def test_manager_cannot_list_users(self):
+    def test_manager_can_list_audience_users(self):
         mgr_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
         response = client.get("/api/users", headers=mgr_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        data = response.json()
+        assert all(u["role"] == "audience" for u in data)
 
 
 # ========================================================================

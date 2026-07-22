@@ -70,6 +70,19 @@ class UserUpdate(CustomBaseModel):
 class UserResponse(UserBase):
     id: str
     is_active: bool
+    is_deleted: Optional[bool] = False
+    deleted_at: Optional[datetime] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    telegram_username: Optional[str] = None
+    occupation: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    preferred_channels: Optional[List[str]] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

@@ -42,17 +42,17 @@ def send_fcm_push(token: str, title: str, body: str, service_account_json: str =
     """
     Send a push notification to an FCM device token.
     """
+    creds_dict = get_fcm_credentials(service_account_json)
+    if not creds_dict:
+        logger.info(f"[FCM MOCK] Push notification to: {token[:20]}... | Title: {title} | Body: {body}")
+        return True, "delivered_mock"
+
     try:
         import firebase_admin
         from firebase_admin import credentials, messaging
     except ImportError:
         logger.error("[FCM] firebase-admin package is not installed.")
         return False, "firebase-admin SDK is not installed"
-
-    creds_dict = get_fcm_credentials(service_account_json)
-    if not creds_dict:
-        logger.info(f"[FCM MOCK] Push notification to: {token[:20]}... | Title: {title} | Body: {body}")
-        return True, "delivered_mock"
 
     try:
         # Initialize firebase-admin if not already initialized

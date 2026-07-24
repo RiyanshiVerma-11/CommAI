@@ -1360,7 +1360,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                             <VoiceBulletinPlayer
                               text={`${camp.title}. ${camp.description || camp.objective || ''}`}
                               campaignId={camp.id}
-                              userPreferredLang={user?.preferred_languages?.[0] || 'Hindi'}
+                              userPreferredLang={camp.default_language || camp.language || user?.preferred_languages?.[0] || 'Hindi'}
                               backendUrl={backendUrl}
                               compact={true}
                             />

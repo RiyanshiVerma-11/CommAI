@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 
 const INDIC_LANGUAGES = [
   { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
@@ -26,10 +27,18 @@ const INDIC_LANGUAGES = [
   { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', flag: '🇮🇳' },
 ];
 
+const resolveApiBase = (providedUrl) => {
+  if (providedUrl && providedUrl !== 'http://127.0.0.1:8000') return providedUrl;
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  return 'http://localhost:8001';
+};
+
 const VoiceBulletinPlayer = ({
   text,
   userPreferredLang = 'Hindi',
-  backendUrl = 'http://127.0.0.1:8000',
+  backendUrl,
   compact = false,
 }) => {
   const getInitialLanguage = () => {
@@ -47,40 +56,97 @@ const VoiceBulletinPlayer = ({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1.0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
 
   const audioRef = useRef(null);
   const dropdownRef = useRef(null);
+  const speechTimerRef = useRef(null);
+
+  const userHasPickedLang = useRef(false);
 
   useEffect(() => {
-    setSelectedLang(getInitialLanguage());
+    if (!userHasPickedLang.current) {
+      setSelectedLang(getInitialLanguage());
+    }
   }, [userPreferredLang]);
+
+  const updateDropdownPosition = () => {
+    if (dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const width = 320;
+      let left = rect.right - width;
+      if (left < 10) left = 10;
+      if (left + width > window.innerWidth - 10) left = window.innerWidth - width - 10;
+      let top = rect.bottom + 6;
+      setDropdownCoords({ top, left });
+    }
+  };
+
+  useEffect(() => {
+    if (dropdownOpen) {
+      updateDropdownPosition();
+      window.addEventListener('resize', updateDropdownPosition);
+      window.addEventListener('scroll', updateDropdownPosition, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+    };
+  }, [dropdownOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(e.target) &&
+        !e.target.closest?.('.voice-lang-portal-modal')
+      ) {
         setDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (speechTimerRef.current) clearInterval(speechTimerRef.current);
+    };
   }, []);
 
-  const handlePlayVoice = async (langToPlay = selectedLang) => {
-    if (isPlaying && audioRef.current && langToPlay.code === selectedLang.code) {
+  const stopAllAudio = () => {
+    if (audioRef.current) {
       audioRef.current.pause();
-      setIsPlaying(false);
+      audioRef.current.currentTime = 0;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (speechTimerRef.current) {
+      clearInterval(speechTimerRef.current);
+      speechTimerRef.current = null;
+    }
+    setCurrentTime(0);
+    setIsPlaying(false);
+  };
+
+  const handlePlayVoice = async (langToPlay = selectedLang) => {
+    // If clicking same language while currently playing, stop & pause
+    if (isPlaying && langToPlay.code === selectedLang.code) {
+      stopAllAudio();
       return;
     }
 
+    stopAllAudio();
     setLoading(true);
+    userHasPickedLang.current = true;
     setSelectedLang(langToPlay);
     setDropdownOpen(false);
 
+    const apiBase = resolveApiBase(backendUrl);
+
     try {
-      const response = await fetch(`${backendUrl}/api/voice/synthesize`, {
+      const response = await fetch(`${apiBase}/api/voice/synthesize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,37 +159,105 @@ const VoiceBulletinPlayer = ({
 
       if (response.ok) {
         const data = await response.json();
-        const fullUrl = `${backendUrl}${data.audio_url}`;
+        const fullUrl = `${apiBase}${data.audio_url}?t=${Date.now()}`;
         setAudioUrl(fullUrl);
         setTranslatedText(data.translated_text || text);
         
         if (audioRef.current) {
           audioRef.current.src = fullUrl;
           audioRef.current.playbackRate = speed;
+          audioRef.current.load();
           await audioRef.current.play();
           setIsPlaying(true);
+          setLoading(false);
+          return;
         }
       } else {
-        playBrowserSpeechFallback(text, langToPlay);
+        const errData = await response.json().catch(() => ({}));
+        console.error('Voice synth backend error:', errData);
       }
     } catch (err) {
-      console.warn('Backend voice synth failed, using browser fallback:', err);
-      playBrowserSpeechFallback(text, langToPlay);
-    } finally {
+      console.warn('Backend voice synth failed, using browser voice fallback:', err);
+    }
+
+    // Fallback: Web Speech Synthesis
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      let textToSpeak = translatedText || text;
+
+      if (langToPlay.code !== 'en' && (textToSpeak === text || !translatedText)) {
+        try {
+          const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langToPlay.code}&dt=t&q=${encodeURIComponent(text)}`;
+          const res = await fetch(gtxUrl);
+          if (res.ok) {
+            const data = await res.json();
+            const parts = data[0]?.map(p => p[0]).filter(Boolean);
+            if (parts && parts.length > 0) {
+              textToSpeak = parts.join('');
+              setTranslatedText(textToSpeak);
+            }
+          }
+        } catch (e) {
+          console.warn('Browser fallback translation failed:', e);
+        }
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = langToPlay.code === 'hi' ? 'hi-IN' : langToPlay.code === 'en' ? 'en-IN' : langToPlay.code;
+      utterance.rate = speed;
+
+      const voices = window.speechSynthesis.getVoices();
+      const cleanCode = langToPlay.code.toLowerCase();
+      const cleanName = langToPlay.name.toLowerCase();
+
+      const matchingVoice = voices.find(v => 
+        v.lang.toLowerCase().startsWith(cleanCode) || 
+        v.name.toLowerCase().includes(cleanName)
+      );
+
+      if (matchingVoice) {
+        utterance.voice = matchingVoice;
+      }
+
+      const wordCount = textToSpeak.split(/\s+/).length;
+      const estimatedDuration = Math.max(3, Math.ceil(wordCount / (2.2 * speed)));
+      setDuration(estimatedDuration);
+      setCurrentTime(0);
+
+      if (speechTimerRef.current) clearInterval(speechTimerRef.current);
+      const startTime = Date.now();
+      speechTimerRef.current = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed >= estimatedDuration) {
+          clearInterval(speechTimerRef.current);
+          speechTimerRef.current = null;
+          setCurrentTime(estimatedDuration);
+        } else {
+          setCurrentTime(elapsed);
+        }
+      }, 250);
+
+      utterance.onend = () => stopAllAudio();
+      utterance.onerror = () => stopAllAudio();
+
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
       setLoading(false);
     }
   };
 
-  const playBrowserSpeechFallback = (bulletinText, langObj) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(bulletinText);
-      utterance.lang = langObj.code === 'hi' ? 'hi-IN' : langObj.code === 'en' ? 'en-IN' : langObj.code;
-      utterance.rate = speed;
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
-      setIsPlaying(true);
+  const handleAudioTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+      if (audioRef.current.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
+        setDuration(audioRef.current.duration);
+      }
+    }
+  };
+
+  const handleAudioLoadedMetadata = () => {
+    if (audioRef.current && audioRef.current.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
+      setDuration(audioRef.current.duration);
     }
   };
 
@@ -143,7 +277,7 @@ const VoiceBulletinPlayer = ({
   };
 
   const formatTime = (sec) => {
-    if (!sec || isNaN(sec)) return '0:00';
+    if (!sec || isNaN(sec) || !isFinite(sec)) return '0:00';
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -157,9 +291,11 @@ const VoiceBulletinPlayer = ({
     <div className="voice-player-wrapper" style={{ marginTop: '10px', marginBottom: '10px', position: 'relative', zIndex: dropdownOpen ? 99999 : 'auto' }}>
       <audio
         ref={audioRef}
-        onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
-        onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-        onEnded={() => setIsPlaying(false)}
+        onTimeUpdate={handleAudioTimeUpdate}
+        onLoadedMetadata={handleAudioLoadedMetadata}
+        onDurationChange={handleAudioLoadedMetadata}
+        onCanPlay={handleAudioLoadedMetadata}
+        onEnded={stopAllAudio}
       />
 
       {/* Main Glass Player Bar */}
@@ -252,7 +388,10 @@ const VoiceBulletinPlayer = ({
             
             {/* LANGUAGE SELECTOR PILL BUTTON */}
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={() => {
+                setDropdownOpen(!dropdownOpen);
+                updateDropdownPosition();
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -275,6 +414,7 @@ const VoiceBulletinPlayer = ({
               <span>{selectedLang.name} ({selectedLang.native})</span>
               <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700 }}>▼ Select Language</span>
             </button>
+
 
             {/* SPEED CONTROLS PILL */}
             <div style={{
@@ -306,22 +446,25 @@ const VoiceBulletinPlayer = ({
               ))}
             </div>
 
-            {/* LANGUAGE SELECTION POPOVER MODAL */}
-            {dropdownOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '110%',
-                right: 0,
-                zIndex: 999999,
-                width: '320px',
-                background: '#0f172a',
-                border: '1.5px solid #6366f1',
-                borderRadius: '16px',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(99, 102, 241, 0.4)',
-                padding: '14px',
-                backdropFilter: 'blur(24px)',
-                animation: 'animate-slide-up 0.2s ease-out'
-              }}>
+            {/* LANGUAGE SELECTION POPOVER PORTAL */}
+            {dropdownOpen && ReactDOM.createPortal(
+              <div
+                className="voice-lang-portal-modal"
+                style={{
+                  position: 'fixed',
+                  top: `${dropdownCoords.top}px`,
+                  left: `${dropdownCoords.left}px`,
+                  zIndex: 99999999,
+                  width: '320px',
+                  background: '#0f172a',
+                  border: '1.5px solid #6366f1',
+                  borderRadius: '16px',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(99, 102, 241, 0.5)',
+                  padding: '14px',
+                  backdropFilter: 'blur(24px)',
+                  animation: 'animate-slide-up 0.2s ease-out'
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     🌐 Select Any Language (23)
@@ -398,7 +541,8 @@ const VoiceBulletinPlayer = ({
                     );
                   })}
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
 
           </div>
@@ -406,7 +550,7 @@ const VoiceBulletinPlayer = ({
         </div>
 
         {/* PROGRESS SCRUBBER & ANIMATED EQUALIZER */}
-        {(isPlaying || audioUrl || duration > 0) && (
+        {(isPlaying || audioUrl || duration > 0 || currentTime > 0) && (
           <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               
@@ -430,8 +574,9 @@ const VoiceBulletinPlayer = ({
               <input
                 type="range"
                 min="0"
-                max={duration || 100}
-                value={currentTime}
+                max={duration > 0 ? duration : 1}
+                step="0.1"
+                value={Math.min(currentTime, duration > 0 ? duration : 1)}
                 onChange={handleSeek}
                 style={{ flex: 1, accentColor: '#818cf8', cursor: 'pointer', height: '4px' }}
               />
@@ -443,17 +588,22 @@ const VoiceBulletinPlayer = ({
 
             </div>
 
-            {translatedText && selectedLang.code !== 'en' && (
+            {(translatedText || text) && (
               <div style={{
-                marginTop: '8px',
-                fontSize: '0.8rem',
-                color: '#cbd5e1',
-                background: 'rgba(0,0,0,0.25)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                borderLeft: '3px solid #818cf8'
+                marginTop: '10px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                borderLeft: '4px solid #818cf8',
+                border: '1px solid rgba(129, 140, 248, 0.3)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                lineHeight: '1.5',
+                letterSpacing: '0.01em'
               }}>
-                📖 <strong>Spoken Speech ({selectedLang.native}):</strong> "{translatedText}"
+                📖 <strong>Spoken Speech ({selectedLang.native || selectedLang.name}):</strong> <span style={{ fontWeight: 800, color: '#f8fafc' }}>"{translatedText || text}"</span>
               </div>
             )}
           </div>
@@ -465,3 +615,5 @@ const VoiceBulletinPlayer = ({
 };
 
 export default VoiceBulletinPlayer;
+
+

@@ -74,18 +74,49 @@ def normalize_lang_code(lang_input: str) -> str:
     return "hi"
 
 
+INDIC_NEURAL_VOICES = {
+    "hi": {"male": "hi-IN-MadhurNeural", "female": "hi-IN-SwaraNeural"},
+    "en": {"male": "en-IN-PrabhatNeural", "female": "en-IN-NeerjaNeural"},
+    "bn": {"male": "bn-IN-BashkarNeural", "female": "bn-IN-TanishaaNeural"},
+    "ta": {"male": "ta-IN-ValluvarNeural", "female": "ta-IN-PallaviNeural"},
+    "te": {"male": "te-IN-MohanNeural", "female": "te-IN-ShrutiNeural"},
+    "mr": {"male": "mr-IN-ManoharNeural", "female": "mr-IN-AarohiNeural"},
+    "gu": {"male": "gu-IN-NiranjanNeural", "female": "gu-IN-DhwaniNeural"},
+    "kn": {"male": "kn-IN-GaganNeural", "female": "kn-IN-SapnaNeural"},
+    "ml": {"male": "ml-IN-MidhunNeural", "female": "ml-IN-SobhanaNeural"},
+    "ur": {"male": "ur-IN-SalmanNeural", "female": "ur-IN-GulNeural"},
+    "pa": {"male": "pa-IN-GurpreetNeural", "female": "pa-IN-JaspreetNeural"},
+}
+
+
+def _synthesize_edge_tts(text: str, voice_name: str, filepath: str) -> bool:
+    """Synthesize speech using Microsoft Neural Edge-TTS."""
+    try:
+        import asyncio
+        import edge_tts
+        communicate = edge_tts.Communicate(text, voice_name)
+        asyncio.run(communicate.save(filepath))
+        if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+            logger.info(f"[VOICE] Successfully synthesized neural audio using {voice_name}")
+            return True
+    except Exception as e:
+        logger.warning(f"[VOICE] edge-tts error for {voice_name}: {e}")
+    return False
+
+
 def synthesize_voice_bulletin(
     text: str,
     target_lang: str = "hi",
     slow: bool = False,
-    source_lang: str = "en"
+    source_lang: str = "en",
+    gender: str = "male"
 ) -> Tuple[str, str, str]:
     """
     Synthesize spoken audio for a bulletin text.
     
-    1. Resolves target language code.
+    1. Resolves target language code and gender (male/female).
     2. Translates text to target language if required.
-    3. Synthesizes MP3 speech audio via gTTS.
+    3. Synthesizes MP3 speech audio via Edge-TTS (Neural Male/Female) or gTTS fallback.
     4. Caches file in static/audio_cache.
     
     Returns: (audio_filename, translated_text, resolved_lang_code)
@@ -93,35 +124,47 @@ def synthesize_voice_bulletin(
     if not text or not text.strip():
         raise ValueError("Cannot synthesize audio for empty text.")
 
+    clean_gender = "female" if str(gender).lower() == "female" else "male"
     lang_code = normalize_lang_code(target_lang)
     lang_info = SUPPORTED_LANGUAGES.get(lang_code, SUPPORTED_LANGUAGES["hi"])
     gtts_lang = lang_info["gtts_code"]
 
     # Translate text if target language is different from source
     translated_text = text
-    if lang_code != source_lang and lang_code != "en" and settings.GROQ_API_KEY:
+    if lang_code != source_lang and lang_code != "en":
         try:
             t = translate_text(text, target_language=lang_info["name"], source_language=source_lang)
             if t and t.strip():
                 translated_text = t
         except Exception as e:
-            logger.warning(f"[VOICE] Translation fallback used due to error: {e}")
+            logger.warning(f"[VOICE] Translation error: {e}")
 
-    # Generate cache key
-    text_hash = hashlib.md5(f"{translated_text}_{lang_code}_{slow}".encode("utf-8")).hexdigest()
-    filename = f"bulletin_{lang_code}_{text_hash[:12]}.mp3"
+    # Generate cache key based on translated text, language, gender & speed
+    text_hash = hashlib.md5(f"{translated_text}_{lang_code}_{clean_gender}_{slow}".encode("utf-8")).hexdigest()
+    filename = f"bulletin_{lang_code}_{clean_gender}_{text_hash[:12]}.mp3"
     filepath = os.path.join(CACHE_DIR, filename)
 
     # Return cached audio file if present
     if not os.path.exists(filepath):
-        logger.info(f"[VOICE] Synthesizing speech for language '{lang_info['name']}' ({lang_code})...")
-        try:
-            tts = gTTS(text=translated_text, lang=gtts_lang, slow=slow)
-            tts.save(filepath)
-        except Exception as ex:
-            logger.error(f"[VOICE] gTTS synthesis error for {lang_code}: {ex}")
-            # Fallback to English synthesis if gTTS fails for specific Indic dialect code
-            tts = gTTS(text=translated_text, lang="hi" if lang_code != "en" else "en", slow=slow)
-            tts.save(filepath)
+        logger.info(f"[VOICE] Synthesizing speech for language '{lang_info['name']}' ({lang_code}, {clean_gender})...")
+        success = False
+        
+        # Try Neural Edge-TTS voice (hi-IN-MadhurNeural for Male, hi-IN-SwaraNeural for Female)
+        voice_pair = INDIC_NEURAL_VOICES.get(lang_code, INDIC_NEURAL_VOICES["hi"])
+        voice_name = voice_pair.get(clean_gender, voice_pair["male"])
+        success = _synthesize_edge_tts(translated_text, voice_name, filepath)
+
+        # Fallback to gTTS if Edge-TTS failed
+        if not success:
+            try:
+                tts = gTTS(text=translated_text, lang=gtts_lang, slow=slow)
+                tts.save(filepath)
+            except Exception as ex:
+                logger.error(f"[VOICE] gTTS synthesis error for {lang_code}: {ex}")
+                fallback_lang = "hi" if lang_code != "en" else "en"
+                tts = gTTS(text=translated_text, lang=fallback_lang, slow=slow)
+                tts.save(filepath)
 
     return filename, translated_text, lang_code
+
+

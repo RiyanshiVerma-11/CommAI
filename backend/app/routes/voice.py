@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api/voice", tags=["Voice Bulletin Engine"])
 class VoiceSynthesizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2500, description="Text to convert to speech audio")
     language: Optional[str] = Field("hi", description="Language code or name (e.g. 'hi', 'en', 'bn', 'ta', 'Hindi')")
+    gender: Optional[str] = Field("male", description="Voice gender model ('male' or 'female')")
     slow: Optional[bool] = Field(False, description="True for slow speech mode (rural/accessibility)")
     source_lang: Optional[str] = Field("en", description="Source language of the input text")
 
@@ -48,7 +49,8 @@ def synthesize_speech(req: VoiceSynthesizeRequest):
             text=req.text,
             target_lang=req.language or "hi",
             slow=req.slow or False,
-            source_lang=req.source_lang or "en"
+            source_lang=req.source_lang or "en",
+            gender=req.gender or "male"
         )
         return VoiceSynthesizeResponse(
             audio_url=f"/static/audio_cache/{filename}",
@@ -61,6 +63,7 @@ def synthesize_speech(req: VoiceSynthesizeRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Speech synthesis error: {str(e)}"
         )
+
 
 
 @router.get("/bulletin/{campaign_id}")

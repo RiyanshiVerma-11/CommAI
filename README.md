@@ -120,36 +120,216 @@ graph TD
     SQLAlchemy -->|Reads/Writes SQL| SQLite
 ```
 
+### 2. Entity-Relationship Diagram (ERD)
+```mermaid
+erDiagram
+    users {
+        string id PK
+        string email "unique"
+        string hashed_password
+        string full_name
+        string role "admin | campaign_manager | communicator"
+        string organization
+        string designation
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    audiences {
+        string id PK
+        string first_name
+        string last_name
+        string email
+        string phone "unique"
+        text preferred_languages "JSON array"
+        string occupation
+        integer age
+        string gender
+        string state
+        string district
+        string city
+        string organization
+        string department
+        string designation
+        text preferred_channels "JSON array"
+        boolean is_active
+        boolean is_deleted
+        timestamp created_at
+    }
+    
+    segments {
+        string id PK
+        string name "unique"
+        string description
+        text filter_criteria "JSON structure"
+        boolean is_dynamic
+        integer estimated_size
+        timestamp last_refreshed
+        timestamp created_at
+    }
+    
+    templates {
+        string id PK
+        string title
+        string description
+        string category "emergency | awareness | education | announcement"
+        string channel "email | sms | whatsapp | push | website"
+        string default_language
+        text subject_template
+        text body_template
+        text translations "JSON Cache: lang -> {subject, body}"
+        boolean is_ai_generated
+        integer version
+        string created_by FK
+        boolean is_deleted
+        timestamp created_at
+    }
+
+    campaigns {
+        string id PK
+        string title
+        string description
+        text objective
+        string campaign_type
+        string status "DRAFT | SCHEDULED | ACTIVE | COMPLETED"
+        string segment_id FK "nullable"
+        string template_id FK "nullable"
+        text custom_subject "nullable"
+        text custom_body "nullable"
+        text channel_preferences "JSON array"
+        integer target_audience_count
+        integer estimated_reach
+        integer sent_count
+        integer failed_count
+        string created_by FK
+        string updated_by FK
+        timestamp scheduled_at "nullable"
+        timestamp dispatched_at "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    delivery_logs {
+        string id PK
+        string campaign_id FK
+        string audience_id FK
+        string channel "email | sms | whatsapp"
+        string language
+        string status "sent | failed"
+        text error_message "nullable"
+        timestamp timestamp
+    }
+
+    audit_logs {
+        string id PK
+        string user_id FK
+        string campaign_id FK "nullable"
+        string action "CREATE | UPDATE | STATUS_CHANGE | DELETE"
+        string old_status "nullable"
+        string new_status "nullable"
+        text changes "JSON representation"
+        timestamp timestamp
+    }
+
+    blacklist {
+        string id PK
+        string type "email | phone"
+        string value "unique"
+        timestamp created_at
+    }
+
+    emergency_contacts {
+        string id PK
+        string user_id FK
+        string subject
+        text message
+        string urgency "normal | urgent | critical"
+        string status "open | acknowledged | resolved"
+        text admin_reply "nullable"
+        timestamp replied_at "nullable"
+        timestamp created_at
+    }
+
+    users ||--o{ templates : "creates"
+    users ||--o{ campaigns : "creates"
+    users ||--o{ audit_logs : "performs"
+    segments ||--o{ campaigns : "targets"
+    templates ||--o{ campaigns : "binds"
+    campaigns ||--o{ delivery_logs : "broadcasts"
+    campaigns ||--o{ audit_logs : "records"
+    users ||--o{ emergency_contacts : "submits"
+```
+
 ---
 
-## 📅 Week-by-Week Implementation Summary
+## 📅 Week-by-Week Implementation & Feature Screenshots
 
-### Weeks 1–2: Audience Management & Campaign Planning Module
-- **Public Landing Page**: Public-facing entry portal welcoming users and displaying active bulletins.
-- **Authentication & RBAC**: Secure operator sign-in with JWT verification scheme and multi-tiered roles (Admin, Campaign Manager, Communicator).
+### 🏆 Milestone 1: Core Platform Foundation
+
+- **Public Landing Page**: Public-facing entry portal welcoming citizens and operators.
+  
+  ![Public Landing Page](docs/screenshots/milestone%201/landing.png)
+
+- **Authentication & RBAC**: Secure operator sign-in with JWT verification and multi-tiered roles (Admin, Campaign Manager, Communicator).
+  
+  ![Login Screen](docs/screenshots/milestone%201/login.png)
+
 - **Overview Dashboard**: High-level telemetry for active campaigns, public reach, segment size, and live integration latency.
-- **Audience Management & Segmentation**: Dynamic segment builder with logical query filter criteria (state, occupation, age, preferred language).
-- **Template Library**: Central repository to manage templates across delivery channels (Email, WhatsApp, SMS) and categories.
-- **Campaign Planner**: Consolidated grid for scheduled broadcasts and delivery audits.
+  
+  ![Overview Dashboard](docs/screenshots/milestone%201/dashboard.png)
 
-### Weeks 3–4: AI Content Generation & Multilingual Engine
-- **Generative AI Assistant**: Groq API integration for drafting optimized campaign subjects and body copy.
-- **Tone Presets & Personalization**: Tone overrides (Urgent, Empathetic, Formal, Simplified) and demographic targeting.
-- **Caret-Position Chip Insertion**: Inserts placeholder variables (`{{first_name}}`, `{{city}}`) at the cursor caret position.
-- **Multilingual Previews**: Dynamic previews for 22 official regional Indian languages.
-- **Emergency Inbox & AI Response**: Citizen emergency inquiry tracking with automated AI response drafting.
+- **Audience Management & Segmentation**: Dynamic segment builder with demographic progress indicators.
+  
+  ![Audience Management](docs/screenshots/milestone%201/audiences.png)
 
-### Weeks 5–6: Multi-Channel Distribution & Analytics
-- **Channel Dispatch Service**: SMTP email transmission and CallMeBot WhatsApp delivery.
-- **Automated Background Dispatcher**: Background polling loop processing scheduled broadcasts.
-- **Delivery Logs & Auditing**: Tracking channel status, language, and error logs.
+- **Template Library**: Central repository managing templates across delivery channels and categories.
+  
+  ![Template Library](docs/screenshots/milestone%201/templates.png)
 
-### Weeks 7–8: Milestone 2 Finalization, Speech & Visual Engine
-- **Neural Voice Bulletin Player**: Edge-TTS + gTTS synthesis supporting 23 official languages with React Portal modal controls.
-- **AI Visual Poster Studio**: Canvas composite system serving binary image flyers via `/api/poster/{id}/image`.
-- **Inline Email Attachments**: Automatic MIME CID image attachments and Gmail App Password credential normalization.
-- **Real-Time WebSocket Alerts**: Live dashboard alert broadcasts with sound chimes and instant list refreshes.
-- **Maker-Checker Governance**: Four-eye principle approval queue for emergency broadcasts ($\ge 100$ recipients).
+- **Campaign Planner**: Consolidated grid for scheduled broadcasts and delivery auditing.
+  
+  ![Campaign Planner](docs/screenshots/milestone%201/campaigns.png)
+
+- **Maker-Checker Governance (Four-Eye Principle)**: Safety guardrail queue for emergency campaign approval ($\ge 100$ recipients).
+  
+  ![Approvals Queue](docs/screenshots/milestone%201/approvals.png)
+
+- **Campaign Wizard & AI Assistant**: Groq API integration for drafting campaign subject lines and copy presets.
+  
+  ![Campaign Wizard & AI Assistant](docs/screenshots/milestone%201/campaign_wizard.png)
+
+- **System Diagnostics Dashboard**: Real-time integration latency checks for Groq, SMTP, and CallMeBot gateways.
+  
+  ![System Diagnostics Dashboard](docs/screenshots/milestone%201/settings.png)
+
+---
+
+### 🚀 Milestone 2: Advanced Speech, Visual & Governance Engine
+
+- **AI Visual Poster Studio**: Canvas composite engine with multilingual typography overlays and served binary image previews (`/api/poster/{id}/image`).
+  
+  ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png)
+
+- **Neural Indic Voice Bulletin Player**: Edge-TTS & gTTS neural speech synthesis engine across 23 official languages with React Portal modal controls.
+  
+  ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png)
+
+- **Real-Time Operator Staff Chat & WebSocket Alert Engine**: Live WebSocket communication channels with role badges, sound chimes, and instant updates.
+  
+  ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png)
+
+- **Geospatial Sentiment Map & Heatmap Analytics**: District-level citizen sentiment tracking and interactive emergency heatmap.
+  
+  ![Geospatial Sentiment Map](docs/screenshots/milestone%202/sentiment_map.png)
+
+- **Citizen Emergency Inbox & SOS Request Management**: Dedicated portal monitoring citizen emergency inquiries with automated AI response drafting.
+  
+  ![Emergency Inbox & SOS Tracking](docs/screenshots/milestone%202/emergency_inbox.png)
+
+- **Support Queries Desk & AI Help Desk**: Citizen support ticketing desk with automated AI response suggestions and escalation tracking.
+  
+  ![Support Queries & AI Help Desk](docs/screenshots/milestone%202/admin_portal_for_support_queries.png)
 
 ---
 

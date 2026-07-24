@@ -564,63 +564,46 @@ const VoiceBulletinPlayer = ({
 
         </div>
 
-        {/* PROGRESS SCRUBBER & ANIMATED EQUALIZER */}
-        {(isPlaying || audioUrl || duration > 0 || currentTime > 0) && (
+        {/* SPOKEN SCRIPT BANNER & EQUALIZER */}
+        {(translatedText || text) && (
           <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              color: '#ffffff',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              borderLeft: '4px solid #818cf8',
+              border: '1px solid rgba(129, 140, 248, 0.3)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              lineHeight: '1.5',
+              letterSpacing: '0.01em'
+            }}>
               {/* Equalizer Animation */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '16px', flexShrink: 0 }}>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: '3px',
-                      height: isPlaying ? `${Math.floor(Math.random() * 12) + 4}px` : '4px',
-                      background: '#818cf8',
-                      borderRadius: '2px',
-                      transition: 'height 0.15s ease'
-                    }}
-                  />
-                ))}
-              </div>
-
-              {/* Progress Slider */}
-              <input
-                type="range"
-                min="0"
-                max={duration > 0 ? duration : 1}
-                step="0.1"
-                value={Math.min(currentTime, duration > 0 ? duration : 1)}
-                onChange={handleSeek}
-                style={{ flex: 1, accentColor: '#818cf8', cursor: 'pointer', height: '4px' }}
-              />
-
-              {/* Time Display */}
-              <span style={{ fontSize: '0.76rem', color: '#94a3b8', fontFamily: 'monospace', flexShrink: 0 }}>
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
-
-            </div>
-
-            {(translatedText || text) && (
-              <div style={{
-                marginTop: '10px',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                color: '#ffffff',
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)',
-                padding: '8px 14px',
-                borderRadius: '10px',
-                borderLeft: '4px solid #818cf8',
-                border: '1px solid rgba(129, 140, 248, 0.3)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                lineHeight: '1.5',
-                letterSpacing: '0.01em'
-              }}>
+              {isPlaying && (
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '16px', flexShrink: 0 }}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: '3px',
+                        height: `${Math.floor(Math.random() * 12) + 4}px`,
+                        background: '#818cf8',
+                        borderRadius: '2px',
+                        transition: 'height 0.15s ease'
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div>
                 📖 <strong>Spoken Speech ({selectedLang.native || selectedLang.name}):</strong> <span style={{ fontWeight: 800, color: '#f8fafc' }}>"{translatedText || text}"</span>
               </div>
-            )}
+            </div>
           </div>
         )}
 

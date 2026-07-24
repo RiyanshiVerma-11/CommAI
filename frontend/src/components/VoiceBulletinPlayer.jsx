@@ -154,7 +154,7 @@ const VoiceBulletinPlayer = ({
   );
 
   return (
-    <div className="voice-player-wrapper" style={{ marginTop: '10px', marginBottom: '10px' }}>
+    <div className="voice-player-wrapper" style={{ marginTop: '10px', marginBottom: '10px', position: 'relative', zIndex: dropdownOpen ? 99999 : 'auto' }}>
       <audio
         ref={audioRef}
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
@@ -164,13 +164,14 @@ const VoiceBulletinPlayer = ({
 
       {/* Main Glass Player Bar */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.88) 100%)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
         borderRadius: compact ? '14px' : '18px',
         padding: compact ? '10px 14px' : '14px 18px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-        position: 'relative'
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+        position: 'relative',
+        zIndex: dropdownOpen ? 99999 : 1
       }}>
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -247,7 +248,7 @@ const VoiceBulletinPlayer = ({
           </div>
 
           {/* Right Group: Language Selector Pill + Speed Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }} ref={dropdownRef}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', position: 'relative' }} ref={dropdownRef}>
             
             {/* LANGUAGE SELECTOR PILL BUTTON */}
             <button
@@ -255,11 +256,11 @@ const VoiceBulletinPlayer = ({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 padding: '6px 14px',
                 borderRadius: '24px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.18)',
+                background: dropdownOpen ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.08)',
+                border: dropdownOpen ? '1.5px solid #818cf8' : '1px solid rgba(255, 255, 255, 0.18)',
                 color: '#f1f5f9',
                 fontSize: '0.82rem',
                 fontWeight: 600,
@@ -268,11 +269,11 @@ const VoiceBulletinPlayer = ({
                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = dropdownOpen ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.08)'}
             >
               <span>{selectedLang.flag}</span>
               <span>{selectedLang.name} ({selectedLang.native})</span>
-              <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>▼</span>
+              <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700 }}>▼ Select Language</span>
             </button>
 
             {/* SPEED CONTROLS PILL */}
@@ -309,21 +310,21 @@ const VoiceBulletinPlayer = ({
             {dropdownOpen && (
               <div style={{
                 position: 'absolute',
-                top: '105%',
+                top: '110%',
                 right: 0,
-                zIndex: 9999,
+                zIndex: 999999,
                 width: '320px',
                 background: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                border: '1.5px solid #6366f1',
                 borderRadius: '16px',
-                boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(99, 102, 241, 0.4)',
                 padding: '14px',
-                backdropFilter: 'blur(20px)',
+                backdropFilter: 'blur(24px)',
                 animation: 'animate-slide-up 0.2s ease-out'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🌐 Select Audio Language (23)
+                    🌐 Select Any Language (23)
                   </span>
                   <button
                     onClick={() => setDropdownOpen(false)}
@@ -336,7 +337,7 @@ const VoiceBulletinPlayer = ({
                 {/* Search Bar */}
                 <input
                   type="text"
-                  placeholder="Search Indic languages..."
+                  placeholder="Search 23 Indic languages..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{

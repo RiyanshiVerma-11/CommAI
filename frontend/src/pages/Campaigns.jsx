@@ -1352,9 +1352,9 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   </thead>
                   <tbody>
                     {filteredCampaigns.map(camp => (
-                      <tr key={camp.id}>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <tr key={camp.id} style={{ position: 'relative', overflow: 'visible' }}>
+                        <td style={{ position: 'relative', overflow: 'visible' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
                             <strong style={{ fontSize: '1.05rem', color: 'hsl(var(--primary))' }}>{camp.title}</strong>
                             <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', marginBottom: '4px' }}>{camp.objective}</span>
                             <VoiceBulletinPlayer

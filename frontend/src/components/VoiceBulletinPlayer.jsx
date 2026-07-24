@@ -139,6 +139,7 @@ const VoiceBulletinPlayer = ({
 
     stopAllAudio();
     setLoading(true);
+    setTranslatedText(''); // Clear previous language text
     userHasPickedLang.current = true;
     setSelectedLang(langToPlay);
     setDropdownOpen(false);
@@ -161,15 +162,22 @@ const VoiceBulletinPlayer = ({
         const data = await response.json();
         const fullUrl = `${apiBase}${data.audio_url}?t=${Date.now()}`;
         setAudioUrl(fullUrl);
-        setTranslatedText(data.translated_text || text);
+        const newText = data.translated_text || text;
+        setTranslatedText(newText);
         
         if (audioRef.current) {
           audioRef.current.src = fullUrl;
           audioRef.current.playbackRate = speed;
           audioRef.current.load();
-          await audioRef.current.play();
-          setIsPlaying(true);
-          setLoading(false);
+          try {
+            await audioRef.current.play();
+            setIsPlaying(true);
+          } catch (pErr) {
+            console.warn('Audio playback error:', pErr);
+            setIsPlaying(false);
+          } finally {
+            setLoading(false);
+          }
           return;
         }
       } else {
@@ -295,6 +303,13 @@ const VoiceBulletinPlayer = ({
         onLoadedMetadata={handleAudioLoadedMetadata}
         onDurationChange={handleAudioLoadedMetadata}
         onCanPlay={handleAudioLoadedMetadata}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => {
+          if (audioRef.current && !audioRef.current.seeking) {
+            setIsPlaying(false);
+          }
+        }}
+        onError={() => stopAllAudio()}
         onEnded={stopAllAudio}
       />
 

@@ -41,6 +41,9 @@ def send_email(to_email: str, subject: str, body: str, is_html: bool = False, in
         is_html: If True, send as HTML email
         inline_image_base64: Optional base64-encoded image data URL (e.g. data:image/jpeg;base64,...)
     """
+    smtp_email = settings.SMTP_EMAIL.strip() if settings.SMTP_EMAIL else ""
+    smtp_password = settings.SMTP_APP_PASSWORD.replace(" ", "").strip() if settings.SMTP_APP_PASSWORD else ""
+
     # Prevent sending real SMTP emails to dummy/fake test domains (e.g. @example.com) to avoid bounces
     if not to_email or "@example.com" in to_email.lower() or "@test.com" in to_email.lower() or "invalid" in to_email.lower():
         logger.info(f"[EMAIL MOCK] Skipping fake/dummy domain email to {to_email}")

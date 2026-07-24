@@ -38,7 +38,8 @@ def interpolate_template(template_text: str, audience: Audience) -> str:
     """
     Replace {placeholder} variables in a template with audience member data.
     
-    Supports both {variable} and {{variable}} syntax.
+    Supports both {variable} and {{variable}} syntax, case-insensitively,
+    and supports extra spaces inside braces as well as name/place aliases.
     """
     if not template_text:
         return ""
@@ -46,6 +47,8 @@ def interpolate_template(template_text: str, audience: Audience) -> str:
     replacements = {
         "first_name": audience.first_name or "",
         "last_name": audience.last_name or "",
+        "name": f"{audience.first_name or ''} {audience.last_name or ''}".strip() or "Citizen",
+        "place": audience.city or audience.district or audience.state or "your area",
         "email": audience.email or "",
         "phone": audience.phone or "",
         "city": audience.city or "",
@@ -61,11 +64,14 @@ def interpolate_template(template_text: str, audience: Audience) -> str:
 
     result = template_text
     for key, value in replacements.items():
-        # Replace both {key} and {{key}} formats
-        result = result.replace(f"{{{{{key}}}}}", value)
-        result = result.replace(f"{{{key}}}", value)
+        # Match both {key} and {{key}} formats case-insensitively with optional spaces
+        pattern_double = re.compile(r"\{\{\s*" + key + r"\s*\}\}", re.IGNORECASE)
+        pattern_single = re.compile(r"\{\s*" + key + r"\s*\}", re.IGNORECASE)
+        result = pattern_double.sub(value, result)
+        result = pattern_single.sub(value, result)
 
     return result
+
 
 
 def resolve_audience_members(db: Session, segment_id: str) -> List[Audience]:
@@ -481,6 +487,24 @@ def _dispatch_campaign_worker(campaign_id: str):
                 except (json.JSONDecodeError, TypeError):
                     member_channels = []
 
+                # Filter by preferences: if they specified preferred channels,
+                # they must only receive on those channels unless override_channel_preferences is enabled.
+                if not getattr(campaign, 'override_channel_preferences', False) and member_channels and channel not in member_channels:
+                    logger.info(f"[DISPATCHER] Channel '{channel}' failed for {member.first_name} as it is not in their preferences {member_channels}")
+                    rec_info = member.email if channel == "email" else (member.phone or "No Phone")
+                    fail_log = DeliveryLog(
+                        campaign_id=campaign.id,
+                        audience_id=member.id,
+                        channel=channel,
+                        recipient_info=rec_info,
+                        status="failed",
+                        error_message=f"Failed: Recipient preferred channel is {member_channels}, which does not include selected channel '{channel}'. Add '{member_channels[0] if member_channels else 'preferred'}' to campaign channels or check Override Channel Preferences.",
+                        sent_at=datetime.datetime.utcnow()
+                    )
+                    db.add(fail_log)
+                    failed_count += 1
+                    continue
+
                 success, error, actual_channel = dispatch_to_channel(
                     channel, member, subject_to_send, body_to_send
                 )
@@ -488,24 +512,25 @@ def _dispatch_campaign_worker(campaign_id: str):
                 # Log the delivery
                 rec_info = member.phone
                 if channel in ["email"]:
-                    rec_info = member.email or "No Email"
-                elif channel == "push" and success and actual_channel == "push":
-                    rec_info = member.email or "No Email"
-                    if channel == "push" and success and actual_channel == "push":
-                        if member.custom_fields:
-                            try:
-                                custom = json.loads(member.custom_fields) if isinstance(member.custom_fields, str) else member.custom_fields
-                                fcm_tok = custom.get("fcm_token")
-                                if fcm_tok:
-                                    rec_info = f"FCM:{fcm_tok[:15]}..."
-                            except Exception:
-                                pass
-                elif channel == "telegram":
-                    rec_info = settings.TELEGRAM_CHAT_ID or "No Chat ID"
+                    rec_info = member.email or "No Email Provided"
+                elif channel in ["sms", "whatsapp"]:
+                    rec_info = member.phone or "No Phone Provided"
+                elif channel == "push":
+                    rec_info = member.email or "No FCM Token / Email"
                     if member.custom_fields:
                         try:
                             custom = json.loads(member.custom_fields) if isinstance(member.custom_fields, str) else member.custom_fields
-                            rec_info = custom.get("telegram_chat_id") or settings.TELEGRAM_CHAT_ID or "No Chat ID"
+                            fcm_tok = custom.get("fcm_token")
+                            if fcm_tok:
+                                rec_info = f"FCM:{fcm_tok[:15]}..."
+                        except Exception:
+                            pass
+                elif channel == "telegram":
+                    rec_info = "No Telegram ID"
+                    if member.custom_fields:
+                        try:
+                            custom = json.loads(member.custom_fields) if isinstance(member.custom_fields, str) else member.custom_fields
+                            rec_info = custom.get("telegram_chat_id") or custom.get("telegram_username") or "No Telegram ID"
                         except Exception:
                             pass
 

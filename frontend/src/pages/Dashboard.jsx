@@ -113,12 +113,14 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
     try {
       const response = await fetch(`${backendUrl}/api/dashboard/stats`, { headers });
       if (!response.ok) {
-        throw new Error('Failed to load dashboard statistics');
+        throw new Error(`HTTP ${response.status}: Failed to load dashboard statistics`);
       }
       const data = await response.json();
       setStats(data);
+      setError('');
     } catch (err) {
-      setError(err.message);
+      console.error("Failed to fetch dashboard stats:", err);
+      setError(err.message || 'Failed to connect to backend server');
     } finally {
       setLoading(false);
     }
@@ -129,13 +131,45 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
     fetchPosters();
   }, [fetchStats, fetchPosters, bulletinCount]);
 
+  // Auto-retry fetchStats when error occurs
+  useEffect(() => {
+    if (!error) return;
+    const interval = setInterval(() => {
+      fetchStats();
+      fetchPosters();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [error, fetchStats, fetchPosters]);
+
 
   if (loading) {
     return <div style={{ color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', fontWeight: 600 }}>Gathering dashboard metrics...</div>;
   }
 
   if (error) {
-    return <div className="danger-text" style={{ padding: '16px', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)' }}>Error loading dashboard: {error}</div>;
+    return (
+      <div className="danger-text animate-fade-in" style={{ padding: '24px', border: '1.5px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px', background: 'rgba(239, 68, 68, 0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', margin: '40px 0', textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>
+          <span>⚠️</span> Connection Error: {error}
+        </div>
+        <p style={{ fontSize: '0.88rem', color: 'hsl(var(--text-secondary))', margin: 0, maxWidth: '500px', lineHeight: '1.45' }}>
+          The dashboard could not reach the backend service at <code>{backendUrl}</code>. Retrying automatically...
+        </p>
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ padding: '8px 20px', fontSize: '0.85rem', marginTop: '6px' }}
+          onClick={() => {
+            setLoading(true);
+            setError('');
+            fetchStats();
+            fetchPosters();
+          }}
+        >
+          🔄 Retry Connection Now
+        </button>
+      </div>
+    );
   }
 
   const s = stats || {

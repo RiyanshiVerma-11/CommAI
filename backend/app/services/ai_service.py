@@ -19,7 +19,7 @@ PLATFORM_KNOWLEDGE = """
 === CommAI Platform Reference (Authoritative) ===
 
 CommAI is a government mass communication platform that enables organizations to broadcast campaigns 
-and public alerts in 22 official Indian languages across Email, SMS, WhatsApp, Push Notifications, 
+and public alerts in 22 official Indian languages across Email, SMS, WhatsApp, Telegram, Push Notifications, 
 and Web Broadcasts.
 
 There are THREE user roles with different permissions and UI layouts:
@@ -519,7 +519,12 @@ def plan_complete_campaign(brief: str, category_hint: str = "awareness_drive") -
         "Your task is to plan, write, audit, and estimate success metrics for a citizen communication campaign.\n"
         "You MUST return a JSON object ONLY. Do not wrap in markdown fences (like ```json), write notes, or introduce your text.\n"
         "\n"
-        "CRITICAL: Output Devanagari / Hindi text as RAW UTF-8 CHARACTERS (e.g., 'साफ', 'स्थिति', 'स्थानीय'). Do NOT escape them as unicode sequences (do NOT use \\uXXXX or backslashes). Writing unicode escapes leads to spelling errors.\n"
+        "CRITICAL DEFAULT LANGUAGE REQUIREMENT:\n"
+        "By default, all generated content (campaign.title, campaign.objective, campaign.description, message.subject, message.body, delivery.schedule.reason, kpis.awareness_goal_description, risks, metadata.suggestions) MUST BE WRITTEN IN ENGLISH.\n"
+        "Even if the brief mentions a non-English region, state, or location (e.g. 'Uttar Pradesh', 'Punjab', 'Ludhiana', 'Tamil Nadu'), generate all fields in ENGLISH by default.\n"
+        "Only if the user brief explicitly commands a non-English language (e.g. 'in Hindi', 'translate to Punjabi'), then generate in that requested language.\n"
+        "\n"
+        "CRITICAL: Output Devanagari / Hindi or other non-ASCII text as RAW UTF-8 CHARACTERS (e.g., 'साफ', 'स्थिति', 'स्थानीय') if requested. Do NOT escape them as unicode sequences (do NOT use \\uXXXX or backslashes).\n"
         "\n"
         "JSON SCHEMA RULES:\n"
         "{\n"
@@ -754,11 +759,76 @@ def draft_query_response(subject: str, message: str) -> str:
     return "Thank you for reaching out with your query. We have logged your request in our system and a platform operator is reviewing it. We will get back to you with further instructions shortly."
 
 
+def _get_offline_chat_reply(message: str, user_role: str = "general") -> str:
+    """Offline keyword and rule-based fallback response when LLM is unavailable."""
+    msg_lower = message.lower().strip()
+
+    # Greetings / basic orientation in a very user-friendly manner
+    if any(g in msg_lower for g in ["hi", "hello", "hey", "good morning", "good evening", "greetings"]):
+        return "Hello! 👋 I am your CommAI Assistant. How can I help you today?"
+
+    if any(k in msg_lower for k in ["channel", "medium", "platforms", "sms", "email", "whatsapp", "telegram", "push", "broadcast"]):
+        return "CommAI supports the following channels: Email, SMS, WhatsApp, Telegram, Push Notifications, and Web Broadcasts."
+
+    if any(k in msg_lower for k in ["role", "permission", "access level"]):
+        return (
+            "CommAI has 3 user roles:\n"
+            "1. Audience / Citizen: Restricted access to portal dashboard, campaign alerts, submit emergency requests, and give feedback.\n"
+            "2. Campaign Manager: Creates campaigns, templates, poster graphics, manages audience segments, and responds to citizen requests.\n"
+            "3. Admin: Full platform governance including user directory, manager account creation, audit logs, and campaign approvals."
+        )
+
+    if any(k in msg_lower for k in ["emergency", "urgent", "assistance", "alert", "warning"]):
+        return (
+            "To submit an emergency support request as a Citizen:\n"
+            "1. Go to 'Campaign Feedback' in the sidebar.\n"
+            "2. Select the '🚨 Emergency Support' tab.\n"
+            "3. Fill out the 'Submit Urgent Request' form on the left (Subject, Priority, Message).\n"
+            "4. Click 'Send Emergency Message'. Campaign managers monitor these in real time."
+        )
+
+    if "feedback" in msg_lower or "rate" in msg_lower or "rating" in msg_lower:
+        return (
+            "To give feedback on a campaign:\n"
+            "1. Go to 'Campaign Feedback' in the sidebar.\n"
+            "2. Select the '📬 Received Campaigns' tab.\n"
+            "3. Find the campaign and click 'Give Feedback' to submit a 1 to 5 star rating."
+        )
+
+    if "campaign" in msg_lower or "template" in msg_lower:
+        return (
+            "To create a campaign (Campaign Managers & Admins):\n"
+            "1. Navigate to 'Campaign Planner' in the sidebar.\n"
+            "2. Click 'Create New Campaign'.\n"
+            "3. Complete the step-by-step wizard: select template -> choose audience -> configure channels -> launch."
+        )
+
+    if "segment" in msg_lower or "audience" in msg_lower:
+        return (
+            "Campaign Managers can segment citizens by location (state, district, city), age group, occupation, "
+            "and language preferences using structured filters or AI natural language queries in 'Audience & Segments'."
+        )
+
+    if "poster" in msg_lower or "flyer" in msg_lower:
+        return (
+            "To generate posters: Go to 'Poster Studio' in the sidebar -> specify campaign topic & tone -> "
+            "AI generates visual text-free background posters."
+        )
+
+    if "language" in msg_lower or "translate" in msg_lower or "translation" in msg_lower:
+        return "CommAI supports 22 official Indian languages with instant AI translation."
+
+    if "bulletin" in msg_lower or "notice" in msg_lower or "announcement" in msg_lower:
+        return "Official announcements and emergency warnings appear on the 'Live Bulletins' feed accessible from the sidebar."
+
+    return "Please ask me relevant questions related to CommAI, emergency alerts, campaign management, or platform navigation."
+
+
 def generate_chat_reply(message: str, history: list, user_role: str = "general") -> str:
-    """Generate an AI assistant response for chatbot widget using Groq."""
+    """Generate an AI assistant response for chatbot widget using Groq or offline RAG/fallback."""
     if not settings.GROQ_API_KEY:
-        logger.warning("[AI] Groq API Key is not set.")
-        return "AI assistant is offline. Please check system configurations."
+        logger.warning("[AI] Groq API Key is not set. Using offline platform context fallback.")
+        return _get_offline_chat_reply(message, user_role)
 
     if user_role == "audience":
         role_context = (
@@ -783,8 +853,10 @@ def generate_chat_reply(message: str, history: list, user_role: str = "general")
         "2. NEVER fabricate or guess UI elements. If unsure, say so honestly.\n"
         "3. Avoid providing technical or implementation details about database schemas, code internals, or uvicorn commands "
         "unless the user explicitly asks about them.\n"
-        "4. Keep your response concise, clear, and direct. Do not include markdown headers or greetings.\n"
-        "5. If you cannot help, or if the user is frustrated, tell them they can click the thumbs-down icon below "
+        "4. GREETINGS: If the user says a greeting (e.g. 'hi', 'hello', 'hey', 'good morning', etc.), respond warmly and in a user-friendly manner: 'Hello! 👋 I am your CommAI Assistant. How can I help you today?'\n"
+        "5. If asked 'What channels does CommAI support?', answer directly: 'CommAI supports the following channels: Email, SMS, WhatsApp, Telegram, Push Notifications, and Web Broadcasts.'\n"
+        "6. STRICT RELEVANCE GUARDRAIL: You are strictly a CommAI platform assistant. If the user asks ANY off-topic, unrelated, or general knowledge question (such as 'who is the prime minister of india', general trivia, recipes, general non-CommAI programming, math, sports, external news, personal advice, etc.), DO NOT answer the question under any circumstances. Instead, reply politely: 'Please ask me relevant questions related to CommAI, emergency alerts, campaign management, or platform navigation.'\n"
+        "7. If you cannot help, or if the user is frustrated with platform issues, tell them they can click the thumbs-down icon below "
         "your reply to submit a support query to a campaign manager who will respond personally."
     )
 
@@ -819,10 +891,10 @@ def generate_chat_reply(message: str, history: list, user_role: str = "general")
             return _clean_output(text)
         else:
             logger.error(f"[AI] Groq chat call failed: {resp.text}")
-            return "Sorry, I am having trouble connecting to the AI brain right now. Please try again."
+            return _get_offline_chat_reply(message, user_role)
     except Exception as e:
         logger.error(f"[AI] Error calling Groq API for chat: {e}", exc_info=True)
-        return "Sorry, I encountered an internal error processing your request."
+        return _get_offline_chat_reply(message, user_role)
 
 
 

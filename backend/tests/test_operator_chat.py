@@ -11,8 +11,26 @@ def get_token_for_role(email: str, role: str, user_id: str):
     return create_access_token(data={"sub": email, "role": role, "user_id": user_id})
 
 def test_operator_chat_access_control():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    from app.database import get_db
+    
+    # Ensure test code and client use the same database session/engine
+    is_overridden = get_db in app.dependency_overrides
+    if is_overridden:
+        override_func = app.dependency_overrides[get_db]
+        gen = override_func()
+        db = next(gen)
+        if db.bind:
+            Base.metadata.create_all(bind=db.bind)
+    else:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+        app.dependency_overrides[get_db] = override_get_db
+
     try:
         # Seed test users if missing
         admin = db.query(User).filter(User.role == "admin").first()
@@ -82,3 +100,8 @@ def test_operator_chat_access_control():
 
     finally:
         db.close()
+        if is_overridden:
+            try:
+                next(gen)
+            except StopIteration:
+                pass

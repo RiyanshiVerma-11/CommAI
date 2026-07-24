@@ -6,6 +6,8 @@ Architecture: Hybrid rendering
   - Backend generates text-free AI background + structured translated content
   - Frontend composites text onto the background using Canvas with proper fonts
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, validator
 from typing import Optional, List

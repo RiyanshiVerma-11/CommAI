@@ -534,6 +534,11 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
     """
     filters = []
     
+    # Specific recipient IDs (Direct Targeting)
+    ids = filter_criteria.get("ids")
+    if ids and isinstance(ids, list):
+        filters.append(Audience.id.in_(ids))
+    
     # Language Preference (Checks text serialization matching)
     lang = filter_criteria.get("language")
     if lang:
@@ -768,11 +773,12 @@ def download_csv_template():
 
 
 def calculate_segment_breakdowns(query) -> Dict[str, Any]:
-    """Calculates Language, Occupation, and State distribution for the matched segment."""
+    """Calculates Language, Occupation, State, and Preferred Channel distribution for the matched segment."""
     all_matched = query.all()
     lang_breakdown = {}
     occ_breakdown = {}
     state_breakdown = {}
+    channel_breakdown = {}
     for aud in all_matched:
         # Languages
         try:
@@ -783,16 +789,33 @@ def calculate_segment_breakdowns(query) -> Dict[str, Any]:
             lang_breakdown[l] = lang_breakdown.get(l, 0) + 1
             
         # Occupation
-        occ_breakdown[aud.occupation] = occ_breakdown.get(aud.occupation, 0) + 1
+        if aud.occupation:
+            occ_breakdown[aud.occupation] = occ_breakdown.get(aud.occupation, 0) + 1
         
         # State
-        state_breakdown[aud.state] = state_breakdown.get(aud.state, 0) + 1
+        if aud.state:
+            state_breakdown[aud.state] = state_breakdown.get(aud.state, 0) + 1
+
+        # Preferred Channels
+        try:
+            chans = json.loads(aud.preferred_channels) if aud.preferred_channels else []
+            if isinstance(chans, str):
+                chans = [chans]
+        except Exception:
+            chans = []
+        if not chans:
+            chans = ["unspecified"]
+        for ch in chans:
+            ch_lower = str(ch).lower().strip()
+            channel_breakdown[ch_lower] = channel_breakdown.get(ch_lower, 0) + 1
 
     return {
         "languages": lang_breakdown,
         "occupations": occ_breakdown,
-        "states": state_breakdown
+        "states": state_breakdown,
+        "channels": channel_breakdown
     }
+
 
 
 @router.get("/segments/{id}/preview", response_model=Dict[str, Any])

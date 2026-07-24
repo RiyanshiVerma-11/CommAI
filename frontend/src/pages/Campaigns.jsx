@@ -9,6 +9,33 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   // Lists fetched from DB for dropdown selection
   const [segments, setSegments] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [recipients, setRecipients] = useState([]);
+  const [targetType, setTargetType] = useState('segment'); // 'segment' or 'recipient'
+  const [selectedRecipientId, setSelectedRecipientId] = useState('');
+
+  const getPreferredChannelsText = (rec) => {
+    if (!rec.preferred_channels) return 'None';
+    try {
+      const channels = typeof rec.preferred_channels === 'string' 
+        ? JSON.parse(rec.preferred_channels) 
+        : rec.preferred_channels;
+      return Array.isArray(channels) ? channels.join(', ') : 'None';
+    } catch (e) {
+      return 'None';
+    }
+  };
+
+  const getPreferredLanguagesText = (rec) => {
+    if (!rec.preferred_languages) return 'None';
+    try {
+      const langs = typeof rec.preferred_languages === 'string' 
+        ? JSON.parse(rec.preferred_languages) 
+        : rec.preferred_languages;
+      return Array.isArray(langs) ? langs.join(', ') : 'None';
+    } catch (e) {
+      return 'None';
+    }
+  };
 
   // --- WIZARD STATES ---
   const [step, setStep] = useState(1);
@@ -37,6 +64,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   const [inlineTranslationError, setInlineTranslationError] = useState('');
 
   const [selectedChannels, setSelectedChannels] = useState(['email']);
+  const [overrideChannelPreferences, setOverrideChannelPreferences] = useState(false);
+  const [evalBreakdowns, setEvalBreakdowns] = useState({});
   const [wizardError, setWizardError] = useState('');
   const [previewLang, setPreviewLang] = useState('English');
   const [previewTranslatedText, setPreviewTranslatedText] = useState('');
@@ -92,6 +121,23 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   const [coPilotHistory, setCoPilotHistory] = useState([]);
   const [refineInstruction, setRefineInstruction] = useState('');
   const [refineLoading, setRefineLoading] = useState(false);
+  const [coPilotSelectedLang, setCoPilotSelectedLang] = useState('Hindi');
+
+  const ALL_LANGUAGES = [
+    "English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", 
+    "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", 
+    "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", 
+    "Tamil", "Telugu", "Urdu"
+  ];
+
+  const handleTranslateViewLanguage = (targetLang) => {
+    if (!targetLang) return;
+    if (targetLang === 'English') {
+      handleRefineCampaignPlan("Translate the campaign title, objective, email subject, and message body back into English, preserving all placeholder tags like {{first_name}}.");
+    } else {
+      handleRefineCampaignPlan(`Translate the campaign title, objective, email subject, and message body into ${targetLang}, strictly preserving all placeholder tags like {{first_name}}.`);
+    }
+  };
 
   const applyAiPlanToForm = (plan) => {
     setCurrentAiPlan(plan);
@@ -222,6 +268,12 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         setSegments(await segRes.json());
         setTemplates(await tplRes.json());
       }
+      
+      const recRes = await fetch(`${backendUrl}/api/audiences?limit=500`, { headers });
+      if (recRes.ok) {
+        const recData = await recRes.json();
+        setRecipients(recData.results || []);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -246,6 +298,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         setSegmentPreviewUsers([]);
         setIsScheduled(false);
         setScheduledTime('');
+        setTargetType('segment');
+        setSelectedRecipientId('');
         
         // Clear Co-pilot states
         setCoPilotOpen(false);
@@ -441,12 +495,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     if (!selectedSegId) return;
     setEvalLoading(true);
     try {
-      const response = await fetch(`${backendUrl}/api/segments/${selectedSegId}/preview?limit=5`, { headers });
+      const response = await fetch(`${backendUrl}/api/segments/${selectedSegId}/preview?limit=500`, { headers });
       if (!response.ok) throw new Error('Failed to preview reach');
       const data = await response.json();
       
       const targetCount = data.estimated_size;
       setSegmentPreviewUsers(data.preview || []);
+      setEvalBreakdowns(data.breakdowns || {});
       
       let reachFactor = 1.0;
       if (selectedChannels.length === 1) {
@@ -458,13 +513,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       }
       
       const estimatedReach = Math.round(targetCount * reachFactor);
-      setEvalReach({ target: targetCount, reach: Math.min(targetCount, estimatedReach) });
+      setEvalReach({ target: targetCount, reach: overrideChannelPreferences ? targetCount : Math.min(targetCount, estimatedReach) });
     } catch (err) {
       console.error(err);
     } finally {
       setEvalLoading(false);
     }
-  }, [backendUrl, headers, selectedSegId, selectedChannels]);
+  }, [backendUrl, headers, selectedSegId, selectedChannels, overrideChannelPreferences]);
 
   useEffect(() => {
     if (step === 2 && selectedSegId) {
@@ -472,7 +527,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
   }, [selectedSegId, selectedChannels, step, evaluateReachMetrics]);
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 1) {
       if (!formTitle || !formObjective) {
         setWizardError('Campaign Title and Objective are mandatory fields');
@@ -492,10 +547,56 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       setWizardError('');
       setStep(2);
     } else if (step === 2) {
-      if (!selectedSegId) {
-        setWizardError('Please select a target segment');
-        return;
+      if (targetType === 'recipient') {
+        if (!selectedRecipientId) {
+          setWizardError('Please select an individual recipient');
+          return;
+        }
+        
+        const recipient = recipients.find(r => r.id === selectedRecipientId);
+        if (!recipient) {
+          setWizardError('Selected recipient not found');
+          return;
+        }
+        const recipientName = `${recipient.first_name} ${recipient.last_name || ''}`.trim();
+        const expectedSegmentName = `Direct: ${recipientName} (${recipient.id.substring(0, 8)})`;
+        
+        const existingSeg = segments.find(s => s.name === expectedSegmentName);
+        if (existingSeg) {
+          setSelectedSegId(existingSeg.id);
+        } else {
+          setEvalLoading(true);
+          try {
+            const res = await fetch(`${backendUrl}/api/segments`, {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: expectedSegmentName,
+                description: `Direct message target for ${recipientName}`,
+                filter_criteria: { ids: [selectedRecipientId] },
+                is_dynamic: true
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to create direct segment');
+            
+            setSegments(prev => [...prev, data]);
+            setSelectedSegId(data.id);
+          } catch (err) {
+            setWizardError(err.message);
+            setEvalLoading(false);
+            return;
+          } finally {
+            setEvalLoading(false);
+          }
+        }
+      } else {
+        if (!selectedSegId) {
+          setWizardError('Please select a target segment');
+          return;
+        }
       }
+
       if (selectedChannels.length === 0) {
         setWizardError('Select at least one delivery channel');
         return;
@@ -527,6 +628,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       custom_subject: selectedTplId === 'custom' ? customSubject : null,
       custom_body: selectedTplId === 'custom' ? customBody : null,
       channel_preferences: selectedChannels,
+      override_channel_preferences: overrideChannelPreferences,
       scheduled_at: null
     };
 
@@ -575,6 +677,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       custom_subject: selectedTplId === 'custom' ? customSubject : null,
       custom_body: selectedTplId === 'custom' ? customBody : null,
       channel_preferences: selectedChannels,
+      override_channel_preferences: overrideChannelPreferences,
       status: targetStatus,
       scheduled_at: isScheduled && scheduledTime ? new Date(scheduledTime).toISOString() : null
     };
@@ -630,6 +733,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
     
     setSelectedChannels(camp.channel_preferences || ['email']);
+    setOverrideChannelPreferences(!!camp.override_channel_preferences);
     setEditingCampId(camp.id);
     setIsScheduled(!!camp.scheduled_at);
     setScheduledTime(camp.scheduled_at ? camp.scheduled_at.substring(0, 16) : '');
@@ -1627,8 +1731,6 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         { label: '✂️ Shorten Copy', prompt: 'Shorten the message body copy considerably.' },
                         { label: '🚨 Make Urgent', prompt: 'Make the tone of the message highly urgent and action-oriented.' },
                         { label: '🤝 Make Empathetic', prompt: 'Make the tone of the message warm, reassuring, and empathetic.' },
-                        { label: '🇮🇳 Translate to Hindi', prompt: 'Translate both the subject and the body to Hindi, preserving all placeholder tags like {{first_name}}.' },
-                        { label: '🌾 Translate to Punjabi', prompt: 'Translate both the subject and the body to Punjabi, preserving all placeholder tags like {{first_name}}.' },
                       ].map(preset => (
                         <button
                           key={preset.label}
@@ -1641,6 +1743,93 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                           {preset.label}
                         </button>
                       ))}
+                    </div>
+
+                    {/* 🌐 Multi-Language Live Preview Selector & Vibrant Colorful Button */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      padding: '12px 16px',
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(168, 85, 247, 0.1)',
+                      marginTop: '4px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>🌐</span>
+                        <div>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f472b6', display: 'block' }}>Multi-Language Live Preview</span>
+                          <span style={{ fontSize: '0.73rem', color: 'hsl(var(--text-muted))' }}>Preview or translate how this campaign looks across all 22 supported languages</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <select
+                          className="form-control"
+                          style={{
+                            width: '160px',
+                            padding: '7px 12px',
+                            fontSize: '0.85rem',
+                            background: 'rgba(15, 23, 42, 0.9)',
+                            border: '1px solid rgba(244, 114, 182, 0.4)',
+                            borderRadius: '8px',
+                            color: '#ffffff',
+                            fontWeight: 600
+                          }}
+                          value={coPilotSelectedLang}
+                          onChange={(e) => setCoPilotSelectedLang(e.target.value)}
+                        >
+                          {ALL_LANGUAGES.map(lang => (
+                            <option key={lang} value={lang}>{lang}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #ef4444 100%)',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '8px 18px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.83rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                          disabled={refineLoading}
+                          onClick={() => handleTranslateViewLanguage(coPilotSelectedLang)}
+                        >
+                          <span>{refineLoading ? 'Translating...' : `✨ Translate to ${coPilotSelectedLang}`}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-dark"
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: '0.8rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            whiteSpace: 'nowrap',
+                            fontWeight: 600
+                          }}
+                          disabled={refineLoading}
+                          onClick={() => handleTranslateViewLanguage('English')}
+                          title="Reset campaign view back to English"
+                        >
+                          🇬🇧 Reset to English
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -2000,20 +2189,74 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
             </div>
           )}
 
-          {/* STEP 2: CHOOSE AUDIENCE SEGMENT */}
+          {/* STEP 2: CHOOSE AUDIENCE TARGET */}
           {step === 2 && (
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="form-group">
-                <label className="form-label">Select Saved Dynamic Target Segment *</label>
-                <select className="form-control" value={selectedSegId} onChange={(e) => setSelectedSegId(e.target.value)} required>
-                  <option value="">-- Choose Segment --</option>
-                  {segments.map(seg => (
-                    <option key={seg.id} value={seg.id}>
-                      {seg.name} ({seg.estimated_size} members)
-                    </option>
-                  ))}
-                </select>
+                <label className="form-label">Target Audience Type</label>
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
+                  <label style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="targetType"
+                      value="segment"
+                      checked={targetType === 'segment'}
+                      onChange={() => {
+                        setTargetType('segment');
+                        setSelectedSegId('');
+                      }}
+                    />
+                    Saved Dynamic Segment
+                  </label>
+                  <label style={{ display: 'flex', gap: '6px', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="targetType"
+                      value="recipient"
+                      checked={targetType === 'recipient'}
+                      onChange={() => {
+                        setTargetType('recipient');
+                        setSelectedSegId('');
+                      }}
+                    />
+                    Individual Recipient (Direct)
+                  </label>
+                </div>
               </div>
+
+              {targetType === 'segment' ? (
+                <div className="form-group animate-fade-in">
+                  <label className="form-label">Select Saved Dynamic Target Segment *</label>
+                  <select className="form-control" value={selectedSegId} onChange={(e) => setSelectedSegId(e.target.value)} required>
+                    <option value="">-- Choose Segment --</option>
+                    {segments.map(seg => (
+                      <option key={seg.id} value={seg.id}>
+                        {seg.name} ({seg.estimated_size} members)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="form-group animate-fade-in">
+                  <label className="form-label">Select Individual Recipient *</label>
+                  <select
+                    className="form-control"
+                    value={selectedRecipientId}
+                    onChange={(e) => {
+                      setSelectedRecipientId(e.target.value);
+                      setSelectedSegId('');
+                    }}
+                    required
+                  >
+                    <option value="">-- Choose Recipient --</option>
+                    {recipients.map(rec => (
+                      <option key={rec.id} value={rec.id}>
+                        {rec.first_name} {rec.last_name || ''} ({rec.phone || rec.email || 'No Contact'}) | Channels: {getPreferredChannelsText(rec)} | Lang: {getPreferredLanguagesText(rec)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Choose Active Communication Channels</label>
@@ -2027,16 +2270,25 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 </div>
               </div>
 
-              {selectedSegId && (
+              {((targetType === 'segment' && selectedSegId) || (targetType === 'recipient' && selectedRecipientId)) && (
                 <GlassCard style={{ background: 'transparent', padding: '24px', display: 'grid', gridTemplateColumns: '1fr 180px', alignItems: 'center', gap: '20px', borderColor: 'var(--border-color-glass)' }}>
                   <div>
-                    <h4 style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))', marginBottom: '6px', fontWeight: '500' }}>Target Segment Reach Analysis</h4>
+                    <h4 style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))', marginBottom: '6px', fontWeight: '500' }}>Target Reach Analysis</h4>
                     <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.5' }}>
-                      Citizen contact overlap validation based on preferred channel details (phone and email indexes).
+                      {targetType === 'recipient' 
+                        ? 'Targeting an individual recipient directly.' 
+                        : 'Citizen contact overlap validation based on preferred channel details (phone and email indexes).'
+                      }
                     </p>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid var(--border-color-glass)', paddingLeft: '20px' }}>
-                    {evalLoading ? (
+                    {targetType === 'recipient' ? (
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>EST. IMPACT REACH</span>
+                        <span className="reach-card-value">1</span>
+                        <span style={{ display: 'block', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>member targeted</span>
+                      </div>
+                    ) : evalLoading ? (
                       <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Re-evaluating reach...</span>
                     ) : (
                       <div style={{ textAlign: 'center' }}>
@@ -2049,6 +2301,154 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   </div>
                 </GlassCard>
               )}
+
+              {/* ⚠️ AUDIENCE CHANNEL PREFERENCE ALIGNMENT WARNING CARD */}
+              {(() => {
+                const getTargetBreakdown = () => {
+                  if (targetType === 'recipient') {
+                    const rec = recipients.find(r => r.id === selectedRecipientId);
+                    if (!rec) return {};
+                    let chans = [];
+                    try {
+                      chans = typeof rec.preferred_channels === 'string' ? JSON.parse(rec.preferred_channels) : rec.preferred_channels;
+                    } catch (e) { chans = []; }
+                    if (!Array.isArray(chans) || chans.length === 0) chans = ['email'];
+                    const map = {};
+                    chans.forEach(ch => { if (ch) map[String(ch).toLowerCase()] = 1; });
+                    return map;
+                  } else {
+                    return evalBreakdowns.channels || {};
+                  }
+                };
+
+                const targetBreakdown = getTargetBreakdown();
+                const totalTarget = targetType === 'recipient' ? (selectedRecipientId ? 1 : 0) : (evalReach.target || 0);
+                const mismatched = Object.entries(targetBreakdown).filter(([ch]) => !selectedChannels.includes(ch.toLowerCase()));
+                const mismatchCount = mismatched.reduce((sum, [_, count]) => sum + count, 0);
+                const hasMismatch = totalTarget > 0 && mismatched.length > 0;
+                const mismatchPct = totalTarget > 0 ? Math.round((mismatchCount / totalTarget) * 100) : 0;
+
+                if (!hasMismatch || ((targetType === 'segment' && !selectedSegId) || (targetType === 'recipient' && !selectedRecipientId))) return null;
+
+                return (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '18px 20px',
+                    borderRadius: '16px',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.35)',
+                    boxShadow: '0 8px 24px rgba(245, 158, 11, 0.1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                    animation: 'animate-fade-in 0.3s ease'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Channel Preference Mismatch Notice
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-primary))', fontWeight: '500' }}>
+                            You selected <strong>{selectedChannels.map(c => c.toUpperCase()).join(', ')}</strong>, but target audience members prefer other channels!
+                          </span>
+                        </div>
+                      </div>
+                      <span className="badge" style={{ background: '#f59e0b', color: '#000', fontWeight: '800', fontSize: '0.78rem', padding: '4px 10px' }}>
+                        {mismatchPct}% Mismatch ({mismatchCount} / {totalTarget} members)
+                      </span>
+                    </div>
+
+                    {/* Breakdown List */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                      {Object.entries(targetBreakdown).map(([ch, count]) => {
+                        const chLower = ch.toLowerCase();
+                        const isSelected = selectedChannels.includes(chLower);
+                        const pct = totalTarget > 0 ? Math.round((count / totalTarget) * 100) : 0;
+                        return (
+                          <div key={ch} style={{
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            background: isSelected ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            border: `1.5px solid ${isSelected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.85rem', fontWeight: '800', textTransform: 'uppercase', color: isSelected ? '#22c55e' : '#ef4444' }}>
+                                {isSelected ? '✓' : '⚠️'} {ch}
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.74rem', color: 'hsl(var(--text-muted))', fontWeight: '600', marginTop: '2px' }}>
+                                {count} member(s) ({pct}%)
+                              </span>
+                            </div>
+                            {!isSelected && (
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ padding: '4px 10px', fontSize: '0.72rem', height: 'auto', whiteSpace: 'nowrap', textTransform: 'uppercase' }}
+                                onClick={() => setSelectedChannels(prev => [...prev, chLower])}
+                                title={`Add ${ch} to active campaign channels`}
+                              >
+                                + Add {ch}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dispatcher Routing Explanation Notice */}
+                    <div style={{
+                      fontSize: '0.82rem',
+                      lineHeight: '1.45',
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      color: '#f8fafc',
+                      borderLeft: '4px solid #f59e0b'
+                    }}>
+                      <strong>💡 Delivery Behavior Transparency:</strong> CommAI dispatcher checks recipient preferences.
+                      {overrideChannelPreferences ? (
+                        <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                          {' '}⚡ Force Delivery ENABLED: Messages will be forced via {selectedChannels.join(', ').toUpperCase()} to all reachable members regardless of their preferred channels.
+                        </span>
+                      ) : (
+                        <span>
+                          {' '}Members with different preferred channels (e.g. WhatsApp/SMS) will be <strong>skipped</strong> for {selectedChannels.join(', ').toUpperCase()} unless you click <em>"+ Add Channel"</em> above or check <em>"Force Delivery"</em> below.
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick Action Buttons & Toggle */}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+                        onClick={() => {
+                          const allMismatched = Object.keys(targetBreakdown).map(c => c.toLowerCase());
+                          const union = Array.from(new Set([...selectedChannels, ...allMismatched]));
+                          setSelectedChannels(union);
+                        }}
+                      >
+                        ➕ Include All Audience Preferred Channels
+                      </button>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '800', color: '#f59e0b', marginLeft: 'auto', background: 'rgba(245, 158, 11, 0.1)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        <input
+                          type="checkbox"
+                          checked={overrideChannelPreferences}
+                          onChange={(e) => setOverrideChannelPreferences(e.target.checked)}
+                        />
+                        ⚡ Force Delivery (Override Audience Preferences)
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -2518,7 +2918,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   <div className="receipt-item">
                     <span className="receipt-label">Target Dynamic Segment</span>
                     <span className="receipt-value" style={{ color: 'hsl(var(--secondary))' }}>
-                      {segments.find(s => s.id === selectedSegId)?.name || 'Custom criteria query'}
+                      {targetType === 'recipient'
+                        ? (() => {
+                            const rec = recipients.find(r => r.id === selectedRecipientId);
+                            return rec ? `Direct: ${rec.first_name} ${rec.last_name || ''} (${rec.id.substring(0, 8)})` : 'Individual Recipient';
+                          })()
+                        : (segments.find(s => s.id === selectedSegId)?.name || 'Custom criteria query')
+                      }
                     </span>
                   </div>
 
@@ -2532,7 +2938,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   <div className="receipt-item">
                     <span className="receipt-label">Citizen Impact Count</span>
                     <span className="receipt-value" style={{ color: 'hsl(var(--accent))', fontWeight: '800' }}>
-                      {evalReach.reach} Citizens
+                      {targetType === 'recipient' ? (selectedRecipientId ? 1 : 0) : (evalReach.reach || 0)} Citizens
                     </span>
                   </div>
 
@@ -2540,10 +2946,11 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                     <span className="receipt-label">Estimated Channel Budget</span>
                     <span className="receipt-value" style={{ color: 'hsl(var(--accent))', fontWeight: '800' }}>
                       ₹{(() => {
+                        const count = targetType === 'recipient' ? (selectedRecipientId ? 1 : 0) : (evalReach.reach || 0);
                         let cost = 0;
                         selectedChannels.forEach(ch => {
-                          if (ch === 'sms') cost += evalReach.reach * 0.02 * 83;
-                          else if (ch === 'whatsapp') cost += evalReach.reach * 0.04 * 83;
+                          if (ch === 'sms') cost += count * 0.02 * 83;
+                          else if (ch === 'whatsapp') cost += count * 0.04 * 83;
                         });
                         return cost.toFixed(2);
                       })()}
@@ -2556,22 +2963,43 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                       {isScheduled ? `📅 Scheduled: ${new Date(scheduledTime).toLocaleString()}` : '🚀 Send Immediately'}
                     </span>
                   </div>
+
+                  <div className="receipt-item">
+                    <span className="receipt-label">Channel Preference Strategy</span>
+                    <span className="receipt-value" style={{ color: overrideChannelPreferences ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>
+                      {overrideChannelPreferences ? '⚡ Override Mode (Force Selected Channels)' : '🛡️ Respect Audience Preferences'}
+                    </span>
+                  </div>
                 </div>
 
-                {segmentPreviewUsers.length > 0 && (
+                {(segmentPreviewUsers.length > 0 || (targetType === 'recipient' && selectedRecipientId)) && (
                   <div style={{ marginTop: '16px', borderTop: '1px dashed var(--border-color-glass)', paddingTop: '12px' }}>
                     <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
                       👥 Target Recipients Preview:
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(255,255,255,0.02)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                      {segmentPreviewUsers.map(u => (
-                        <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
-                          <span style={{ fontWeight: '500', color: 'hsl(var(--text-primary))' }}>{u.first_name} {u.last_name}</span>
-                          <span style={{ color: 'hsl(var(--text-secondary))', fontFamily: 'monospace' }}>
-                            {u.email || u.phone}
-                          </span>
-                        </div>
-                      ))}
+                      {targetType === 'recipient' && selectedRecipientId ? (
+                        (() => {
+                          const u = recipients.find(r => r.id === selectedRecipientId);
+                          return u ? (
+                            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
+                              <span style={{ fontWeight: '500', color: 'hsl(var(--text-primary))' }}>{u.first_name} {u.last_name || ''}</span>
+                              <span style={{ color: 'hsl(var(--text-secondary))', fontFamily: 'monospace' }}>
+                                {u.email || u.phone}
+                              </span>
+                            </div>
+                          ) : null;
+                        })()
+                      ) : (
+                        segmentPreviewUsers.map(u => (
+                          <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem' }}>
+                            <span style={{ fontWeight: '500', color: 'hsl(var(--text-primary))' }}>{u.first_name} {u.last_name}</span>
+                            <span style={{ color: 'hsl(var(--text-secondary))', fontFamily: 'monospace' }}>
+                              {u.email || u.phone}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}

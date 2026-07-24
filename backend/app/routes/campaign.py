@@ -2,7 +2,7 @@ import datetime
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 from app.database import get_db
 from app.models import Campaign, Segment, Audience, Template, AuditLog, DeliveryLog
@@ -45,12 +45,12 @@ def deserialize_list(s: str) -> List[str]:
     except Exception:
         return []
 
-def calculate_reach(db: Session, segment_id: Optional[str], campaign_channels: List[str]) -> tuple[int, int]:
+def calculate_reach(db: Session, segment_id: Optional[str], campaign_channels: List[str], override_channel_preferences: bool = False) -> Tuple[int, int]:
     """
     Given a segment and campaign channel choices, returns (target_audience_count, estimated_reach).
     - target_audience_count: count of active users in the segment.
     - estimated_reach: count of target users who have at least one channel in campaign_channels
-      matching their preferred_channels list.
+      matching their preferred_channels list, or full target count if override is enabled.
     """
     if not segment_id:
         return 0, 0
@@ -66,17 +66,17 @@ def calculate_reach(db: Session, segment_id: Optional[str], campaign_channels: L
     query = build_segment_filter_query(criteria, query)
     target_count = query.count()
     
+    if override_channel_preferences or not campaign_channels:
+        return target_count, target_count
+
     # Estimated reach calculation
-    # Fetch all matching audiences
     audiences = query.all()
     reach_count = 0
     for aud in audiences:
         preferred = deserialize_list(aud.preferred_channels)
-        # If user has preferred channels, check if there's any intersection
-        # Otherwise if empty, assume they have default channel preferences
         has_intersection = False
         for channel in campaign_channels:
-            if channel in preferred:
+            if not preferred or channel in preferred:
                 has_intersection = True
                 break
         if has_intersection:
@@ -135,6 +135,7 @@ def format_campaign_response(camp: Campaign) -> CampaignResponse:
         custom_subject=custom_subject,
         custom_body=custom_body,
         channel_preferences=deserialize_list(camp.channel_preferences),
+        override_channel_preferences=bool(camp.override_channel_preferences),
         target_audience_count=camp.target_audience_count,
         estimated_reach=camp.estimated_reach,
         estimated_cost=estimated_cost,
@@ -225,7 +226,8 @@ def create_campaign(
         db.refresh(adhoc_tpl)
         template_id = adhoc_tpl.id
 
-    target_count, reach_count = calculate_reach(db, camp_in.segment_id, camp_in.channel_preferences)
+    override_pref = bool(camp_in.override_channel_preferences)
+    target_count, reach_count = calculate_reach(db, camp_in.segment_id, camp_in.channel_preferences, override_pref)
     
     camp = Campaign(
         title=camp_in.title,
@@ -236,6 +238,7 @@ def create_campaign(
         segment_id=camp_in.segment_id,
         template_id=template_id,
         channel_preferences=serialize_list(camp_in.channel_preferences),
+        override_channel_preferences=override_pref,
         target_audience_count=target_count,
         estimated_reach=reach_count,
         created_by=current_user.id,
@@ -423,12 +426,15 @@ def update_campaign(
         
     if camp_in.channel_preferences is not None:
         camp.channel_preferences = serialize_list(camp_in.channel_preferences)
+    if camp_in.override_channel_preferences is not None:
+        camp.override_channel_preferences = camp_in.override_channel_preferences
     if camp_in.scheduled_at is not None:
         camp.scheduled_at = camp_in.scheduled_at
         
     # Re-evaluate numbers
     channels = deserialize_list(camp.channel_preferences)
-    target_count, reach_count = calculate_reach(db, camp.segment_id, channels)
+    override_pref = bool(camp.override_channel_preferences)
+    target_count, reach_count = calculate_reach(db, camp.segment_id, channels, override_pref)
     camp.target_audience_count = target_count
     camp.estimated_reach = reach_count
     

@@ -224,6 +224,22 @@ def update_user(
                 aud.preferred_channels = serialize_list(user_in.preferred_channels)
             if user_in.preferred_languages is not None:
                 aud.preferred_languages = serialize_list(user_in.preferred_languages)
+            if user_in.telegram_username is not None or user_in.custom_fields is not None:
+                cf = {}
+                if aud.custom_fields:
+                    try:
+                        cf = json.loads(aud.custom_fields)
+                    except Exception:
+                        cf = {}
+                if user_in.custom_fields:
+                    cf.update(user_in.custom_fields)
+                if user_in.telegram_username is not None:
+                    clean_tg = user_in.telegram_username.lstrip('@').strip()
+                    if clean_tg:
+                        cf["telegram_username"] = f"@{clean_tg}"
+                    else:
+                        cf.pop("telegram_username", None)
+                aud.custom_fields = json.dumps(cf) if cf else None
             if user_in.is_active is not None:
                 aud.is_active = user_in.is_active
 
@@ -366,6 +382,12 @@ def create_user(
             parts = db_user.full_name.split(' ')
             fn = user_in.first_name or parts[0]
             ln = user_in.last_name or (' '.join(parts[1:]) if len(parts) > 1 else 'User')
+            custom_dict = user_in.custom_fields or {}
+            if user_in.telegram_username:
+                clean_tg = user_in.telegram_username.lstrip('@').strip()
+                if clean_tg:
+                    custom_dict["telegram_username"] = f"@{clean_tg}"
+
             aud = Audience(
                 first_name=fn,
                 last_name=ln,
@@ -381,6 +403,7 @@ def create_user(
                 organization=user_in.organization,
                 designation=user_in.designation,
                 preferred_channels=serialize_list(user_in.preferred_channels or ["email"]),
+                custom_fields=json.dumps(custom_dict) if custom_dict else None,
                 is_active=True,
                 is_deleted=False,
             )

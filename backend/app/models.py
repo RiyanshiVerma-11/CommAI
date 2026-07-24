@@ -111,6 +111,7 @@ class Campaign(Base):
     segment_id = Column(String(36), ForeignKey("segments.id"), nullable=True)
     template_id = Column(String(36), ForeignKey("templates.id"), nullable=True)
     channel_preferences = Column(Text, nullable=False)  # JSON serialized array of strings
+    override_channel_preferences = Column(Boolean, default=False, nullable=True)
     target_audience_count = Column(Integer, default=0, nullable=False)
     estimated_reach = Column(Integer, default=0, nullable=False)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=False)

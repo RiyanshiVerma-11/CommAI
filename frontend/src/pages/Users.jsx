@@ -24,18 +24,52 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
   const [formEmail, setFormEmail] = useState('');
   const [formFullName, setFormFullName] = useState('');
   const [formPassword, setFormPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formOrg, setFormOrg] = useState('');
+  const [formDept, setFormDept] = useState('');
   const [formDesig, setFormDesig] = useState('');
   const [formPhone, setFormPhone] = useState('');
+  const [formTelegramUsername, setFormTelegramUsername] = useState('');
   const [formOccupation, setFormOccupation] = useState('');
-  const [formAge, setFormAge] = useState('');
-  const [formGender, setFormGender] = useState('');
+  const [formAge, setFormAge] = useState(25);
+  const [formGender, setFormGender] = useState('Other');
   const [formState, setFormState] = useState('');
   const [formDistrict, setFormDistrict] = useState('');
   const [formCity, setFormCity] = useState('');
+  const [formPreferredChannels, setFormPreferredChannels] = useState(['email']);
+  const [formPreferredLanguages, setFormPreferredLanguages] = useState(['English', 'Hindi']);
+  const [activeModalTab, setActiveModalTab] = useState('personal'); // 'personal', 'location', 'channels'
   const [formActive, setFormActive] = useState(true);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const AVAILABLE_CHANNELS = [
+    { id: 'email', label: 'Email', icon: '📧' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+    { id: 'telegram', label: 'Telegram', icon: '✈️' },
+    { id: 'sms', label: 'SMS', icon: '📱' },
+    { id: 'push', label: 'Web/Push', icon: '🔔' },
+  ];
+
+  const POPULAR_LANGUAGES = [
+    'English', 'Hindi', 'Bengali', 'Marathi', 'Telugu', 'Tamil', 'Gujarati', 'Urdu', 'Kannada', 'Odia', 'Malayalam', 'Punjabi'
+  ];
+
+  const toggleChannel = (channelId) => {
+    setFormPreferredChannels(prev => 
+      prev.includes(channelId)
+        ? prev.filter(c => c !== channelId)
+        : [...prev, channelId]
+    );
+  };
+
+  const toggleLanguage = (lang) => {
+    setFormPreferredLanguages(prev =>
+      prev.includes(lang)
+        ? prev.filter(l => l !== lang)
+        : [...prev, lang]
+    );
+  };
 
   // Fetch Audience Users (Active or Past)
   const fetchUsers = useCallback(async () => {
@@ -74,16 +108,21 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
     setFormFullName('');
     setFormPassword('');
     setFormOrg('General Public');
+    setFormDept('');
     setFormDesig('Citizen Recipient');
     setFormPhone('');
+    setFormTelegramUsername('');
     setFormOccupation('General Public');
     setFormAge(25);
-    setFormGender('Other');
+    setFormGender('Female');
     setFormState('Delhi');
     setFormDistrict('Central');
     setFormCity('New Delhi');
+    setFormPreferredChannels(['email']); // Default email only
+    setFormPreferredLanguages(['English', 'Hindi']);
     setFormActive(true);
     setFormError('');
+    setActiveModalTab('personal');
     setModalOpen(true);
   };
 
@@ -95,16 +134,21 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
     setFormFullName(u.full_name);
     setFormPassword('');
     setFormOrg(u.organization || '');
+    setFormDept(u.department || '');
     setFormDesig(u.designation || '');
     setFormPhone(u.phone || '');
+    setFormTelegramUsername(u.telegram_username ? u.telegram_username.replace(/^@/, '') : '');
     setFormOccupation(u.occupation || '');
     setFormAge(u.age || 25);
     setFormGender(u.gender || 'Other');
     setFormState(u.state || '');
     setFormDistrict(u.district || '');
     setFormCity(u.city || '');
+    setFormPreferredChannels(u.preferred_channels && u.preferred_channels.length ? u.preferred_channels : ['email']);
+    setFormPreferredLanguages(u.preferred_languages && u.preferred_languages.length ? u.preferred_languages : ['English']);
     setFormActive(u.is_active);
     setFormError('');
+    setActiveModalTab('personal');
     setModalOpen(true);
   };
 
@@ -134,14 +178,18 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
             password: formPassword,
             role: 'audience',
             organization: formOrg,
+            department: formDept,
             designation: formDesig,
             phone: formPhone,
+            telegram_username: formTelegramUsername ? `@${formTelegramUsername.replace(/^@/, '')}` : '',
             occupation: formOccupation,
             age: Number(formAge),
             gender: formGender,
             state: formState,
             district: formDistrict,
             city: formCity,
+            preferred_channels: formPreferredChannels,
+            preferred_languages: formPreferredLanguages,
           }),
         });
 
@@ -160,14 +208,18 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
           body: JSON.stringify({
             full_name: formFullName,
             organization: formOrg,
+            department: formDept,
             designation: formDesig,
             phone: formPhone,
+            telegram_username: formTelegramUsername ? `@${formTelegramUsername.replace(/^@/, '')}` : '',
             occupation: formOccupation,
             age: Number(formAge),
             gender: formGender,
             state: formState,
             district: formDistrict,
             city: formCity,
+            preferred_channels: formPreferredChannels,
+            preferred_languages: formPreferredLanguages,
             is_active: formActive,
           }),
         });
@@ -294,7 +346,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
             Manage platform audience members, credentials, detailed profiles, and account authorizations.
           </p>
         </div>
-        <button className="primary-btn" onClick={handleOpenCreate} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button className="add-audience-btn" onClick={handleOpenCreate}>
           <span>+ Add Audience Member</span>
         </button>
       </div>
@@ -470,9 +522,8 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
                         {/* View Full Profile */}
                         <button 
-                          className="secondary-btn" 
+                          className="btn-action-view" 
                           onClick={() => setProfileModalUser(u)} 
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.25)' }} 
                           title="View Full Detailed Profile"
                         >
                           👁️ View Profile
@@ -480,56 +531,29 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
 
                         {activeSubTab === 'active' ? (
                           <>
-                            <button className="secondary-btn" onClick={() => handleOpenEdit(u)} style={{ padding: '6px 12px', fontSize: '0.8rem' }} title="Edit Profile Details">
+                            <button className="btn-action-edit" onClick={() => handleOpenEdit(u)} title="Edit Profile Details">
                               Edit
                             </button>
-                            <button className="secondary-btn" onClick={() => handleOpenResetPwd(u)} style={{ padding: '6px 12px', fontSize: '0.8rem' }} title="Reset Password">
+                            <button className="btn-action-key" onClick={() => handleOpenResetPwd(u)} title="Reset Password">
                               Key
                             </button>
                             <button 
+                              className={u.is_active ? 'btn-action-block' : 'btn-action-unblock'}
                               onClick={() => handleToggleBlock(u)} 
-                              style={{ 
-                                padding: '6px 12px', 
-                                fontSize: '0.8rem', 
-                                border: u.is_active ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)', 
-                                borderRadius: '8px',
-                                background: u.is_active ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                color: u.is_active ? '#f59e0b' : '#10b981',
-                                cursor: 'pointer',
-                                fontWeight: 600
-                              }}
                             >
                               {u.is_active ? 'Block' : 'Unblock'}
                             </button>
                             <button 
+                              className="btn-action-delete"
                               onClick={() => handleSoftDelete(u)} 
-                              style={{ 
-                                padding: '6px 12px', 
-                                fontSize: '0.8rem', 
-                                border: '1px solid rgba(239, 68, 68, 0.3)', 
-                                borderRadius: '8px',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                fontWeight: 600
-                              }}
                             >
                               Delete
                             </button>
                           </>
                         ) : (
                           <button 
+                            className="btn-action-restore"
                             onClick={() => handleRestore(u)} 
-                            style={{ 
-                              padding: '6px 14px', 
-                              fontSize: '0.82rem', 
-                              border: '1px solid rgba(16, 185, 129, 0.3)', 
-                              borderRadius: '8px',
-                              background: 'rgba(16, 185, 129, 0.15)',
-                              color: '#10b981',
-                              cursor: 'pointer',
-                              fontWeight: 700
-                            }}
                           >
                             ↩️ Restore Account
                           </button>
@@ -579,7 +603,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Telegram Username</label>
                   <div style={{ fontSize: '0.95rem', fontWeight: 600, marginTop: '2px', color: '#38bdf8' }}>
-                    {profileModalUser.telegram_username ? `@${profileModalUser.telegram_username}` : 'Not linked'}
+                    {profileModalUser.telegram_username ? `@${profileModalUser.telegram_username.replace(/^@+/, '')}` : 'Not linked'}
                   </div>
                 </div>
                 <div>
@@ -637,15 +661,15 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
 
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Preferred Channels</label>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                     {profileModalUser.preferred_channels && profileModalUser.preferred_channels.length > 0 ? (
                       profileModalUser.preferred_channels.map(ch => (
-                        <span key={ch} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', fontWeight: 600, textTransform: 'capitalize' }}>
-                          {ch}
+                        <span key={ch} className={`channel-badge channel-badge-${ch.toLowerCase()}`}>
+                          {ch === 'email' ? '📧 Email' : ch === 'whatsapp' ? '💬 WhatsApp' : ch === 'telegram' ? '✈️ Telegram' : ch === 'sms' ? '📱 SMS' : '🔔 Push'}
                         </span>
                       ))
                     ) : (
-                      <span style={{ fontSize: '0.88rem', color: 'hsl(var(--text-secondary))' }}>Email</span>
+                      <span className="channel-badge channel-badge-email">📧 Email</span>
                     )}
                   </div>
                 </div>
@@ -663,7 +687,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-              <button className="primary-btn" onClick={() => setProfileModalUser(null)}>
+              <button className="btn-close-profile" onClick={() => setProfileModalUser(null)}>
                 Close Profile
               </button>
             </div>
@@ -682,7 +706,7 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
             <p style={{ margin: '12px 0 24px 0', color: 'hsl(var(--text-secondary))', fontSize: '0.92rem', lineHeight: '1.5' }}>
               {deletionPopup.text}
             </p>
-            <button className="primary-btn" onClick={() => setDeletionPopup(null)} style={{ width: '100%' }}>
+            <button className="btn-acknowledge" onClick={() => setDeletionPopup(null)} style={{ width: '100%' }}>
               Acknowledge
             </button>
           </div>
@@ -692,11 +716,18 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
       {/* Create / Edit / Key Modal */}
       {modalOpen && (
         <div className="modal-backdrop animate-fade-in" style={{ zIndex: 100 }}>
-          <div className="modal-content animate-zoom-in" style={{ maxWidth: '540px', width: '100%' }}>
+          <div className="modal-content animate-zoom-in" style={{ maxWidth: '680px', width: '100%' }}>
             <div className="modal-header">
-              <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.3rem' }}>
-                {modalType === 'create' ? 'Add New Audience Member' : modalType === 'edit' ? 'Edit Audience Profile' : 'Reset Account Password'}
-              </h3>
+              <div>
+                <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {modalType === 'create' ? '👤 Add New Audience Member' : modalType === 'edit' ? '✏️ Edit Audience Profile' : '🔑 Reset Account Password'}
+                </h3>
+                {modalType !== 'reset_pwd' && (
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'hsl(var(--text-secondary))' }}>
+                    Configure personal profile, demography, delivery channels, and social handle coordinates.
+                  </p>
+                )}
+              </div>
               <button 
                 onClick={() => setModalOpen(false)} 
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: 'hsl(var(--text-secondary))' }}
@@ -714,128 +745,369 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
 
               {modalType !== 'reset_pwd' && (
                 <>
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Full Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      className="text-input" 
-                      value={formFullName} 
-                      onChange={(e) => setFormFullName(e.target.value)} 
-                      placeholder="e.g. Priya Sharma"
-                    />
+                  {/* Tab Navigation Header */}
+                  <div className="audience-modal-tabs">
+                    <button
+                      type="button"
+                      className={`audience-tab-btn ${activeModalTab === 'personal' ? 'active' : ''}`}
+                      onClick={() => setActiveModalTab('personal')}
+                    >
+                      <span>👤</span> 1. Personal Profile
+                    </button>
+                    <button
+                      type="button"
+                      className={`audience-tab-btn ${activeModalTab === 'location' ? 'active' : ''}`}
+                      onClick={() => setActiveModalTab('location')}
+                    >
+                      <span>📍</span> 2. Location & Job
+                    </button>
+                    <button
+                      type="button"
+                      className={`audience-tab-btn ${activeModalTab === 'channels' ? 'active' : ''}`}
+                      onClick={() => setActiveModalTab('channels')}
+                    >
+                      <span>💬</span> 3. Channels & Handles
+                    </button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Email Address</label>
-                      <input 
-                        type="email" 
-                        required 
-                        disabled={modalType === 'edit'}
-                        className="text-input" 
-                        value={formEmail} 
-                        onChange={(e) => setFormEmail(e.target.value)} 
-                        placeholder="audience@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Phone Number</label>
-                      <input 
-                        type="text" 
-                        className="text-input" 
-                        value={formPhone} 
-                        onChange={(e) => setFormPhone(e.target.value)} 
-                        placeholder="9876543210"
-                      />
-                    </div>
-                  </div>
+                  {/* TAB 1: PERSONAL PROFILE */}
+                  {activeModalTab === 'personal' && (
+                    <div className="animate-fade-in">
+                      <div style={{ marginBottom: '14px' }}>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Full Name *</label>
+                        <input 
+                          type="text" 
+                          required 
+                          className="text-input" 
+                          value={formFullName} 
+                          onChange={(e) => setFormFullName(e.target.value)} 
+                          placeholder="e.g. Riyanshi Verma"
+                        />
+                      </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Occupation</label>
-                      <input 
-                        type="text" 
-                        className="text-input" 
-                        value={formOccupation} 
-                        onChange={(e) => setFormOccupation(e.target.value)} 
-                        placeholder="e.g. Farmer"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Age</label>
-                      <input 
-                        type="number" 
-                        className="text-input" 
-                        value={formAge} 
-                        onChange={(e) => setFormAge(e.target.value)} 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Gender</label>
-                      <select className="select-input" value={formGender} onChange={(e) => setFormGender(e.target.value)}>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Email Address *</label>
+                          <input 
+                            type="email" 
+                            required 
+                            disabled={modalType === 'edit'}
+                            className="text-input" 
+                            value={formEmail} 
+                            onChange={(e) => setFormEmail(e.target.value)} 
+                            placeholder="riyanshi@example.com"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Phone Number *</label>
+                          <input 
+                            type="text" 
+                            required
+                            className="text-input" 
+                            value={formPhone} 
+                            onChange={(e) => setFormPhone(e.target.value)} 
+                            placeholder="919897157640"
+                          />
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>State</label>
-                      <input 
-                        type="text" 
-                        className="text-input" 
-                        value={formState} 
-                        onChange={(e) => setFormState(e.target.value)} 
-                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Age</label>
+                          <input 
+                            type="number" 
+                            className="text-input" 
+                            value={formAge} 
+                            onChange={(e) => setFormAge(e.target.value)} 
+                            placeholder="25"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Gender</label>
+                          <select className="select-input" value={formGender} onChange={(e) => setFormGender(e.target.value)}>
+                            <option value="Female">Female</option>
+                            <option value="Male">Male</option>
+                            <option value="Non-Binary">Non-Binary</option>
+                            <option value="Prefer Not to Say">Prefer Not to Say</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {modalType === 'create' && (
+                        <div style={{ marginBottom: '14px' }}>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Set Account Password *</label>
+                          <div style={{ position: 'relative' }}>
+                            <input 
+                              type={showPassword ? 'text' : 'password'}
+                              required 
+                              className="text-input" 
+                              value={formPassword} 
+                              onChange={(e) => setFormPassword(e.target.value)} 
+                              placeholder="Min 6 characters"
+                              style={{ paddingRight: '45px' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              style={{
+                                position: 'absolute',
+                                right: '10px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                color: 'hsl(var(--text-secondary))',
+                                padding: '4px'
+                              }}
+                              title={showPassword ? "Hide password" : "Show password"}
+                            >
+                              {showPassword ? '🙈' : '👁️'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>District</label>
-                      <input 
-                        type="text" 
-                        className="text-input" 
-                        value={formDistrict} 
-                        onChange={(e) => setFormDistrict(e.target.value)} 
-                      />
+                  )}
+
+                  {/* TAB 2: LOCATION & DEMOGRAPHICS */}
+                  {activeModalTab === 'location' && (
+                    <div className="animate-fade-in">
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Occupation</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formOccupation} 
+                            onChange={(e) => setFormOccupation(e.target.value)} 
+                            placeholder="e.g. Student / Software Developer"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Organization / Company</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formOrg} 
+                            onChange={(e) => setFormOrg(e.target.value)} 
+                            placeholder="e.g. Delhi University / Acme Corp"
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Department</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formDept} 
+                            onChange={(e) => setFormDept(e.target.value)} 
+                            placeholder="e.g. Computer Science"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>Designation / Title</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formDesig} 
+                            onChange={(e) => setFormDesig(e.target.value)} 
+                            placeholder="e.g. Student / Lead Engineer"
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>State</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formState} 
+                            onChange={(e) => setFormState(e.target.value)} 
+                            placeholder="e.g. Uttar Pradesh"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>District</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formDistrict} 
+                            onChange={(e) => setFormDistrict(e.target.value)} 
+                            placeholder="e.g. Meerut"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>City</label>
+                          <input 
+                            type="text" 
+                            className="text-input" 
+                            value={formCity} 
+                            onChange={(e) => setFormCity(e.target.value)} 
+                            placeholder="e.g. Meerut"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>City</label>
-                      <input 
-                        type="text" 
-                        className="text-input" 
-                        value={formCity} 
-                        onChange={(e) => setFormCity(e.target.value)} 
-                      />
+                  )}
+
+                  {/* TAB 3: CHANNELS & HANDLES */}
+                  {activeModalTab === 'channels' && (
+                    <div className="animate-fade-in">
+                      <div style={{ marginBottom: '18px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'hsl(var(--text-primary))', marginBottom: '4px' }}>
+                          Preferred Delivery Channels
+                        </label>
+                        <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))' }}>
+                          Select active channels for broadcast routing (Default: Email)
+                        </span>
+
+                        <div className="channel-pill-grid">
+                          {AVAILABLE_CHANNELS.map(ch => {
+                            const isSelected = formPreferredChannels.includes(ch.id);
+                            return (
+                              <div
+                                key={ch.id}
+                                className={`channel-pill-card channel-${ch.id} ${isSelected ? 'selected' : ''}`}
+                                onClick={() => toggleChannel(ch.id)}
+                              >
+                                <span style={{ fontSize: '1.1rem' }}>{ch.icon}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{ch.label}</span>
+                                {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'hsl(var(--accent))' }}>✓</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Social Handles / Coordinates */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                            ✈️ Telegram Username
+                          </label>
+                          <div className="input-addon-group">
+                            <div className="input-addon-prefix">@</div>
+                            <input
+                              type="text"
+                              className="text-input"
+                              value={formTelegramUsername}
+                              onChange={(e) => setFormTelegramUsername(e.target.value.replace(/^@/, ''))}
+                              placeholder="username (only)"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                            💬 WhatsApp Contact Number
+                          </label>
+                          <input
+                            type="text"
+                            className="text-input"
+                            value={formPhone}
+                            onChange={(e) => setFormPhone(e.target.value)}
+                            placeholder="e.g. 919897157640"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Preferred Languages */}
+                      <div style={{ marginBottom: '14px' }}>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '4px' }}>
+                          🌐 Preferred Communication Languages
+                        </label>
+                        <div className="chip-select-group">
+                          {POPULAR_LANGUAGES.map(lang => {
+                            const isSel = formPreferredLanguages.includes(lang);
+                            return (
+                              <div
+                                key={lang}
+                                className={`chip-tag ${isSel ? 'active' : ''}`}
+                                onClick={() => toggleLanguage(lang)}
+                              >
+                                {isSel ? '✓ ' : '+ '}{lang}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </>
               )}
 
-              {(modalType === 'create' || modalType === 'reset_pwd') && (
+              {/* Password Reset Only Layout */}
+              {modalType === 'reset_pwd' && (
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
-                    {modalType === 'create' ? 'Set Password' : 'New Password'}
+                    New Password
                   </label>
-                  <input 
-                    type="password" 
-                    required 
-                    className="text-input" 
-                    value={formPassword} 
-                    onChange={(e) => setFormPassword(e.target.value)} 
-                    placeholder="Min 6 characters"
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type={showPassword ? 'text' : 'password'} 
+                      required 
+                      className="text-input" 
+                      value={formPassword} 
+                      onChange={(e) => setFormPassword(e.target.value)} 
+                      placeholder="Min 6 characters"
+                      style={{ paddingRight: '45px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        color: 'hsl(var(--text-secondary))',
+                        padding: '4px'
+                      }}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-                <button type="button" className="secondary-btn" onClick={() => setModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="primary-btn" disabled={submitting}>
-                  {submitting ? 'Processing...' : modalType === 'create' ? 'Create Audience' : modalType === 'edit' ? 'Save Profile Changes' : 'Update Password'}
-                </button>
+              {/* Modal Footer Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px', marginTop: '20px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+                  {modalType !== 'reset_pwd' && (
+                    <span>Channels Selected: <strong>{formPreferredChannels.join(', ') || 'None'}</strong></span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" className="modal-btn-cancel" onClick={() => setModalOpen(false)}>
+                    Cancel
+                  </button>
+                  
+                  {modalType !== 'reset_pwd' && activeModalTab !== 'channels' && (
+                    <button
+                      type="button"
+                      className="modal-btn-next"
+                      onClick={() => setActiveModalTab(activeModalTab === 'personal' ? 'location' : 'channels')}
+                    >
+                      Next Step →
+                    </button>
+                  )}
+
+                  <button type="submit" className="modal-btn-submit" disabled={submitting}>
+                    {submitting ? 'Processing...' : modalType === 'create' ? 'Create Audience' : modalType === 'edit' ? 'Save Profile Changes' : 'Update Password'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

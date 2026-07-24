@@ -40,6 +40,7 @@ class UserCreate(UserBase):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    telegram_username: Optional[str] = None
     occupation: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
@@ -47,6 +48,7 @@ class UserCreate(UserBase):
     district: Optional[str] = None
     city: Optional[str] = None
     preferred_channels: Optional[List[str]] = Field(default_factory=list)
+    custom_fields: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class UserUpdate(CustomBaseModel):
     full_name: Optional[str] = None
@@ -59,6 +61,7 @@ class UserUpdate(CustomBaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    telegram_username: Optional[str] = None
     occupation: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
@@ -66,6 +69,7 @@ class UserUpdate(CustomBaseModel):
     district: Optional[str] = None
     city: Optional[str] = None
     preferred_channels: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
 
 class UserResponse(UserBase):
     id: str
@@ -238,6 +242,7 @@ class CampaignBase(CustomBaseModel):
     custom_subject: Optional[str] = None
     custom_body: Optional[str] = None
     channel_preferences: List[str] = Field(default_factory=list)
+    override_channel_preferences: Optional[bool] = False
     scheduled_at: Optional[datetime] = None
 
 class CampaignCreate(CampaignBase):
@@ -254,6 +259,7 @@ class CampaignUpdate(CustomBaseModel):
     custom_subject: Optional[str] = None
     custom_body: Optional[str] = None
     channel_preferences: Optional[List[str]] = None
+    override_channel_preferences: Optional[bool] = None
     scheduled_at: Optional[datetime] = None
 
 class CampaignResponse(CampaignBase):
@@ -262,6 +268,7 @@ class CampaignResponse(CampaignBase):
     target_audience_count: int
     estimated_reach: int
     estimated_cost: float = 0.0
+    override_channel_preferences: Optional[bool] = False
     created_by: str
     updated_by: Optional[str] = None
     created_at: datetime

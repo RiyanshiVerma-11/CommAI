@@ -29,9 +29,10 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
   useEffect(() => {
     if (user) {
       const isAudience = user.role === 'audience';
+      const displayName = user.full_name || (user.role === 'admin' ? 'System Administrator' : user.role === 'manager' ? 'Campaign Manager' : 'there');
       const initialGreeting = isAudience
-        ? `Hello ${user.full_name || 'there'}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, sharing feedback, or seeking assistance!`
-        : `Hello ${user.full_name || 'there'}! I'm your CommAI Assistant. Ask me anything about creating campaigns, reaching your audience, translating messages, or navigating the platform!`;
+        ? `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, sharing feedback, or seeking assistance!`
+        : `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about creating campaigns, reaching your audience, translating messages, or navigating the platform!`;
 
       setMessages([
         {

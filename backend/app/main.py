@@ -32,7 +32,8 @@ def add_missing_columns():
         for col_name, col_type in [
             ("sent_count", "INTEGER DEFAULT 0 NOT NULL"),
             ("failed_count", "INTEGER DEFAULT 0 NOT NULL"),
-            ("dispatched_at", "DATETIME")
+            ("dispatched_at", "DATETIME"),
+            ("override_channel_preferences", "BOOLEAN DEFAULT 0")
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE campaigns ADD COLUMN {col_name} {col_type}"))

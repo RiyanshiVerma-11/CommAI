@@ -700,9 +700,9 @@ const Audiences = ({ user, backendUrl, headers }) => {
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {aud.preferred_channels.map(c => (
-                            <span key={c} style={{ fontSize: '0.8rem', padding: '2px 6px', background: 'rgba(79, 110, 238, 0.1)', color: 'hsl(var(--primary))', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                            <span key={c} className={`channel-badge channel-badge-${c.toLowerCase()}`}>
                               {c}
                             </span>
                           ))}

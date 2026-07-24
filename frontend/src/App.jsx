@@ -375,6 +375,8 @@ function App() {
     const replacements = {
       first_name: user.first_name || user.full_name?.split(' ')[0] || '',
       last_name: user.last_name || user.full_name?.split(' ').slice(1).join(' ') || '',
+      name: user.first_name || user.full_name || 'Citizen',
+      place: user.city || user.district || user.state || 'your area',
       email: user.email || '',
       phone: user.phone || '',
       city: user.city || '',

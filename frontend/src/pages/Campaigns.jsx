@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
+import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
 
 const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'create'
@@ -1355,7 +1356,14 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <strong style={{ fontSize: '1.05rem', color: 'hsl(var(--primary))' }}>{camp.title}</strong>
-                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>{camp.objective}</span>
+                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', marginBottom: '4px' }}>{camp.objective}</span>
+                            <VoiceBulletinPlayer
+                              text={`${camp.title}. ${camp.description || camp.objective || ''}`}
+                              campaignId={camp.id}
+                              userPreferredLang={user?.preferred_languages?.[0] || 'Hindi'}
+                              backendUrl={backendUrl}
+                              compact={true}
+                            />
                           </div>
                         </td>
                         <td>

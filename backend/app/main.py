@@ -19,8 +19,14 @@ from app.routes import poster as poster_router
 from app.routes import sentiment_map as sentiment_map_router
 from app.routes import webhook as webhook_router
 from app.routes import operator_chat
+from app.routes import voice as voice_router
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 from app.services.websocket_manager import bulletin_manager
+import os
+
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "static", "audio_cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Create database tables (SQLite)
 Base.metadata.create_all(bind=engine)
@@ -168,6 +174,9 @@ api_router.include_router(poster_router.router)
 api_router.include_router(sentiment_map_router.router)
 api_router.include_router(webhook_router.router)
 api_router.include_router(operator_chat.router)
+api_router.include_router(voice_router.router)
+
+app.mount("/static/audio_cache", StaticFiles(directory=CACHE_DIR), name="audio_cache")
 
 
 # --- DASHBOARD METRICS ROUTE ---

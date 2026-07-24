@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
 
 /* ─────────────────────────────────────────────
    Landing Page — CommAI
@@ -803,6 +804,14 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
               <p style={{ margin: 0, fontSize: '0.92rem', color: T.text, lineHeight: 1.5, fontWeight: 550 }}>
                 "आपके जिले में कल भारी बारिश की चेतावनी है। कृपया पशुओं को नदी के पास ले जाने से बचें।"
               </p>
+              
+              {/* Indic AI Voice Bulletin Player */}
+              <VoiceBulletinPlayer
+                text="आपके जिले में कल भारी बारिश की चेतावनी है। कृपया पशुओं को नदी के पास ले जाने से बचें।"
+                userPreferredLang="Hindi"
+                compact={true}
+              />
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${T.border}` }}>
                 <span style={{ fontSize: '0.72rem', color: T.textMuted, fontWeight: 500 }}>Accuracy: <b>99.2%</b></span>
                 <span style={{ fontSize: '0.72rem', color: T.textMuted, fontWeight: 500 }}>Inference: <b>182ms</b></span>

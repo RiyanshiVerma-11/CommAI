@@ -41,5 +41,7 @@ pnpm-debug.log*
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 .DS_Store
+
+# Audio Cache
+backend/static/audio_cache/*.mp3

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import GlassCard from '../components/GlassCard';
+import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
 
 const LiveBulletins = ({ backendUrl, user, token }) => {
   const interpolateText = (text) => {
@@ -378,6 +379,15 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
                 <p style={{ margin: '0 0 12px', fontSize: '0.85rem', lineHeight: '1.5', color: 'hsl(var(--text-secondary))' }}>
                   {interpolateText(b.message)}
                 </p>
+
+                {/* Indic AI Voice Bulletin Player */}
+                <VoiceBulletinPlayer
+                  text={`${interpolateText(b.title)}. ${interpolateText(b.message)}`}
+                  campaignId={b.id}
+                  userPreferredLang={user?.preferred_languages?.[0] || 'Hindi'}
+                  backendUrl={backendUrl}
+                  compact={true}
+                />
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem' }}>
                   <span style={{

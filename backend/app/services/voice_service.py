@@ -85,7 +85,6 @@ INDIC_NEURAL_VOICES = {
     "kn": {"male": "kn-IN-GaganNeural", "female": "kn-IN-SapnaNeural"},
     "ml": {"male": "ml-IN-MidhunNeural", "female": "ml-IN-SobhanaNeural"},
     "ur": {"male": "ur-IN-SalmanNeural", "female": "ur-IN-GulNeural"},
-    "pa": {"male": "pa-IN-GurpreetNeural", "female": "pa-IN-JaspreetNeural"},
 }
 
 
@@ -149,12 +148,13 @@ def synthesize_voice_bulletin(
         logger.info(f"[VOICE] Synthesizing speech for language '{lang_info['name']}' ({lang_code}, {clean_gender})...")
         success = False
         
-        # Try Neural Edge-TTS voice (hi-IN-MadhurNeural for Male, hi-IN-SwaraNeural for Female)
-        voice_pair = INDIC_NEURAL_VOICES.get(lang_code, INDIC_NEURAL_VOICES["hi"])
-        voice_name = voice_pair.get(clean_gender, voice_pair["male"])
-        success = _synthesize_edge_tts(translated_text, voice_name, filepath)
+        # Try Neural Edge-TTS if model is available for this language
+        if lang_code in INDIC_NEURAL_VOICES:
+            voice_pair = INDIC_NEURAL_VOICES[lang_code]
+            voice_name = voice_pair.get(clean_gender, voice_pair["male"])
+            success = _synthesize_edge_tts(translated_text, voice_name, filepath)
 
-        # Fallback to gTTS if Edge-TTS failed
+        # Fallback to gTTS if Edge-TTS is not available or failed
         if not success:
             try:
                 tts = gTTS(text=translated_text, lang=gtts_lang, slow=slow)
@@ -166,5 +166,6 @@ def synthesize_voice_bulletin(
                 tts.save(filepath)
 
     return filename, translated_text, lang_code
+
 
 

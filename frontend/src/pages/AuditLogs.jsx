@@ -119,8 +119,26 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
           <button 
             className="btn btn-primary" 
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }}
-            onClick={() => {
-              window.open(`${backendUrl}/api/campaigns/audit-logs/export/all`, '_blank');
+            onClick={async () => {
+              try {
+                const response = await fetch(`${backendUrl}/api/campaigns/audit-logs/export/all`, { headers });
+                if (!response.ok) {
+                  const errData = await response.json().catch(() => ({}));
+                  throw new Error(errData.detail || 'Export failed');
+                }
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+              } catch (err) {
+                console.error('CSV Export Error:', err);
+                alert(`CSV Export failed: ${err.message}`);
+              }
             }}
             title="Export all operational audit logs to CSV"
           >

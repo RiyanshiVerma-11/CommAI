@@ -3201,8 +3201,26 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 <button 
                   className="btn btn-primary" 
                   style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }} 
-                  onClick={() => {
-                    window.open(`${backendUrl}/api/campaigns/audit-logs/export/all?campaign_id=${selectedCampaignForAudit.id}`, '_blank');
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`${backendUrl}/api/campaigns/audit-logs/export/all?campaign_id=${selectedCampaignForAudit.id}`, { headers });
+                      if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.detail || 'Export failed');
+                      }
+                      const blob = await response.blob();
+                      const downloadUrl = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = downloadUrl;
+                      a.download = `audit_logs_campaign_${selectedCampaignForAudit.id.slice(0, 8)}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(downloadUrl);
+                    } catch (err) {
+                      console.error('CSV Export Error:', err);
+                      alert(`CSV Export failed: ${err.message}`);
+                    }
                   }}
                   title="Export this campaign's audit logs to CSV"
                 >
@@ -3283,8 +3301,26 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   <button 
                     className="btn btn-primary" 
                     style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }} 
-                    onClick={() => {
-                      window.open(`${backendUrl}/api/campaigns/${selectedCampaignForDelivery.id}/export-delivery-logs`, '_blank');
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`${backendUrl}/api/campaigns/${selectedCampaignForDelivery.id}/export-delivery-logs`, { headers });
+                        if (!response.ok) {
+                          const errData = await response.json().catch(() => ({}));
+                          throw new Error(errData.detail || 'Export failed');
+                        }
+                        const blob = await response.blob();
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = `delivery_logs_${selectedCampaignForDelivery.id.slice(0, 8)}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(downloadUrl);
+                      } catch (err) {
+                        console.error('CSV Export Error:', err);
+                        alert(`CSV Export failed: ${err.message}`);
+                      }
                     }}
                     title="Export all recipient logs to CSV file"
                   >

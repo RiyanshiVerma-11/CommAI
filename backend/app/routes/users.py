@@ -202,10 +202,23 @@ def update_user(
     if user.role == "audience" and user.email:
         aud = db.query(Audience).filter(Audience.email == user.email).first()
         if aud:
-            if user_in.first_name is not None:
-                aud.first_name = user_in.first_name
-            if user_in.last_name is not None:
-                aud.last_name = user_in.last_name
+            if user_in.full_name is not None:
+                parts = user_in.full_name.strip().split(maxsplit=1)
+                f_name = user_in.first_name if user_in.first_name is not None else (parts[0] if parts else "")
+                l_name = user_in.last_name if user_in.last_name is not None else (parts[1] if len(parts) > 1 else "")
+                aud.first_name = f_name
+                aud.last_name = l_name
+            else:
+                if user_in.first_name is not None:
+                    aud.first_name = user_in.first_name
+                if user_in.last_name is not None:
+                    aud.last_name = user_in.last_name
+
+            if user_in.first_name is not None or user_in.last_name is not None:
+                full_name = f"{aud.first_name} {aud.last_name}".strip()
+                if full_name:
+                    user.full_name = full_name
+
             if user_in.phone is not None:
                 aud.phone = user_in.phone
             if user_in.occupation is not None:

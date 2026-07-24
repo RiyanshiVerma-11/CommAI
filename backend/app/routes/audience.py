@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 
 from app.database import get_db
-from app.models import Audience, Segment
+from app.models import Audience, Segment, User
 from app.schemas import AudienceCreate, AudienceUpdate, AudienceResponse, SegmentCreate, SegmentUpdate, SegmentResponse
 from app.auth import require_admin, require_manager_or_higher
 from app.config import settings
@@ -271,6 +271,20 @@ def update_audience(
     aud.preferred_channels = serialize_list(aud_in.preferred_channels)
     aud.custom_fields = json.dumps(aud_in.custom_fields) if aud_in.custom_fields else None
     aud.is_active = aud_in.is_active
+
+    # Sync matching User account if present
+    if aud.email:
+        usr = db.query(User).filter(User.email == aud.email).first()
+        if usr:
+            full_name = f"{aud.first_name} {aud.last_name}".strip()
+            if full_name:
+                usr.full_name = full_name
+            if aud.organization:
+                usr.organization = aud.organization
+            if aud.designation:
+                usr.designation = aud.designation
+            if aud.is_active is not None:
+                usr.is_active = aud.is_active
     
     db.commit()
     db.refresh(aud)

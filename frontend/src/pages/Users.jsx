@@ -202,11 +202,17 @@ const Users = ({ user: currentUser, backendUrl, headers }) => {
         setModalOpen(false);
         fetchUsers();
       } else if (modalType === 'edit') {
+        const nameParts = formFullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
         const response = await fetch(`${backendUrl}/api/users/${selectedUser.id}`, {
           method: 'PUT',
           headers: { ...headers, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             full_name: formFullName,
+            first_name: firstName,
+            last_name: lastName,
             organization: formOrg,
             department: formDept,
             designation: formDesig,

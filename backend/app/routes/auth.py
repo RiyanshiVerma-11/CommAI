@@ -275,10 +275,18 @@ def update_profile(
         from app.models import Audience
         aud = db.query(Audience).filter(Audience.email == current_user.email).first()
         if aud:
-            if profile_in.first_name is not None:
-                aud.first_name = profile_in.first_name
-            if profile_in.last_name is not None:
-                aud.last_name = profile_in.last_name
+            if profile_in.full_name is not None:
+                parts = profile_in.full_name.strip().split(maxsplit=1)
+                f_name = profile_in.first_name if profile_in.first_name is not None else (parts[0] if parts else "")
+                l_name = profile_in.last_name if profile_in.last_name is not None else (parts[1] if len(parts) > 1 else "")
+                aud.first_name = f_name
+                aud.last_name = l_name
+            else:
+                if profile_in.first_name is not None:
+                    aud.first_name = profile_in.first_name
+                if profile_in.last_name is not None:
+                    aud.last_name = profile_in.last_name
+
             if profile_in.phone is not None:
                 aud.phone = profile_in.phone
             if profile_in.occupation is not None:

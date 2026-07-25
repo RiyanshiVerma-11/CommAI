@@ -55,6 +55,11 @@
   --card-hover-border: rgba(99, 102, 241, 0.35);
   --nav-active-bg: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(192, 132, 252, 0.05) 100%);
   --nav-active-border: rgba(99, 102, 241, 0.3);
+  --chatbot-bg: rgba(15, 20, 32, 0.95);
+  --chatbot-border: var(--border-color-glass);
+  --chatbot-msg-bg: rgba(255, 255, 255, 0.06);
+  --chatbot-btn-bg: rgba(255, 255, 255, 0.1);
+  --chatbot-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .light-theme {
@@ -97,13 +102,18 @@
     radial-gradient(circle at 50% 85%, rgba(13, 148, 136, 0.03) 0%, transparent 55%),
     #f8fafc;
   --bg-gradient-content: transparent;
-  --sidebar-bg: linear-gradient(180deg, rgb(185, 199, 245) 0%, rgb(183, 212, 248) 100%);
+  --sidebar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(241, 245, 249, 0.65) 100%);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
   --border-color-glass: #e2e8f0;
   --card-hover-border: #94a3b8;
   --nav-active-bg: rgba(79, 70, 229, 0.08);
   --nav-active-border: rgba(79, 70, 229, 0.25);
+  --chatbot-bg: rgba(255, 255, 255, 0.95);
+  --chatbot-border: rgba(0, 0, 0, 0.08);
+  --chatbot-msg-bg: rgba(0, 0, 0, 0.05);
+  --chatbot-btn-bg: rgba(0, 0, 0, 0.05);
+  --chatbot-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
 }
 
 /* Base resets */
@@ -602,52 +612,60 @@ a:hover {
 }
 
 .btn-secondary {
-  background: rgba(95, 160, 250, 0.08);
-  border: 1px solid hsl(var(--primary));
-  color: hsl(var(--primary));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(192, 132, 252, 0.15) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  color: hsl(var(--secondary));
 }
 
 .light-theme .btn-secondary {
-  background: rgba(26, 115, 232, 0.06);
-  border: 1px solid hsl(var(--primary));
-  color: hsl(var(--primary));
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  color: hsl(var(--secondary));
 }
 
 .btn-secondary:hover {
-  background: rgba(95, 160, 250, 0.15);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(192, 132, 252, 0.25) 100%);
+  border-color: hsl(var(--secondary));
 }
 
 .light-theme .btn-secondary:hover {
-  background: rgba(26, 115, 232, 0.1);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.18) 0%, rgba(147, 51, 234, 0.18) 100%);
+  border-color: hsl(var(--secondary));
 }
 
 .btn-dark {
-  background: rgba(255, 255, 255, 0.04);
-  color: hsl(var(--text-primary));
-  border: 1px solid var(--input-border);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #f8fafc;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.4);
 }
 
 .btn-dark:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border-color: #475569;
 }
 
 .light-theme .btn-dark {
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px solid var(--input-border);
-  color: hsl(var(--text-primary));
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.15);
 }
 
 .light-theme .btn-dark:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border-color: #94a3b8;
 }
 
 .btn-danger {
-  background: hsl(var(--danger));
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
   color: #ffffff;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
 }
 
 .btn-danger:hover {
-  filter: brightness(1.08);
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.5);
 }
 
 .btn:disabled {

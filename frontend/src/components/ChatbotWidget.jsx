@@ -364,10 +364,10 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
             maxHeight: '580px',
             height: 'calc(100vh - 120px)',
             borderRadius: '20px',
-            background: 'rgba(15, 20, 32, 0.95)',
+            background: 'var(--chatbot-bg)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid var(--border-color-glass)',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+            border: '1px solid var(--chatbot-border)',
+            boxShadow: 'var(--chatbot-shadow)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -417,9 +417,9 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
               onChange={(e) => handleSpeechLangChange(e.target.value)}
               title="Select Voice Language"
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color-glass)',
+                background: 'var(--chatbot-btn-bg)',
+                color: 'hsl(var(--text-primary))',
+                border: '1px solid var(--chatbot-border)',
                 borderRadius: '8px',
                 padding: '4px 8px',
                 fontSize: '0.75rem',
@@ -428,7 +428,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
               }}
             >
               {INDIAN_SPEECH_LANGUAGES.map(l => (
-                <option key={l.code} value={l.code} style={{ background: '#0f1420', color: '#fff' }}>
+                <option key={l.code} value={l.code} style={{ background: 'var(--input-bg)', color: 'hsl(var(--text-primary))' }}>
                   {l.label}
                 </option>
               ))}
@@ -460,11 +460,11 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
                     borderRadius: msg.role === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
                     background: msg.role === 'user'
                       ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, #3b82f6 100%)'
-                      : 'rgba(255, 255, 255, 0.06)',
+                      : 'var(--chatbot-msg-bg)',
                     color: 'hsl(var(--text-primary))',
                     fontSize: '0.85rem',
                     lineHeight: '1.4',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--border-color-glass)',
+                    border: msg.role === 'user' ? 'none' : '1px solid var(--chatbot-border)',
                     boxShadow: msg.role === 'user' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
                   }}
                 >
@@ -505,7 +505,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
             ))}
 
             {loading && (
-              <div style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.06)', padding: '10px 14px', borderRadius: '16px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+              <div style={{ alignSelf: 'flex-start', background: 'var(--chatbot-msg-bg)', padding: '10px 14px', borderRadius: '16px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', border: '1px solid var(--chatbot-border)' }}>
                 🤖 Processing voice intent...
               </div>
             )}
@@ -524,7 +524,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
                       value={escalateSubject}
                       onChange={(e) => setEscalateSubject(e.target.value)}
                       required
-                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: '#fff', fontSize: '0.8rem' }}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'hsl(var(--text-primary))', fontSize: '0.8rem' }}
                     />
                     <textarea
                       placeholder="Explain what was confusing..."
@@ -532,7 +532,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
                       onChange={(e) => setEscalateMessage(e.target.value)}
                       required
                       rows={2}
-                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: '#fff', fontSize: '0.8rem', resize: 'none' }}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'hsl(var(--text-primary))', fontSize: '0.8rem', resize: 'none' }}
                     />
                     <button
                       type="submit"
@@ -554,7 +554,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
             <div style={{ padding: '0 16px 8px 16px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
               <button
                 onClick={() => handleQuickAction("Create an emergency flood alert campaign for Varanasi in Hindi")}
-                style={{ background: 'rgba(76, 140, 252, 0.12)', border: '1px solid rgba(76, 140, 252, 0.3)', color: '#60a5fa', padding: '4px 8px', borderRadius: '12px', fontSize: '0.72rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                style={{ background: 'var(--chatbot-btn-bg)', border: '1px solid var(--chatbot-border)', color: 'hsl(var(--primary))', padding: '4px 8px', borderRadius: '12px', fontSize: '0.72rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
               >
                 🎙️ Auto-Create Flood Alert (Hindi)
               </button>
@@ -582,8 +582,8 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
                   width: '36px',
                   height: '36px',
                   borderRadius: '10px',
-                  background: isListening ? '#ef4444' : 'rgba(255, 255, 255, 0.1)',
-                  border: isListening ? '2px solid #f87171' : '1px solid var(--border-color-glass)',
+                  background: isListening ? '#ef4444' : 'var(--chatbot-btn-bg)',
+                  border: isListening ? '2px solid #f87171' : '1px solid var(--chatbot-border)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',

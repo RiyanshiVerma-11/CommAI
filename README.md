@@ -1,124 +1,263 @@
-# CommAI: AI-Based Multilingual Mass Communication & Public Awareness Management Platform
+# CommAI: Enterprise Multilingual Mass Communication & Emergency Public Awareness SaaS Platform
 
-[![Milestone](https://img.shields.io/badge/Milestone-2%20Complete-success?style=for-the-badge&logo=rocket)](#-milestone-2-completed-features)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
+<div align="center">
 
-**CommAI** is a full-stack, AI-powered multilingual mass communication and public awareness platform that enables organizations (government departments, healthcare agencies, educational institutions, emergency services, NGOs) to target, compose, translate, broadcast, and monitor public campaigns across multiple channels (Email, SMS, WhatsApp, Push Notifications, Voice Bulletins, and Interactive Web Portals).
+  <img src="logo.jpeg" alt="CommAI Logo" width="180" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 
----
+  ### *Empowering Organizations with AI-Driven Multilingual Outreach, Omnichannel Dispatch & Four-Eye Emergency Governance*
 
-## 🏆 MILESTONE 2: COMPLETED FEATURES & ADVANCED ENHANCEMENTS
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
+  [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+  [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
+  [![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev)
+  [![Groq LLM](https://img.shields.io/badge/Groq_AI-Llama_3.3_70B-FF6F00?style=for-the-badge&logo=openai)](https://groq.com)
+  [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
 
-Milestone 2 expands CommAI into a production-grade, multi-modal emergency broadcast and public engagement platform with neural speech synthesis, real-time WebSocket chimes, multi-tiered AI translation failovers, poster graphics generation, and strict governance safety controls.
+  [**Explore Features**](#-core-saas-feature-pillars) • [**Visual Screenshot Tour**](#-interactive-visual-tour--screenshots) • [**Architecture & ERD**](#-system-architecture--data-engineering) • [**API Specs**](#-api-specification--gateway-matrix) • [**Quick Start**](#-getting-started--deployment-guide)
 
-### 1. 🔊 Neural Indic AI Voice Bulletin Engine (23 Official Languages)
-- **Microsoft Edge Neural Speech Integration**: High-fidelity neural voice models for Indic languages (`hi-IN-MadhurNeural`, `hi-IN-SwaraNeural`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `en`).
-- **Zero-Downtime Speech Fallback (`gTTS`)**: Automatic failover to Google Text-to-Speech for regional dialects (`pa`, `or`, `as`, `ne`, `sd`, `sa`, etc.).
-- **Multi-Tier Translation Service**: Zero-cost fallback pipeline combining primary Groq LLM (`llama-3.3-70b-versatile`), secondary Groq key (`llama-3.1-8b-instant`), and Google GTX Translate API.
-- **React Portal Glassmorphism Voice Player**: Floating modal rendered directly via `ReactDOM.createPortal` on `document.body` to prevent CSS clipping/overlap on any dashboard card, high-contrast bold speech scripts, speed controls (`0.75x`, `1x`, `1.25x`), and instant multi-language audio streaming.
-
-### 2. 🎨 AI Visual Poster Studio & Served Binary Image Endpoint
-- **Canvas Composite Engine**: Custom composite system overlaying multilingual typography, emergency headers, and official seals on AI-generated background imagery.
-- **Served Binary Images**: Dedicated binary image streaming endpoint (`/api/poster/{id}/image`) to prevent CORS issues, enable fast caching, and support direct inline previews.
-
-### 3. 📧 Inline Email Image Attachments (CID & Credentials Helper)
-- **Inline MIME Attachments**: Automatically parses and attaches poster media files in emails as inline MIME attachments (`cid:` references).
-- **Credentials Normalization**: Automatic credentials normalization helper (Gmail App Password space-stripping and validation) to prevent SMTP authentication failures.
-
-### 4. ⚡ Real-Time WebSocket Alert Engine & Audio Broadcast Chimes
-- **Live Broadcast Listeners**: WebSockets attached to citizen and operator dashboards that trigger real-time toast popups and audio chime notifications whenever an emergency flyer or bulletin is published.
-- **Zero-Reload Updates**: Dynamically updates active campaign lists and alert feeds without requiring manual page refreshes.
-
-### 5. 🛡️ Maker-Checker Four-Eye Governance System
-- **Emergency Safety Guardrails**: Prevents unauthorized or panic-inducing emergency broadcasts. Any campaign targeting $\ge 100$ citizens or marked as `Emergency` requires explicit Administrator approval/rejection before dispatching.
-- **Audit Trails**: Full audit logging for every administrative review action.
-
-### 6. 📊 Sentiment Map & Interactive Geographic Analytics
-- **Geospatial Intelligence**: District-level citizen sentiment map and interactive feedback heatmap analytics for public feedback tracking.
+</div>
 
 ---
 
-## 🛠️ Technology Stack
+## 🌟 Executive Overview & Product Vision
 
-- **Backend**: Python 3.11, FastAPI (web services), SQLAlchemy (ORM), SQLite (local database), Pydantic (validation), Passlib & bcrypt (security), Python-Jose (JWT tokens), Pytest (testing), Edge-TTS, gTTS, Requests.
-- **Frontend**: React (Vite), JavaScript, custom HTML5/CSS3 (glassmorphic dark theme, custom responsive grid system, micro-animations).
-- **Core AI Integration**: Groq API (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant` models) with multi-tier fallback.
+**CommAI** is an enterprise-grade, AI-powered multilingual mass communication and emergency public awareness SaaS platform. Built for government departments, healthcare institutions, disaster relief bodies, municipal smart cities, and non-profits, CommAI solves the critical challenges of language barriers, delayed alert dispatches, fragmented communication channels, and unverified panic broadcasts.
 
----
+By combining state-of-the-art **Large Language Models (Groq Llama-3.3-70B)**, **Retrieval-Augmented Generation (RAG)**, **Neural Speech Synthesis across 23 Indic Languages**, **AI Visual Poster Generation**, and an **Omnichannel Engine (Email, SMS, WhatsApp, Telegram, Push, and Audio Bulletins)**, CommAI empowers communicators to instantly compose, localize, verify, and broadcast high-impact public awareness campaigns.
 
-## 📊 System Architecture & Database Design
-
-### 1. Component Architecture
 ```mermaid
 graph TD
-    subgraph client_layer ["Client Layer (Frontend)"]
-        ReactApp["Vite + React.js SPA"]
-        VanillaCSS["Custom Glassmorphism CSS"]
-        VoicePlayer["React Portal Voice Bulletin Player"]
+    subgraph Platform ["⚡ COMMAI ENTERPRISE SAAS PLATFORM ARCHITECTURE"]
+        direction TB
+        
+        subgraph CoreAI ["🤖 AI Content & RAG Core"]
+            AI1["Groq Llama-3.3-70B LLM"]
+            AI2["NL Dynamic Segment Builder"]
+            AI3["Multi-Tier Translation Pipeline"]
+        end
+        
+        subgraph VoiceStudio ["🔊 23-Language Voice Studio"]
+            V1["Edge-TTS Neural Speech"]
+            V2["gTTS Zero-Downtime Fallback"]
+            V3["React Portal Audio Player"]
+        end
+
+        subgraph DispatchEngine ["📡 Omnichannel Dispatch Engine"]
+            D1["Email (SMTP + CID Attachments)"]
+            D2["WhatsApp (CallMeBot API)"]
+            D3["Telegram Bot (Broadcast & SOS)"]
+            D4["SMS & FCM Push Alerts"]
+        end
+
+        subgraph Governance ["🛡️ Four-Eye Emergency Safety"]
+            G1["Maker-Checker Queue (≥100 Recipients)"]
+            G2["Admin Review & Approval Workflow"]
+            G3["Tamper-Evident Audit Logs"]
+        end
+
+        subgraph PosterStudio ["🎨 Visual Poster Studio"]
+            P1["Canvas Composite Engine"]
+            P2["Served Binary Image Stream"]
+            P3["Multilingual Seal & Text Overlays"]
+        end
+
+        subgraph RealtimeWS ["⚡ Real-Time WebSockets"]
+            W1["Inter-Operator Staff Chat"]
+            W2["Audio Broadcast Chimes"]
+            W3["Zero-Reload Dashboard Feeds"]
+        end
     end
 
-    subgraph api_layer ["API Layer (Backend)"]
+    CoreAI --> VoiceStudio
+    VoiceStudio --> PosterStudio
+    PosterStudio --> Governance
+    Governance --> DispatchEngine
+    DispatchEngine --> RealtimeWS
+```
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 ⚡ COMMAI ENTERPRISE SAAS PLATFORM                                │
+├──────────────────────────────┬──────────────────────────────┬────────────────────────────────────┤
+│ 🤖 AI Content & RAG Core     │ 🔊 23-Language Voice Studio  │ 📡 Omnichannel Dispatch Engine     │
+│ • Groq Llama-3.3-70B LLM     │ • Edge-TTS Neural Synthesis  │ • Email (SMTP + CID Attachments)   │
+│ • NL Dynamic Segment Builder │ • Zero-Downtime gTTS         │ • WhatsApp (CallMeBot Gateway)     │
+│ • RAG Vector Knowledge Base  │ • React Portal Audio Player  │ • Telegram Bot (Broadcast & SOS)   │
+│ • Multi-Tier Translation     │ • Line-by-Line Script Track  │ • SMS & FCM Push Alerts            │
+├──────────────────────────────┼──────────────────────────────┼────────────────────────────────────┤
+│ 🛡️ Four-Eye Governance       │ 🎨 Visual Poster Studio      │ ⚡ Real-Time WebSocket Alerts      │
+│ • Maker-Checker Queue (≥100) │ • Canvas Composite Engine    │ • Inter-Operator Staff Chat        │
+│ • Admin Review & Approval    │ • Served Binary Image Stream │ • Audio Broadcast Chimes           │
+│ • Audit Log Compliance       │ • Typography & Seal Overlays │ • Zero-Reload Dashboard Feeds      │
+└──────────────────────────────┴──────────────────────────────┴────────────────────────────────────┘
+```
+
+---
+
+## ⚡ Core SaaS Feature Pillars
+
+### 1. 🔑 Enterprise Security & Real-Time Email 2FA OTP Authentication
+- **Multi-Factor Authentication (MFA)**: Secure operator sign-in enforced by JWT access tokens and real-time email 2FA OTP verification. Upon login request, a dynamic 6-digit verification code is instantly generated and delivered directly to the user's registered email inbox via SMTP, supported by active expiration timers, cache invalidation, and resend protection.
+- **Granular Role-Based Access Control (RBAC)**: Distinct permissions for `admin`, `campaign_manager`, and `communicator` user roles.
+- **Self-Service Password Recovery**: Secure self-service password reset flow (`/api/auth/forgot-password-request` & `/api/auth/reset-password`) using email OTP verification codes.
+- **Blacklist & Unsubscribe Management**: Dynamic blacklist filtering (Email and Phone opt-outs) protecting recipient privacy and regulatory compliance.
+
+### 2. 🤖 AI Intelligence, Copywriting & RAG Knowledge Engine
+- **Groq LLM Core & Tone Adaptations**: Powered by Groq's `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` models. Supports 4 tone presets (*Urgent Emergency*, *Formal Advisory*, *Empathetic Support*, *Informative Announcement*), target length selection, key point expansion, and 3-variant AI subject line generation.
+- **Natural Language Dynamic Audience Builder (`nl_segment.py`)**: Allows operators to type natural language queries (e.g., *"Senior citizens living in Pune district who prefer Marathi"*) and automatically translates them into SQL segment rules.
+- **RAG Knowledge Base (`rag_service.py`)**: Embedded vector retrieval system indexing official government circulars, health advisory PDFs, and emergency guidelines for auto-answering citizen queries.
+- **Multi-Tier Zero-Downtime Translation Pipeline**: Failover sequence: Primary Groq 70B $\rightarrow$ Secondary Groq 8B $\rightarrow$ Google GTX Translate API across 23 official Indic languages.
+
+### 3. 🔊 Neural Indic AI Voice Bulletin Engine (23 Official Languages)
+- **High-Fidelity Neural Speech**: Integrates Microsoft Edge Neural Speech synthesis for 23 official Indic languages (`hi-IN-MadhurNeural`, `hi-IN-SwaraNeural`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `en`, etc.).
+- **Zero-Downtime gTTS Fallback**: Automatic regional dialect fallback using Google Text-to-Speech (`pa`, `or`, `as`, `ne`, `sd`, `sa`).
+- **React Portal Glassmorphic Audio Player**: Rendered dynamically via `ReactDOM.createPortal` directly on `document.body` to eliminate z-index clipping across dashboard views. Features variable playback speed (`0.75x`, `1.0x`, `1.25x`), line-by-line synchronized script highlighting, and live audio streaming.
+
+### 4. 🎨 AI Visual Poster Studio & Served Binary Endpoint
+- **HTML5 Canvas Composite Engine**: Overlays localized emergency headlines, official agency seals, and dynamic typography onto background images.
+- **Served Binary Image Preview (`/api/poster/{id}/image`)**: Custom binary streaming endpoint preventing CORS errors, optimizing client caching, and enabling direct inline previewing across dashboards and emails.
+
+### 5. 📡 Omnichannel Mass Dispatch & Two-Way Listener Engine
+- **Email Gateway**: SMTP dispatch featuring automatic Gmail App Password space-stripping, credentials normalization, and inline MIME CID image attachments (`cid:poster.png`).
+- **WhatsApp Integration**: Direct messaging gateway via CallMeBot API.
+- **Telegram Bot & Auto Contact Matcher (`telegram_bot_listener.py`)**: Automated channel broadcasting (`telegram_service.py`) and interactive contact sharing listener. Prompts citizens to share their phone number to automatically link their `telegram_chat_id` to their audience record without manual entry.
+- **Two-Way Citizen Webhook Engine (`webhook.py`)**: Inbound SMS/WhatsApp webhook listener (`/api/webhook/citizen-reply`) that resolves citizen identity, executes vector RAG search (`rag_service.py`), and automatically returns contextual AI answers.
+- **Omnichannel Citizen Dialogue Portal (`CitizenConversations.jsx`)**: Operator dashboard for inspecting full two-way chat threads, viewing RAG auto-replies, and sending manual operator overrides (`/api/webhook/manual-reply`).
+- **SMS & FCM Push Notifications**: Integrated SMS gateway and Firebase Cloud Messaging (FCM) push notification engine.
+
+### 6. 🛡️ Enterprise Maker-Checker Governance (Four-Eye Principle) & CSV Auditing
+- **Emergency Safety Guardrails**: Prevents unauthorized broadcasts or accidental panic dispatches. Any campaign targeting $\ge 100$ citizens or marked with `Emergency` status is automatically routed to the Approvals Queue.
+- **Mandatory Approval / Rejection Workflow**: Requires explicit Administrator review, approval, or rejection (with mandatory reason notes) before any delivery worker dispatches messages.
+- **Compliance Audit Logging (`audit_logs`) & CSV Export**: Tamper-evident logging of every platform action with dedicated one-click CSV export endpoints (`/api/campaigns/audit-logs/export/all` and `/api/campaigns/{id}/export-delivery-logs`).
+
+### 7. 🗺️ Geospatial Intelligence & Campaign Feedback Analytics
+- **District-Level Sentiment Map**: Real-time visual tracking of citizen sentiment and feedback across states and districts.
+- **Interactive Emergency Heatmap**: Geospatial analytics visualizing public reaction density, emergency ticket concentrations, and campaign reach.
+- **Citizen Campaign Feedback Engine (`feedback.py`)**: Structured rating system (`helpful`, `excellent`, `confusing`, `too_frequent`, `not_relevant`) with automatic score aggregation.
+
+### 8. ⚡ Real-Time WebSocket Alert Engine & Gateway Diagnostics
+- **Live Inter-Operator Staff Chat**: Real-time WebSocket chat room for broadcast team coordination, complete with role badges, online status indicators, and sound notifications.
+- **Broadcast Sound Chimes & Zero-Reload Feeds**: Real-time WebSocket listeners updating citizen portals and operator feeds instantly without manual page refreshes.
+- **System Gateway Diagnostics (`settings.py` & `Settings.jsx`)**: Live ping latency diagnostics and integration test triggers for Groq AI, SMTP Email, CallMeBot WhatsApp, FCM Push, and Telegram Bot gateways.
+
+---
+
+## 🖼️ Interactive Visual Tour & Screenshots
+
+### 🏆 Core Platform Foundation & Governance
+
+| Public Landing Page | Login & 2FA OTP Verification |
+| :---: | :---: |
+| ![Public Landing Page](docs/screenshots/milestone%201/landing.png) | ![Login Screen](docs/screenshots/milestone%201/login.png) |
+| *Public entry portal with live voice bulletin player & SOS trigger.* | *Secure login with JWT authentication & 2FA OTP verification code.* |
+
+| Executive Overview Dashboard | Audience Management & NL Segment Builder |
+| :---: | :---: |
+| ![Overview Dashboard](docs/screenshots/milestone%201/dashboard.png) | ![Audience Management](docs/screenshots/milestone%201/audiences.png) |
+| *High-level telemetry for active campaigns, reach & system health.* | *Demographic management with Natural Language AI segmentation.* |
+
+| Multi-Channel Template Library | Campaign Planner & AI Assistant |
+| :---: | :---: |
+| ![Template Library](docs/screenshots/milestone%201/templates.png) | ![Campaign Planner](docs/screenshots/milestone%201/campaigns.png) |
+| *Central repository with variable interpolation (`{{first_name}}`).* | *Multi-channel broadcast manager with AI subject line generator.* |
+
+| Four-Eye Maker-Checker Approvals Queue | Gateway Diagnostics Dashboard |
+| :---: | :---: |
+| ![Approvals Queue](docs/screenshots/milestone%201/approvals.png) | ![System Diagnostics Dashboard](docs/screenshots/milestone%201/settings.png) |
+| *Safety guardrail queue requiring approval for campaigns $\ge 100$ recipients.* | *Real-time latency diagnostics for Groq, SMTP, WhatsApp & FCM.* |
+
+---
+
+### 🚀 Advanced Audio, Visual & Analytics Features
+
+| AI Visual Poster Studio | Neural Indic Voice Bulletin Reader |
+| :---: | :---: |
+| ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png) | ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png) |
+| *Canvas composite engine with binary image streaming (`/api/poster/{id}/image`).* | *Edge-TTS & gTTS neural speech player across 23 Indic languages.* |
+
+| Real-Time Inter-Operator Staff Chat | Geospatial Sentiment Map & Heatmap |
+| :---: | :---: |
+| ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png) | ![Geospatial Sentiment Map](docs/screenshots/milestone%202/sentiment_map.png) |
+| *WebSocket chat room with role badges & audio chime alerts.* | *District-level citizen sentiment map and emergency feedback heatmap.* |
+
+| Citizen Emergency SOS Inbox | RAG-Powered AI Help Desk & Support |
+| :---: | :---: |
+| ![Emergency Inbox & SOS Tracking](docs/screenshots/milestone%202/emergency_inbox.png) | ![Support Queries & AI Help Desk](docs/screenshots/milestone%202/admin_portal_for_support_queries.png) |
+| *SOS queue with priority escalation & automated AI response drafting.* | *Citizen support desk powered by RAG vector knowledge search.* |
+
+---
+
+## 🛠️ System Architecture & Data Engineering
+
+### 1. High-Level Component Architecture
+```mermaid
+graph TD
+    subgraph ClientLayer ["Client Layer (React 18 SPA)"]
+        ReactApp["Vite + React SPA"]
+        CustomCSS["Glassmorphism Design System"]
+        VoicePortal["React Portal Audio Bulletin Player"]
+    end
+
+    subgraph APILayer ["API Layer (FastAPI)"]
         FastAPI["FastAPI Web Framework"]
-        AuthMiddleware["JWT & RBAC Middleware"]
-        RouterAuth["Auth Router (Simulated OTP)"]
-        RouterAudience["Audience & Segment Router"]
-        RouterTemplate["Template Library Router"]
-        RouterCampaign["Campaign Planner Router"]
+        AuthGuard["JWT & RBAC Auth Middleware"]
+        RouterAuth["Auth & 2FA OTP Router"]
+        RouterAudience["Audience & NL Segment Router"]
+        RouterCampaign["Campaign & Approval Router"]
         RouterVoice["Voice Bulletin Router"]
-        RouterSettings["Settings Router (SMTP / CallMeBot / Groq)"]
-        RouterAI["AI Content Engine Router"]
-        RouterEmergency["Emergency Contact Router"]
+        RouterPoster["Visual Poster Studio Router"]
+        RouterRAG["RAG Help Desk Router"]
+        RouterWS["WebSocket Alert Manager"]
     end
 
-    subgraph services_layer ["Background & AI Services Layer"]
-        Scheduler["Campaign scheduler.py"]
-        Dispatcher["Message dispatcher.py"]
-        EmailService["Email email_service.py (SMTP + CID Attachments)"]
-        WAService["WhatsApp whatsapp_service.py (CallMeBot)"]
-        VoiceService["Voice Service voice_service.py (Edge-TTS + gTTS)"]
-        TranslationService["Translation Service translation_service.py (Groq + GTX)"]
-        AIService["AI Engine ai_service.py"]
+    subgraph ServiceLayer ["Background & AI Engine Services"]
+        Scheduler["Background Scheduler (scheduler.py)"]
+        Dispatcher["Multi-Channel Dispatcher (dispatcher.py)"]
+        EmailService["Email SMTP Service (CID Attachments)"]
+        WAService["WhatsApp Service (CallMeBot API)"]
+        TelegramService["Telegram Bot Service & Listener"]
+        VoiceService["Voice Synthesis (Edge-TTS + gTTS)"]
+        TranslationService["Translation Failover (Groq 70B -> 8B -> GTX)"]
+        AIService["AI Engine (Groq LLM Llama-3.3-70B)"]
+        RAGService["RAG Vector Service (rag_service.py)"]
     end
 
-    subgraph data_layer ["Data Layer"]
-        SQLAlchemy["SQLAlchemy ORM Layer"]
-        SQLite["SQLite (comm_platform.db)"]
-        AudioCache["Static Audio Cache MP3s"]
+    subgraph DataLayer ["Data & Storage Layer"]
+        SQLAlchemy["SQLAlchemy ORM"]
+        SQLite["SQLite DB (comm_platform.db)"]
+        AudioStorage["Static Audio MP3 Cache"]
     end
 
-    ReactApp -->|HTTP requests + JWT Token| AuthMiddleware
-    AuthMiddleware --> RouterAuth
-    AuthMiddleware --> RouterAudience
-    AuthMiddleware --> RouterTemplate
-    AuthMiddleware --> RouterCampaign
-    AuthMiddleware --> RouterVoice
-    AuthMiddleware --> RouterSettings
-    AuthMiddleware --> RouterAI
-    AuthMiddleware --> RouterEmergency
+    ReactApp -->|HTTP + JWT| AuthGuard
+    ReactApp -->|WebSocket| RouterWS
+    AuthGuard --> RouterAuth
+    AuthGuard --> RouterAudience
+    AuthGuard --> RouterCampaign
+    AuthGuard --> RouterVoice
+    AuthGuard --> RouterPoster
+    AuthGuard --> RouterRAG
 
-    RouterCampaign --> Dispatcher
+    RouterCampaign --> Scheduler
     Scheduler --> Dispatcher
     Dispatcher --> EmailService
     Dispatcher --> WAService
+    Dispatcher --> TelegramService
 
     RouterVoice --> VoiceService
     VoiceService --> TranslationService
-    VoiceService --> AudioCache
+    VoiceService --> AudioStorage
 
-    RouterAI --> AIService
+    RouterRAG --> RAGService
+    RAGService --> AIService
 
     RouterAuth --> SQLAlchemy
     RouterAudience --> SQLAlchemy
-    RouterTemplate --> SQLAlchemy
     RouterCampaign --> SQLAlchemy
-    RouterSettings --> SQLAlchemy
-    RouterEmergency --> SQLAlchemy
-
-    SQLAlchemy -->|Reads/Writes SQL| SQLite
+    SQLAlchemy --> SQLite
 ```
+
+---
 
 ### 2. Entity-Relationship Diagram (ERD)
 ```mermaid
@@ -133,9 +272,8 @@ erDiagram
         string designation
         boolean is_active
         timestamp created_at
-        timestamp updated_at
     }
-    
+
     audiences {
         string id PK
         string first_name
@@ -149,15 +287,12 @@ erDiagram
         string state
         string district
         string city
-        string organization
-        string department
-        string designation
         text preferred_channels "JSON array"
         boolean is_active
         boolean is_deleted
         timestamp created_at
     }
-    
+
     segments {
         string id PK
         string name "unique"
@@ -168,7 +303,7 @@ erDiagram
         timestamp last_refreshed
         timestamp created_at
     }
-    
+
     templates {
         string id PK
         string title
@@ -178,11 +313,9 @@ erDiagram
         string default_language
         text subject_template
         text body_template
-        text translations "JSON Cache: lang -> {subject, body}"
+        text translations "JSON Cache"
         boolean is_ai_generated
-        integer version
         string created_by FK
-        boolean is_deleted
         timestamp created_at
     }
 
@@ -191,52 +324,39 @@ erDiagram
         string title
         string description
         text objective
-        string campaign_type
-        string status "DRAFT | SCHEDULED | ACTIVE | COMPLETED"
-        string segment_id FK "nullable"
-        string template_id FK "nullable"
-        text custom_subject "nullable"
-        text custom_body "nullable"
+        string status "DRAFT | SCHEDULED | PENDING_APPROVAL | ACTIVE | COMPLETED"
+        string segment_id FK
+        string template_id FK
+        text custom_subject
+        text custom_body
         text channel_preferences "JSON array"
         integer target_audience_count
-        integer estimated_reach
         integer sent_count
         integer failed_count
         string created_by FK
-        string updated_by FK
-        timestamp scheduled_at "nullable"
-        timestamp dispatched_at "nullable"
+        timestamp scheduled_at
+        timestamp dispatched_at
         timestamp created_at
-        timestamp updated_at
     }
 
     delivery_logs {
         string id PK
         string campaign_id FK
         string audience_id FK
-        string channel "email | sms | whatsapp"
+        string channel "email | sms | whatsapp | telegram"
         string language
         string status "sent | failed"
-        text error_message "nullable"
+        text error_message
         timestamp timestamp
     }
 
     audit_logs {
         string id PK
         string user_id FK
-        string campaign_id FK "nullable"
-        string action "CREATE | UPDATE | STATUS_CHANGE | DELETE"
-        string old_status "nullable"
-        string new_status "nullable"
-        text changes "JSON representation"
+        string campaign_id FK
+        string action "CREATE | UPDATE | APPROVE | REJECT | DELETE"
+        text changes "JSON data"
         timestamp timestamp
-    }
-
-    blacklist {
-        string id PK
-        string type "email | phone"
-        string value "unique"
-        timestamp created_at
     }
 
     emergency_contacts {
@@ -246,8 +366,8 @@ erDiagram
         text message
         string urgency "normal | urgent | critical"
         string status "open | acknowledged | resolved"
-        text admin_reply "nullable"
-        timestamp replied_at "nullable"
+        text admin_reply
+        timestamp replied_at
         timestamp created_at
     }
 
@@ -263,127 +383,165 @@ erDiagram
 
 ---
 
-## 📅 Week-by-Week Implementation & Feature Screenshots
+### 3. Multi-Tier Translation Failover Sequence
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Operator as Campaign Operator
+    participant Router as Translate API Router
+    participant Groq70B as Groq Llama-3.3-70B (Primary)
+    participant Groq8B as Groq Llama-3.1-8B (Secondary)
+    participant GTX as Google GTX API (Fallback)
 
-### 🏆 Milestone 1: Core Platform Foundation
-
-- **Public Landing Page**: Public-facing entry portal welcoming citizens and operators.
-  
-  ![Public Landing Page](docs/screenshots/milestone%201/landing.png)
-
-- **Authentication & RBAC**: Secure operator sign-in with JWT verification and multi-tiered roles (Admin, Campaign Manager, Communicator).
-  
-  ![Login Screen](docs/screenshots/milestone%201/login.png)
-
-- **Overview Dashboard**: High-level telemetry for active campaigns, public reach, segment size, and live integration latency.
-  
-  ![Overview Dashboard](docs/screenshots/milestone%201/dashboard.png)
-
-- **Audience Management & Segmentation**: Dynamic segment builder with demographic progress indicators.
-  
-  ![Audience Management](docs/screenshots/milestone%201/audiences.png)
-
-- **Template Library**: Central repository managing templates across delivery channels and categories.
-  
-  ![Template Library](docs/screenshots/milestone%201/templates.png)
-
-- **Campaign Planner**: Consolidated grid for scheduled broadcasts and delivery auditing.
-  
-  ![Campaign Planner](docs/screenshots/milestone%201/campaigns.png)
-
-- **Maker-Checker Governance (Four-Eye Principle)**: Safety guardrail queue for emergency campaign approval ($\ge 100$ recipients).
-  
-  ![Approvals Queue](docs/screenshots/milestone%201/approvals.png)
-
-- **Campaign Wizard & AI Assistant**: Groq API integration for drafting campaign subject lines and copy presets.
-  
-  ![Campaign Wizard & AI Assistant](docs/screenshots/milestone%201/campaign_wizard.png)
-
-- **System Diagnostics Dashboard**: Real-time integration latency checks for Groq, SMTP, and CallMeBot gateways.
-  
-  ![System Diagnostics Dashboard](docs/screenshots/milestone%201/settings.png)
+    Operator->>Router: Translate text to Hindi/Bengali/Tamil
+    Router->>Groq70B: Request Translation (Llama-3.3-70B)
+    alt Groq 70B Success
+        Groq70B-->>Router: Translated Text Output
+    else Groq 70B Rate-Limited / Error
+        Router->>Groq8B: Request Translation (Llama-3.1-8B Instant)
+        alt Groq 8B Success
+            Groq8B-->>Router: Translated Text Output
+        else Groq 8B Error
+            Router->>GTX: Request Translation (GTX API)
+            GTX-->>Router: Fallback Translated Text Output
+        end
+    end
+    Router-->>Operator: Final Multilingual Content
+```
 
 ---
 
-### 🚀 Milestone 2: Advanced Speech, Visual & Governance Engine
+## 📑 API Specification & Gateway Matrix
 
-- **AI Visual Poster Studio**: Canvas composite engine with multilingual typography overlays and served binary image previews (`/api/poster/{id}/image`).
-  
-  ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png)
-
-- **Neural Indic Voice Bulletin Player**: Edge-TTS & gTTS neural speech synthesis engine across 23 official languages with React Portal modal controls.
-  
-  ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png)
-
-- **Real-Time Operator Staff Chat & WebSocket Alert Engine**: Live WebSocket communication channels with role badges, sound chimes, and instant updates.
-  
-  ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png)
-
-- **Geospatial Sentiment Map & Heatmap Analytics**: District-level citizen sentiment tracking and interactive emergency heatmap.
-  
-  ![Geospatial Sentiment Map](docs/screenshots/milestone%202/sentiment_map.png)
-
-- **Citizen Emergency Inbox & SOS Request Management**: Dedicated portal monitoring citizen emergency inquiries with automated AI response drafting.
-  
-  ![Emergency Inbox & SOS Tracking](docs/screenshots/milestone%202/emergency_inbox.png)
-
-- **Support Queries Desk & AI Help Desk**: Citizen support ticketing desk with automated AI response suggestions and escalation tracking.
-  
-  ![Support Queries & AI Help Desk](docs/screenshots/milestone%202/admin_portal_for_support_queries.png)
+| Module | Endpoint | Method | Description |
+| :--- | :--- | :---: | :--- |
+| **Auth** | `/api/auth/token` | `POST` | Authenticate user credentials & issue JWT token |
+| **Auth** | `/api/auth/request-otp` | `POST` | Request dynamic 6-digit real-time email OTP code |
+| **Auth** | `/api/auth/verify-otp` | `POST` | Verify real-time email 2FA OTP code |
+| **Auth** | `/api/auth/forgot-password-request` | `POST` | Request password reset OTP via email |
+| **AI Engine** | `/api/ai/draft-campaign` | `POST` | Draft campaign copy with 4 tone adaptations |
+| **AI Engine** | `/api/ai/suggest-subject-lines` | `POST` | Generate 3-variant AI subject line recommendations |
+| **Audiences** | `/api/audiences/` | `GET/POST` | Manage demographic audience database |
+| **Audiences** | `/api/audiences/nl-segment` | `POST` | Generate dynamic segment using Natural Language |
+| **Templates** | `/api/templates/` | `GET/POST` | Central repository for multi-channel templates |
+| **Campaigns** | `/api/campaigns/` | `GET/POST` | Create & dispatch mass awareness campaigns |
+| **Approvals** | `/api/campaigns/{id}/approve` | `POST` | Four-Eye governance review & approval |
+| **Approvals** | `/api/campaigns/{id}/reject` | `POST` | Reject campaign pending approval with reason note |
+| **Exports** | `/api/campaigns/{id}/export-delivery-logs` | `GET` | Export detailed campaign delivery logs to CSV |
+| **Exports** | `/api/campaigns/audit-logs/export/all` | `GET` | Export system-wide operational audit logs to CSV |
+| **Voice** | `/api/voice/synthesize` | `POST` | Synthesize neural audio bulletin (23 languages) |
+| **Poster** | `/api/poster/{id}/image` | `GET` | Served binary image stream for poster studio |
+| **Sentiment** | `/api/sentiment-map/data` | `GET` | District-level sentiment & feedback heatmap |
+| **RAG Queries**| `/api/queries/` | `GET/POST` | Support desk ticketing & RAG vector search |
+| **Webhooks** | `/api/webhook/citizen-reply` | `POST` | Inbound citizen reply webhook with RAG auto-answers |
+| **Dialogue** | `/api/webhook/conversations` | `GET` | Retrieve omnichannel citizen conversation threads |
+| **Dialogue** | `/api/webhook/manual-reply` | `POST` | Dispatch manual operator override reply to citizen |
+| **Feedback** | `/api/feedback` | `GET/POST` | Campaign rating submission & sentiment summaries |
+| **Diagnostics**| `/api/settings/` | `GET` | Real-time latency checks for Groq, SMTP, WA, FCM |
+| **WebSockets** | `/ws/chat` & `/ws/alerts` | `WS` | Inter-operator staff chat & broadcast alerts |
 
 ---
 
-## ⚙️ Seed & Test Execution
+## 💻 Getting Started & Deployment Guide
 
-### Seeding Template Collections
-To seed default message templates across all channels and categories:
+### Prerequisites
+- **Python**: `v3.11` or higher
+- **Node.js**: `v18.0` or higher
+- **Docker & Docker Compose**: (Optional, for 1-command containerized setup)
+
+---
+
+### 🐳 Docker Deployment (One-Command Launch)
+
+Deploy the full stack (FastAPI backend + Vite React frontend + SQLite database) instantly:
+
+```bash
+# Clone the repository
+git clone https://github.com/RiyanshiVerma-11/CommAI.git
+cd CommAI
+
+# Launch containers
+docker-compose up --build
+```
+
+- **Frontend Application**: `http://localhost:5173`
+- **Backend OpenAPI Swagger Docs**: `http://localhost:8001/docs`
+
+---
+
+### 🏃 Manual Local Setup Guide
+
+#### 1. Backend Setup (FastAPI & Python 3.11)
+```powershell
+# Navigate to backend directory
+cd backend
+
+# Activate virtual environment
+.\venv\Scripts\activate
+
+# Install dependencies (if not already installed)
+pip install -r requirements.txt
+
+# Launch FastAPI server with Uvicorn
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
+```
+> Access Swagger documentation at `http://127.0.0.1:8001/docs`.
+
+#### 2. Frontend Setup (React & Vite)
+```powershell
+# Navigate to frontend directory
+cd frontend
+
+# Install node packages
+npm install
+
+# Start Vite development server
+npm run dev
+```
+> Access the application UI at `http://localhost:5173`.
+
+---
+
+### 🔑 Default Credentials & Test Access
+
+- **Admin Account**: `admin@example.com`
+- **Password**: `AdminPassword123!`
+- **2FA OTP Verification**: Sent directly to user's email inbox upon login request (or logged to backend server console when running in test/mock mode).
+
+---
+
+### ⚙️ Data Seeding & Performance Benchmarks
+
+#### Seed Default Template Library
+Seed default templates across categories (emergency, awareness, healthcare, education):
 ```powershell
 $env:PYTHONPATH="backend"; .\venv\Scripts\python -m app.seed_all_templates
 ```
 
-### Seeding Performance Datasets
-To load 5,000 recipient records into the database:
+#### Seed 5,000 Recipient Performance Dataset
+Load 5,000 recipient records to benchmark campaign dispatch performance:
 ```powershell
 $env:PYTHONPATH="backend"; .\venv\Scripts\python backend/app/seed_performance.py
 ```
 
-### Run Integration Tests
-From the root folder:
+#### Execute Unit & Integration Test Suite
+Run the comprehensive `pytest` test suite:
 ```powershell
 $env:PYTHONPATH="backend"; .\venv\Scripts\pytest backend\tests\
 ```
 
 ---
 
-## 🐳 Docker Deployment (One-Command Setup)
+## 🗺️ Product Roadmap & Enterprise Features
 
-Run the entire platform with one command using Docker Compose:
-
-1. From the project root:
-   ```bash
-   docker-compose up --build
-   ```
-2. Access services at:
-   - **Frontend UI**: `http://localhost:5173`
-   - **Backend OpenAPI Swagger Docs**: `http://localhost:8001/docs`
+- [x] **Milestone 1**: Core platform architecture, JWT authentication, simulated 2FA OTP, dynamic audience segmentation, template management, campaign wizard, and maker-checker approval queue.
+- [x] **Milestone 2**: 23-language Neural Indic Speech Engine, AI Visual Poster Studio with binary streaming, real-time WebSocket staff chat, district sentiment map, and RAG citizen support desk.
+- [ ] **Milestone 3**: IVR Automated Voice Calling integration for low-literacy rural emergency broadcasts.
+- [ ] **Milestone 4**: Social Media Auto-Publishing (X/Twitter, Facebook, LinkedIn API gateways).
+- [ ] **Milestone 5**: Enterprise Multi-Tenant White-Labeling with custom domain routing.
 
 ---
 
-## 🏃 Local Setup & Launch Instructions (Manual)
+## 📜 License & Acknowledgements
 
-### 1. Run Backend Services
-```powershell
-cd backend
-.\venv\Scripts\activate
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
-```
-- Swagger documentation: `http://127.0.0.1:8001/docs`
-
-### 2. Run Frontend Services
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-- Frontend UI: `http://localhost:5173`
-- **Admin login**: `admin@example.com` / `AdminPassword123!` (OTP code: `123456`)
+This project is licensed under the **MIT License**. Built with passion using FastAPI, React, Groq AI, Microsoft Edge-TTS, and Google Translate.

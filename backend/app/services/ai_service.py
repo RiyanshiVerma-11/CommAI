@@ -19,7 +19,7 @@ PLATFORM_KNOWLEDGE = """
 === CommAI Platform Reference (Authoritative) ===
 
 CommAI is a government mass communication platform that enables organizations to broadcast campaigns 
-and public alerts in 22 official Indian languages across Email, SMS, WhatsApp, Telegram, Push Notifications, 
+and public alerts in 23 languages (the 22 Official Scheduled Languages of India + English) across Email, SMS, WhatsApp, Telegram, Push Notifications, 
 and Web Broadcasts.
 
 There are THREE user roles with different permissions and UI layouts:
@@ -894,7 +894,7 @@ def _get_offline_chat_reply(message: str, user_role: str = "general") -> str:
         )
 
     if "language" in msg_lower or "translate" in msg_lower or "translation" in msg_lower:
-        return "CommAI supports 22 official Indian languages with instant AI translation."
+        return "CommAI supports 23 languages (the 22 Official Scheduled Languages of India + English) with instant AI translation."
 
     if "bulletin" in msg_lower or "notice" in msg_lower or "announcement" in msg_lower:
         return "Official announcements and emergency warnings appear on the 'Live Bulletins' feed accessible from the sidebar."

@@ -730,8 +730,6 @@ function App() {
         backendUrl={BACKEND_URL} 
         onBackToLanding={() => setView('landing')}
         initialRegister={viewRegister}
-        theme={theme}
-        toggleTheme={toggleTheme}
       />
     );
   }

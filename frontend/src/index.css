@@ -2626,12 +2626,16 @@ input[type=range]::-webkit-slider-runnable-track {
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18) !important;
 }
 
-.select-input option {
+.select-input option,
+.form-control option,
+select option {
   background: #1e293b !important;
   color: #f8fafc !important;
 }
 
-.light-theme .select-input option {
+.light-theme .select-input option,
+.light-theme .form-control option,
+.light-theme select option {
   background: #ffffff !important;
   color: #0f172a !important;
 }

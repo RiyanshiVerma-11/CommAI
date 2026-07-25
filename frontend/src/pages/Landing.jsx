@@ -494,7 +494,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             </h1>
 
             <p style={{ fontSize:'1.15rem', color:T.textSec, lineHeight:1.68, marginBottom:40, maxWidth:520 }}>
-              CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, WhatsApp, SMS, and Push in 22 Indian languages.
+              CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, WhatsApp, SMS, and Push in 23 languages (22 Scheduled Indic + English).
             </p>
 
             <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:56 }}>
@@ -518,7 +518,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
               {[
                 { value: sentCount.toLocaleString(), label: 'Sent', color: T.blue },
                 { value: '98.9%',  label: 'Success',  color: T.green },
-                { value: '22',     label: 'Languages',      color: T.amber },
+                { value: '23',     label: 'Languages',      color: T.amber },
                 { value: '5',      label: 'Channels',       color: '#7c3aed' },
               ].map((s, i) => (
                 <div key={s.label} style={{ flex:1, paddingRight:24, borderRight: i < 3 ? `1px solid ${T.border}` : 'none', marginRight:24 }}>
@@ -734,7 +734,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
               Demystifying the CommAI Translation Engine
             </h2>
             <p style={{ color: T.textSec, fontSize: '1.05rem', lineHeight: 1.68, marginBottom: 24 }}>
-              Outreach campaigns are only effective if they resonate locally. CommAI combines state-of-the-art Large Language Models (LLMs) with specialized grammatical and cultural rules to preserve the exact context and tone across 22 Scheduled Indian Languages.
+              Outreach campaigns are only effective if they resonate locally. CommAI combines state-of-the-art Large Language Models (LLMs) with specialized grammatical and cultural rules to preserve the exact context and tone across 23 languages (22 Scheduled Indian Languages + English).
             </p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1390,7 +1390,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>CommAI</span>
               </button>
               <p style={{ color: '#ffffff', fontSize: '0.86rem', lineHeight: 1.6, marginBottom: 20 }}>
-                Unified mass communication platform for e-governance agencies and NGOs. Deploy alerts, advisories, and surveys in 22 regional languages.
+                Unified mass communication platform for e-governance agencies and NGOs. Deploy alerts, advisories, and surveys in 23 regional languages (22 Scheduled Indic + English).
               </p>
               {/* Service status */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 20, padding: '4px 12px' }}>

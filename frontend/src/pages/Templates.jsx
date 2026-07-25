@@ -98,7 +98,7 @@ const Templates = ({ user, backendUrl, headers }) => {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Translate task failed');
-      alert('Background translation started for all 22 official languages! It will complete shortly.');
+      alert('Background translation started for all 23 supported languages! It will complete shortly.');
       fetchTemplates();
     } catch (err) {
       alert('Error triggering translations: ' + err.message);
@@ -1082,7 +1082,7 @@ const Templates = ({ user, backendUrl, headers }) => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '16px' }}>
                 {editId && (
                   <button type="button" className="btn btn-dark" style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => handleTranslateAll(editId)}>
-                    <span>🌐 Auto-Translate (22 Languages)</span>
+                    <span>🌐 Auto-Translate (23 Languages)</span>
                   </button>
                 )}
                 <button type="button" className="btn btn-dark" onClick={() => setEditorOpen(false)}>

@@ -160,7 +160,7 @@ def populate_knowledge_base(db):
         "A: Go to 'Campaign Feedback' in the sidebar -> click the '📬 Received Campaigns' tab -> find the campaign and click 'Give Feedback' to submit a 1 to 5 star rating and comments.",
 
         "Q: What multi-language features are supported?\n"
-        "A: CommAI supports 22 official Indian languages including Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Assamese, and more with instant AI translation.",
+        "A: CommAI supports 23 languages (the 22 Official Scheduled Languages of India + English: Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Assamese, Urdu, English, and more) with instant AI translation.",
 
         "Q: How does audience segmentation work for campaign managers?\n"
         "A: Campaign managers can segment citizens by location (state, district, city), age group, occupation (farmers, students, healthcare workers), and language preferences using structured filters or AI natural language queries.",

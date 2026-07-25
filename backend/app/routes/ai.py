@@ -200,6 +200,7 @@ def ai_check_compliance(
 class PlanRequest(BaseModel):
     prompt: str
     category: Optional[str] = "awareness_drive"
+    target_language: Optional[str] = None
 
     @validator("prompt")
     def prompt_not_empty(cls, v):
@@ -227,6 +228,7 @@ def ai_plan_campaign(
     result = plan_complete_campaign(
         brief=request.prompt,
         category_hint=request.category,
+        target_language=request.target_language,
     )
     return result
 

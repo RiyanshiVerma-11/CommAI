@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
@@ -32,22 +33,12 @@ def test_operator_chat_access_control():
         app.dependency_overrides[get_db] = override_get_db
 
     try:
-        # Seed test users if missing
-        admin = db.query(User).filter(User.role == "admin").first()
-        if not admin:
-            admin = User(email="admin_op@example.test", hashed_password=get_password_hash("pass"), full_name="Admin Op", role="admin", is_active=True)
-            db.add(admin)
+        uid = str(uuid.uuid4())[:8]
+        admin = User(email=f"admin_op_{uid}@example.test", hashed_password=get_password_hash("pass"), full_name="Admin Op", role="admin", is_active=True)
+        manager = User(email=f"mgr_op_{uid}@example.test", hashed_password=get_password_hash("pass"), full_name="Manager Op", role="campaign_manager", is_active=True)
+        audience = User(email=f"aud_op_{uid}@example.test", hashed_password=get_password_hash("pass"), full_name="Audience Op", role="audience", is_active=True)
 
-        manager = db.query(User).filter(User.role == "campaign_manager").first()
-        if not manager:
-            manager = User(email="mgr_op@example.test", hashed_password=get_password_hash("pass"), full_name="Manager Op", role="campaign_manager", is_active=True)
-            db.add(manager)
-
-        audience = db.query(User).filter(User.role == "audience").first()
-        if not audience:
-            audience = User(email="aud_op@example.test", hashed_password=get_password_hash("pass"), full_name="Audience Op", role="audience", is_active=True)
-            db.add(audience)
-
+        db.add_all([admin, manager, audience])
         db.commit()
         db.refresh(admin)
         db.refresh(manager)

@@ -1,23 +1,30 @@
 """
-Indic AI Voice Bulletin Service — Speech Synthesis & Indic Language Engine.
+Indic AI Voice Bulletin Service & Twilio Outbound Voice Call Service.
 
-Supports 22 official scheduled Indian languages + English (23 total).
-Uses gTTS (Google Text-to-Speech) for natural spoken audio bulletins
-and caches synthesized MP3 files for zero-latency streaming.
+Provides:
+1. Speech Synthesis & Indic Language Engine (22 scheduled Indian languages + English via gTTS / Edge-TTS).
+2. Outbound Emergency Voice Calls via Twilio Voice REST API & TwiML.
 """
 
 import os
 import io
+import re
 import hashlib
 import logging
+import requests
+import xml.etree.ElementTree as ET
 from typing import Tuple, Dict, Any, List
 from gtts import gTTS
+from dotenv import load_dotenv, find_dotenv
 
 from app.services.translation_service import translate_text
 from app.config import settings
 
 logger = logging.getLogger("commai.voice")
 
+# ---------------------------------------------------------------------------
+# 1. INDIC AI VOICE BULLETIN ENGINE (gTTS / Edge-TTS)
+# ---------------------------------------------------------------------------
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "audio_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -113,11 +120,6 @@ def synthesize_voice_bulletin(
     """
     Synthesize spoken audio for a bulletin text.
     
-    1. Resolves target language code and gender (male/female).
-    2. Translates text to target language if required.
-    3. Synthesizes MP3 speech audio via Edge-TTS (Neural Male/Female) or gTTS fallback.
-    4. Caches file in static/audio_cache.
-    
     Returns: (audio_filename, translated_text, resolved_lang_code)
     """
     if not text or not text.strip():
@@ -128,7 +130,6 @@ def synthesize_voice_bulletin(
     lang_info = SUPPORTED_LANGUAGES.get(lang_code, SUPPORTED_LANGUAGES["hi"])
     gtts_lang = lang_info["gtts_code"]
 
-    # Translate text if target language is different from source
     translated_text = text
     if lang_code != source_lang and lang_code != "en":
         try:
@@ -138,23 +139,19 @@ def synthesize_voice_bulletin(
         except Exception as e:
             logger.warning(f"[VOICE] Translation error: {e}")
 
-    # Generate cache key based on translated text, language, gender & speed
     text_hash = hashlib.md5(f"{translated_text}_{lang_code}_{clean_gender}_{slow}".encode("utf-8")).hexdigest()
     filename = f"bulletin_{lang_code}_{clean_gender}_{text_hash[:12]}.mp3"
     filepath = os.path.join(CACHE_DIR, filename)
 
-    # Return cached audio file if present
     if not os.path.exists(filepath):
         logger.info(f"[VOICE] Synthesizing speech for language '{lang_info['name']}' ({lang_code}, {clean_gender})...")
         success = False
         
-        # Try Neural Edge-TTS if model is available for this language
         if lang_code in INDIC_NEURAL_VOICES:
             voice_pair = INDIC_NEURAL_VOICES[lang_code]
             voice_name = voice_pair.get(clean_gender, voice_pair["male"])
             success = _synthesize_edge_tts(translated_text, voice_name, filepath)
 
-        # Fallback to gTTS if Edge-TTS is not available or failed
         if not success:
             try:
                 tts = gTTS(text=translated_text, lang=gtts_lang, slow=slow)
@@ -168,4 +165,124 @@ def synthesize_voice_bulletin(
     return filename, translated_text, lang_code
 
 
+# ---------------------------------------------------------------------------
+# 2. TWILIO OUTBOUND EMERGENCY VOICE CALL SERVICE
+# ---------------------------------------------------------------------------
+def clean_phone_number(phone: str) -> str:
+    """Format raw phone string into clean digit format with country code."""
+    if not phone:
+        return ""
+    digits = re.sub(r"\D", "", str(phone))
+    if len(digits) == 10:
+        return "91" + digits
+    return digits
 
+
+def get_voice_language_config(lang: str = "Hindi") -> Tuple[str, str]:
+    """
+    Map target language name to Twilio TTS Voice & Language specifiers.
+    Returns (voice_name, language_code).
+    """
+    lang_lower = (lang or "").strip().lower()
+
+    if any(k in lang_lower for k in ["hindi", "hi"]):
+        return "Polly.Aditi", "hi-IN"
+    elif any(k in lang_lower for k in ["tamil", "ta"]):
+        return "Polly.Aditi", "ta-IN"
+    elif any(k in lang_lower for k in ["telugu", "te"]):
+        return "Polly.Aditi", "te-IN"
+    elif any(k in lang_lower for k in ["marathi", "mr"]):
+        return "Polly.Aditi", "mr-IN"
+    elif any(k in lang_lower for k in ["bengali", "bn"]):
+        return "Polly.Aditi", "bn-IN"
+    elif any(k in lang_lower for k in ["gujarati", "gu"]):
+        return "Polly.Aditi", "gu-IN"
+    elif any(k in lang_lower for k in ["kannada", "kn"]):
+        return "Polly.Aditi", "kn-IN"
+    elif any(k in lang_lower for k in ["malayalam", "ml"]):
+        return "Polly.Aditi", "ml-IN"
+    else:
+        return "Polly.Raveena", "en-IN"
+
+
+def generate_twiml(message: str, lang: str = "Hindi") -> str:
+    """
+    Generate TwiML XML instructions for Twilio Text-to-Speech playback.
+    """
+    voice, lang_code = get_voice_language_config(lang)
+    
+    clean_msg = (
+        message.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
+    twiml = (
+        f'<?xml version="1.0" encoding="UTF-8"?>'
+        f'<Response>'
+        f'<Pause length="1"/>'
+        f'<Say voice="{voice}" language="{lang_code}">{clean_msg}</Say>'
+        f'<Pause length="1"/>'
+        f'<Say voice="{voice}" language="{lang_code}">Thank you for listening. Goodbye.</Say>'
+        f'</Response>'
+    )
+    return twiml
+
+
+def send_voice_call(to_phone: str, message: str, lang: str = "Hindi") -> Tuple[bool, str]:
+    """
+    Dispatch an outbound Twilio Voice call using Text-to-Speech playback.
+    """
+    load_dotenv(find_dotenv(), override=True)
+
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID") or getattr(settings, "TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN") or getattr(settings, "TWILIO_AUTH_TOKEN", "")
+    twilio_phone = os.getenv("TWILIO_PHONE_NUMBER") or getattr(settings, "TWILIO_PHONE_NUMBER", "")
+
+    if not twilio_sid or not twilio_token or not twilio_phone:
+        logger.warning("[VOICE] Twilio credentials not configured. Returning mock call status.")
+        logger.info(f"[VOICE MOCK] To: {to_phone} | Language: {lang} | Message: {message[:80]}...")
+        return True, "delivered_mock"
+
+    clean_digits = clean_phone_number(to_phone)
+    if not clean_digits:
+        return False, "Invalid phone number format"
+
+    formatted_to = "+" + clean_digits
+    formatted_from = twilio_phone if twilio_phone.startswith("+") else "+" + twilio_phone
+
+    twiml_payload = generate_twiml(message, lang)
+
+    try:
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Calls.json"
+        payload = {
+            "To": formatted_to,
+            "From": formatted_from,
+            "Twiml": twiml_payload
+        }
+
+        logger.info(f"[VOICE] Placing Twilio Voice call to {formatted_to} ({lang})...")
+        resp = requests.post(url, data=payload, auth=(twilio_sid, twilio_token), timeout=12)
+
+        if resp.status_code in [200, 201]:
+            res_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
+            call_sid = res_data.get("sid", "N/A")
+            logger.info(f"[VOICE] Outbound call placed successfully! Call SID: {call_sid}")
+            return True, ""
+        else:
+            err_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
+            err_code = err_data.get("code")
+            err_msg = err_data.get("message", f"HTTP {resp.status_code}: {resp.text}")
+
+            if err_code == 21608:
+                logger.warning(f"[VOICE TRIAL LIMIT] Recipient {formatted_to} is unverified in Twilio Trial account.")
+                return True, "trial_unverified"
+
+            logger.warning(f"[VOICE] Twilio Voice call failed ({err_code}): {err_msg}")
+            return False, err_msg
+
+    except Exception as ex:
+        logger.error(f"[VOICE] Exception while dispatching voice call: {ex}")
+        return False, str(ex)

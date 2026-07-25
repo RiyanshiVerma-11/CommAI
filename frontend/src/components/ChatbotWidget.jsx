@@ -1,16 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const ChatbotWidget = ({ user, backendUrl, token }) => {
+const INDIAN_SPEECH_LANGUAGES = [
+  { code: 'hi-IN', label: '🇮🇳 Hindi (हिंदी)' },
+  { code: 'en-IN', label: '🇬🇧 English (India)' },
+  { code: 'ta-IN', label: '🇮🇳 Tamil (தமிழ்)' },
+  { code: 'te-IN', label: '🇮🇳 Telugu (తెలుగు)' },
+  { code: 'mr-IN', label: '🇮🇳 Marathi (मराठी)' },
+  { code: 'bn-IN', label: '🇮🇳 Bengali (বাংলা)' },
+  { code: 'gu-IN', label: '🇮🇳 Gujarati (ગુજરાતી)' },
+  { code: 'kn-IN', label: '🇮🇳 Kannada (કન્નડ)' },
+  { code: 'ml-IN', label: '🇮🇳 Malayalam (മലയാളം)' },
+  { code: 'pa-IN', label: '🇮🇳 Punjabi (ਪੰਜਾਬੀ)' },
+  { code: 'or-IN', label: '🇮🇳 Odia (ଓଡ଼ିଆ)' },
+  { code: 'ur-IN', label: '🇮🇳 Urdu (اردو)' },
+  { code: 'as-IN', label: '🇮🇳 Assamese (অসমীয়া)' }
+];
+
+const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hello! I'm your CommAI Assistant. Ask me anything!",
+      content: "Hello! I'm your CommAI Assistant. Ask me anything or speak to create campaigns!",
       timestamp: new Date(),
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Voice Recognition & Speech Synthesis states
+  const [isListening, setIsListening] = useState(false);
+  const [speechLang, setSpeechLang] = useState(() => localStorage.getItem('comm_speech_lang') || 'en-IN');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const handleSpeechLangChange = (code) => {
+    setSpeechLang(code);
+    localStorage.setItem('comm_speech_lang', code);
+  };
   
   // Escalation state
   const [showEscalateForm, setShowEscalateForm] = useState(false);
@@ -31,8 +58,8 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
       const isAudience = user.role === 'audience';
       const displayName = user.full_name || (user.role === 'admin' ? 'System Administrator' : user.role === 'manager' ? 'Campaign Manager' : 'there');
       const initialGreeting = isAudience
-        ? `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, sharing feedback, or seeking assistance!`
-        : `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about creating campaigns, reaching your audience, translating messages, or navigating the platform!`;
+        ? `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, or seeking assistance!`
+        : `Hello ${displayName}! Click the 🎤 Mic button or speak to me: "Create a flood alert campaign for Varanasi in Hindi" and I will auto-generate it and switch to Campaign Planner in the background!`;
 
       setMessages([
         {
@@ -48,26 +75,152 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
     scrollToBottom();
   }, [messages, loading, showEscalateForm]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  // Voice Playback (SpeechSynthesis)
+  const speakText = (text) => {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const cleanText = text.replace(/[*#_`]/g, '').replace(/\{\{[^}]+\}\}/g, 'recipient');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = speechLang || 'hi-IN';
+      utterance.rate = 1.0;
+      
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
 
-    const userText = inputValue;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error('SpeechSynthesis error:', e);
+      setIsSpeaking(false);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Speech Recognition (Microphone)
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = speechLang;
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setInputValue(transcript);
+        if (event.results[0].isFinal && transcript.trim()) {
+          setIsListening(false);
+          handleProcessUserPrompt(transcript);
+        }
+      };
+
+      recognition.onerror = (e) => {
+        console.warn("Speech recognition error:", e.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error(err);
+      setIsListening(false);
+    }
+  };
+
+  const handleProcessUserPrompt = async (userText) => {
+    if (!userText || !userText.trim()) return;
+
+    const textToSend = userText.trim();
     setInputValue('');
-    
-    // Add user message
-    const updatedMessages = [
-      ...messages,
-      { role: 'user', content: userText, timestamp: new Date() }
+
+    const lower = textToSend.toLowerCase();
+    const creationKeywords = [
+      'create', 'generate', 'build', 'make', 'launch', 'plan', 'design', 'draft', 'new', 'start',
+      'अभियान', 'बनाओ', 'बनाएं', 'तैयार', 'सृजन', 'क्रिएट', 'जेनरेट', 'बिल्ड', 'मेक', 'लॉन्च', 'प्लान', 'ड्राफ्ट', 'नया', 'नये'
     ];
-    setMessages(updatedMessages);
+    const campaignKeywords = [
+      'campaign', 'alert', 'bulletin', 'announcement', 'warning', 'drive', 'notice', 'message', 'flood',
+      'अभियान', 'चेतावनी', 'सूचना', 'अलर्ट', 'कैंपेन', 'कैम्पेन', 'फ्लड', 'बाढ़', 'इमरजेंसी', 'मैसेज', 'वार्निंग', 'नोटिस'
+    ];
+
+    const hasCreationKey = creationKeywords.some(k => textToSend.includes(k) || lower.includes(k));
+    const hasCampaignKey = campaignKeywords.some(k => textToSend.includes(k) || lower.includes(k));
+
+    const isCreateCampaignIntent = (hasCreationKey && hasCampaignKey) || (user?.role !== 'audience' && (hasCreationKey || hasCampaignKey));
+
+    // Check if operator wants auto-campaign generation
+    if (isCreateCampaignIntent && (user?.role === 'admin' || user?.role === 'campaign_manager') && onAutoCreateCampaign) {
+      setLoading(true);
+      setMessages(prev => [...prev, { role: 'user', content: textToSend, timestamp: new Date() }]);
+
+      try {
+        const response = await fetch(`${backendUrl}/api/ai/plan`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prompt: textToSend, category: 'awareness_drive' })
+        });
+        const data = await response.json();
+        if (response.ok && !data.error) {
+          const aiReply = `🚀 I have auto-generated your campaign plan! Navigating you to the Campaign Planner Wizard right now...`;
+          setMessages(prev => [...prev, { role: 'assistant', content: aiReply, timestamp: new Date() }]);
+          speakText("Navigating to Campaign Planner. I have created the campaign draft for you!");
+          
+          setTimeout(() => {
+            onAutoCreateCampaign(data);
+          }, 600);
+        } else {
+          throw new Error(data.detail || data.error || 'Failed to generate campaign');
+        }
+      } catch (err) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `Error creating voice campaign: ${err.message}`, timestamp: new Date() }]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Standard AI Assistant Chat flow
+    setMessages(prev => [...prev, { role: 'user', content: textToSend, timestamp: new Date() }]);
     setLoading(true);
 
     try {
-      // Map history to backend format
-      const history = updatedMessages.slice(0, -1).map(msg => ({
-        role: msg.role,
-        content: msg.content
+      const history = messages.map(m => ({
+        role: m.role,
+        content: m.content
       }));
 
       const res = await fetch(`${backendUrl}/api/ai/chat`, {
@@ -77,8 +230,8 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: userText,
-          history: history.slice(-6) // Send last 6 messages for context
+          message: textToSend,
+          history: history.slice(-6)
         })
       });
 
@@ -89,30 +242,39 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
         ...prev,
         { role: 'assistant', content: data.reply, timestamp: new Date(), showFeedback: true }
       ]);
+
+      // Speak back aloud if user was using mic
+      if (isListening) {
+        speakText(data.reply);
+      }
     } catch (err) {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: "Sorry, I'm having trouble connecting to my service right now. Please try again.", timestamp: new Date() }
+        { role: 'assistant', content: "Sorry, I'm having trouble connecting right now. Please try again.", timestamp: new Date() }
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!inputValue.trim() || loading) return;
+    handleProcessUserPrompt(inputValue);
+  };
+
   const handleQuickAction = (actionText) => {
-    setInputValue(actionText);
+    handleProcessUserPrompt(actionText);
   };
 
   const handleFeedback = (index, satisfied) => {
     setFeedbackGivenIndex(index);
     if (!satisfied) {
-      // Pre-fill the escalation query with the last user prompt and bot response
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
       setEscalateSubject(`Confusion regarding: ${lastUserMsg?.content.slice(0, 40) || 'Platform Help'}...`);
       setEscalateMessage(`User confusion prompt: "${lastUserMsg?.content || ''}"\n\nAI reply was not satisfactory. Please help.`);
       setShowEscalateForm(true);
     } else {
-      // Mark feedback as finished
       setMessages(prev => prev.map((msg, i) => i === index ? { ...msg, showFeedback: false } : msg));
       alert("Thank you for your feedback! Glad I could help.");
     }
@@ -178,7 +340,6 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           transform: isOpen ? 'rotate(180deg) scale(0.95)' : 'scale(1)'
         }}
-        title="Help Chatbot"
       >
         {isOpen ? (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '24px', height: '24px' }}>
@@ -192,268 +353,193 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
         )}
       </button>
 
-      {/* Glassmorphic Chat Window */}
+      {/* Chat Window */}
       {isOpen && (
         <div
-          className="glass-card"
           style={{
             position: 'absolute',
-            bottom: '72px',
-            right: '0',
-            width: '360px',
-            height: '480px',
+            bottom: '70px',
+            right: 0,
+            width: '380px',
+            maxHeight: '580px',
+            height: 'calc(100vh - 120px)',
             borderRadius: '20px',
+            background: 'rgba(15, 20, 32, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--border-color-glass)',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            boxShadow: 'var(--glass-shadow)',
-            border: '1.5px solid #000000',
-            background: 'hsl(var(--bg-card) / 94%)',
-            backdropFilter: 'blur(20px)',
-            animation: 'animate-slide-up 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            color: 'hsl(var(--text-primary))'
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
           {/* Header */}
           <div
             style={{
               padding: '16px 20px',
+              background: 'linear-gradient(90deg, rgba(76, 140, 252, 0.15), rgba(168, 85, 247, 0.15))',
               borderBottom: '1px solid var(--border-color-glass)',
-              background: 'linear-gradient(90deg, rgba(76, 140, 252, 0.1) 0%, rgba(177, 140, 255, 0.05) 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ position: 'relative' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(76, 140, 252, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--primary))' }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}>
-                    <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                </div>
-                <span style={{ position: 'absolute', bottom: 0, right: 0, width: '9px', height: '9px', borderRadius: '50%', backgroundColor: 'hsl(var(--accent))', border: '2px solid hsl(var(--bg-card))' }}></span>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.9rem'
+                }}
+              >
+                🤖
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'hsl(var(--text-primary))' }}>CommAI Assistant</h3>
-                <span style={{ fontSize: '0.72rem', color: 'hsl(var(--accent))', fontWeight: 600 }}>Active Online</span>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'hsl(var(--text-primary))' }}>
+                  CommAI Assistant
+                </h4>
+                <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+                  Online • Voice AI Enabled
+                </span>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', padding: '4px' }}
+            
+            {/* Language Selector Dropdown */}
+            <select
+              value={speechLang}
+              onChange={(e) => handleSpeechLangChange(e.target.value)}
+              title="Select Voice Language"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color-glass)',
+                borderRadius: '8px',
+                padding: '4px 8px',
+                fontSize: '0.75rem',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '18px', height: '18px' }}>
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
+              {INDIAN_SPEECH_LANGUAGES.map(l => (
+                <option key={l.code} value={l.code} style={{ background: '#0f1420', color: '#fff' }}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Scrollable messages area */}
+          {/* Messages Container */}
           <div
             style={{
               flex: 1,
-              padding: '20px',
+              padding: '16px',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px'
+              gap: '12px'
             }}
           >
-            {messages.map((msg, index) => (
-              <div key={index} style={{ display: 'flex', flexDirection: 'column', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                style={{
+                  alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%'
+                }}
+              >
                 <div
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    background: msg.role === 'user' ? 'hsl(var(--primary))' : 'rgba(128, 128, 128, 0.12)',
-                    color: msg.role === 'user' ? '#ffffff' : 'hsl(var(--text-primary))',
-                    fontSize: '0.86rem',
+                    padding: '10px 14px',
+                    borderRadius: msg.role === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                    background: msg.role === 'user'
+                      ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, #3b82f6 100%)'
+                      : 'rgba(255, 255, 255, 0.06)',
+                    color: 'hsl(var(--text-primary))',
+                    fontSize: '0.85rem',
                     lineHeight: '1.4',
                     border: msg.role === 'user' ? 'none' : '1px solid var(--border-color-glass)',
-                    boxShadow: msg.role === 'user' ? '0 4px 12px rgba(76, 140, 252, 0.15)' : 'none'
+                    boxShadow: msg.role === 'user' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
                   }}
                 >
                   {msg.content}
                 </div>
                 
-                {/* Feedback satisfaction block */}
-                {msg.role === 'assistant' && msg.showFeedback && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))' }}>Was this helpful?</span>
+                {/* Speaker TTS Icon */}
+                {msg.role === 'assistant' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', paddingLeft: '4px' }}>
                     <button
-                      onClick={() => handleFeedback(index, true)}
+                      type="button"
+                      onClick={() => isSpeaking ? stopSpeaking() : speakText(msg.content)}
                       style={{
-                        padding: '3px 8px',
-                        fontSize: '0.72rem',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color-glass)',
-                        background: 'rgba(34, 197, 94, 0.08)',
-                        color: 'hsl(var(--accent))',
+                        background: 'none',
+                        border: 'none',
+                        color: 'hsl(var(--text-muted))',
+                        fontSize: '0.75rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '3px'
+                        gap: '4px'
                       }}
+                      title="Read response aloud"
                     >
-                      👍 Yes
+                      {isSpeaking ? '🔊 Speaking...' : '🔈 Read aloud'}
                     </button>
-                    <button
-                      onClick={() => handleFeedback(index, false)}
-                      style={{
-                        padding: '3px 8px',
-                        fontSize: '0.72rem',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color-glass)',
-                        background: 'rgba(239, 68, 68, 0.08)',
-                        color: 'hsl(var(--danger))',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px'
-                      }}
-                    >
-                      👎 No
-                    </button>
+
+                    {msg.showFeedback && (
+                      <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
+                        Helpful? 
+                        <button onClick={() => handleFeedback(idx, true)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px' }}>👍</button>
+                        <button onClick={() => handleFeedback(idx, false)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '2px' }}>👎</button>
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
             ))}
 
             {loading && (
-              <div style={{ alignSelf: 'flex-start', display: 'flex', gap: '4px', padding: '12px 16px', borderRadius: '18px', background: 'rgba(128, 128, 128, 0.12)', border: '1px solid var(--border-color-glass)' }}>
-                <span className="dot" style={{ width: '6px', height: '6px', backgroundColor: 'hsl(var(--text-muted))', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.4s infinite' }}></span>
-                <span className="dot" style={{ width: '6px', height: '6px', backgroundColor: 'hsl(var(--text-muted))', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.4s infinite 0.2s' }}></span>
-                <span className="dot" style={{ width: '6px', height: '6px', backgroundColor: 'hsl(var(--text-muted))', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.4s infinite 0.4s' }}></span>
+              <div style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.06)', padding: '10px 14px', borderRadius: '16px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+                🤖 Processing voice intent...
               </div>
             )}
 
-            {/* Quick Actions Suggestions */}
-            {messages.length === 1 && !loading && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'hsl(var(--text-muted))' }}>Quick Actions:</span>
-                {(user?.role === 'audience'
-                  ? [
-                      "How do I submit an emergency request?",
-                      "How do I share feedback on a campaign?",
-                      "How do I update my language preferences?"
-                    ]
-                  : [
-                      "How do I create a new campaign?",
-                      "What channels does CommAI support?",
-                      "How does audience segmentation work?"
-                    ]
-                ).map((act, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleQuickAction(act)}
-                    style={{
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      background: 'hsl(var(--primary) / 4%)',
-                      border: '1px solid hsl(var(--primary) / 15%)',
-                      color: 'hsl(var(--primary))',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                      outline: 'none'
-                    }}
-                    onMouseOver={(e) => e.target.style.background = 'hsl(var(--primary) / 8%)'}
-                    onMouseOut={(e) => e.target.style.background = 'hsl(var(--primary) / 4%)'}
-                  >
-                    💡 {act}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Support query escalation form */}
+            {/* Escalation Form */}
             {showEscalateForm && (
-              <div
-                className="glass-card animate-fade-in"
-                style={{
-                  padding: '16px',
-                  borderRadius: '14px',
-                  background: 'rgba(239, 68, 68, 0.03)',
-                  border: '1px solid rgba(239, 68, 68, 0.15)',
-                  marginTop: '10px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'hsl(var(--danger))' }}>Escalate Support Request</h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowEscalateForm(false)}
-                    style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', fontSize: '0.8rem' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                
+              <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '12px', marginTop: '8px' }}>
+                <h5 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'hsl(var(--danger))' }}>Escalate Query to Manager</h5>
                 {escalationSuccess ? (
-                  <div style={{ color: 'hsl(var(--accent))', fontSize: '0.82rem', fontWeight: 600 }}>
-                    ✓ Escalation submitted. Campaign managers have been notified!
-                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#22c55e' }}>✓ Support query submitted!</div>
                 ) : (
-                  <form onSubmit={handleEscalationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>Subject</label>
-                      <input
-                        type="text"
-                        value={escalateSubject}
-                        onChange={(e) => setEscalateSubject(e.target.value)}
-                        required
-                        minLength={5}
-                        placeholder="Brief summary of confusion..."
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--input-border)',
-                          background: 'var(--input-bg)',
-                          color: 'hsl(var(--text-primary))',
-                          fontSize: '0.8rem'
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>Details</label>
-                      <textarea
-                        value={escalateMessage}
-                        onChange={(e) => setEscalateMessage(e.target.value)}
-                        required
-                        minLength={10}
-                        rows={3}
-                        placeholder="Provide details about the issue..."
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--input-border)',
-                          background: 'var(--input-bg)',
-                          color: 'hsl(var(--text-primary))',
-                          fontSize: '0.8rem',
-                          resize: 'none'
-                        }}
-                      />
-                    </div>
+                  <form onSubmit={handleEscalationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Subject"
+                      value={escalateSubject}
+                      onChange={(e) => setEscalateSubject(e.target.value)}
+                      required
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: '#fff', fontSize: '0.8rem' }}
+                    />
+                    <textarea
+                      placeholder="Explain what was confusing..."
+                      value={escalateMessage}
+                      onChange={(e) => setEscalateMessage(e.target.value)}
+                      required
+                      rows={2}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: '#fff', fontSize: '0.8rem', resize: 'none' }}
+                    />
                     <button
                       type="submit"
                       disabled={escalating}
-                      style={{
-                        padding: '10px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, hsl(var(--danger)) 0%, #b91c1c 100%)',
-                        border: 'none',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                      }}
+                      style={{ padding: '6px 12px', borderRadius: '6px', background: 'hsl(var(--danger))', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
                     >
-                      {escalating ? 'Submitting query...' : '✉ Send to Campaign Manager'}
+                      {escalating ? 'Submitting...' : '✉ Send to Manager'}
                     </button>
                   </form>
                 )}
@@ -463,30 +549,65 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Actions (Manager Role) */}
+          {(user?.role === 'admin' || user?.role === 'campaign_manager') && messages.length <= 2 && (
+            <div style={{ padding: '0 16px 8px 16px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+              <button
+                onClick={() => handleQuickAction("Create an emergency flood alert campaign for Varanasi in Hindi")}
+                style={{ background: 'rgba(76, 140, 252, 0.12)', border: '1px solid rgba(76, 140, 252, 0.3)', color: '#60a5fa', padding: '4px 8px', borderRadius: '12px', fontSize: '0.72rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+              >
+                🎙️ Auto-Create Flood Alert (Hindi)
+              </button>
+            </div>
+          )}
+
           {/* Input Form at bottom */}
           {!showEscalateForm && (
             <form
               onSubmit={handleSend}
               style={{
-                padding: '14px 20px',
+                padding: '12px 16px',
                 borderTop: '1px solid var(--border-color-glass)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                background: 'rgba(8, 10, 15, 0.1)'
+                gap: '8px',
+                background: 'rgba(8, 10, 15, 0.2)'
               }}
             >
+              {/* Voice Microphone Button */}
+              <button
+                type="button"
+                onClick={startListening}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: isListening ? '#ef4444' : 'rgba(255, 255, 255, 0.1)',
+                  border: isListening ? '2px solid #f87171' : '1px solid var(--border-color-glass)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isListening ? '#ffffff' : 'hsl(var(--primary))',
+                  transition: 'all 0.2s',
+                  boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.6)' : 'none'
+                }}
+                title={isListening ? "Listening... Click to stop" : "Click to speak your campaign instruction"}
+              >
+                🎙️
+              </button>
+
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about CommAI..."
+                placeholder={isListening ? "Listening to your voice..." : "Ask or speak: 'Create campaign...'"}
                 disabled={loading}
                 style={{
                   flex: 1,
-                  padding: '10px 14px',
+                  padding: '10px 12px',
                   borderRadius: '12px',
-                  border: '1px solid var(--input-border)',
+                  border: isListening ? '1px solid #ef4444' : '1px solid var(--input-border)',
                   background: 'var(--input-bg)',
                   color: 'hsl(var(--text-primary))',
                   fontSize: '0.85rem',
@@ -494,6 +615,7 @@ const ChatbotWidget = ({ user, backendUrl, token }) => {
                   transition: 'border-color 0.2s'
                 }}
               />
+
               <button
                 type="submit"
                 disabled={loading || !inputValue.trim()}

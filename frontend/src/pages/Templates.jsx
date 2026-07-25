@@ -56,7 +56,7 @@ const Templates = ({ user, backendUrl, headers }) => {
 
   const languages = ["English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"];
   const categories = ["emergency", "awareness", "education", "announcement"];
-  const channels = ["email", "sms", "whatsapp", "push", "website", "telegram"];
+  const channels = ["email", "sms", "voice", "whatsapp", "push", "website", "telegram"];
   
   const placeholders = [
     { label: 'Recipient Name', tag: '{{first_name}}' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
 
-const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData }) => {
+const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData, initialVoicePlan, clearInitialVoicePlan }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'create'
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -124,6 +124,29 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   const [refineLoading, setRefineLoading] = useState(false);
   const [coPilotSelectedLang, setCoPilotSelectedLang] = useState('Hindi');
 
+  const INDIAN_SPEECH_LANGUAGES = [
+    { code: 'en-IN', label: '🇬🇧 English (India)' },
+    { code: 'hi-IN', label: '🇮🇳 Hindi (हिंदी)' },
+    { code: 'ta-IN', label: '🇮🇳 Tamil (தமிழ்)' },
+    { code: 'te-IN', label: '🇮🇳 Telugu (తెలుగు)' },
+    { code: 'mr-IN', label: '🇮🇳 Marathi (मराठी)' },
+    { code: 'bn-IN', label: '🇮🇳 Bengali (বাংলা)' },
+    { code: 'gu-IN', label: '🇮🇳 Gujarati (ગુજરાતી)' },
+    { code: 'kn-IN', label: '🇮🇳 Kannada (ಕನ್ನಡ)' },
+    { code: 'ml-IN', label: '🇮🇳 Malayalam (മലയാളം)' },
+    { code: 'pa-IN', label: '🇮🇳 Punjabi (ਪੰਜਾਬੀ)' },
+    { code: 'or-IN', label: '🇮🇳 Odia (ଓଡ଼ିଆ)' },
+    { code: 'ur-IN', label: '🇮🇳 Urdu (اردو)' },
+    { code: 'as-IN', label: '🇮🇳 Assamese (অসমীয়া)' }
+  ];
+
+  const [coPilotLang, setCoPilotLang] = useState(() => localStorage.getItem('comm_speech_lang') || 'en-IN');
+
+  const handleSpeechLangChange = (langCode) => {
+    setCoPilotLang(langCode);
+    localStorage.setItem('comm_speech_lang', langCode);
+  };
+
   const ALL_LANGUAGES = [
     "English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", 
     "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", 
@@ -142,6 +165,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   const applyAiPlanToForm = (plan) => {
     setCurrentAiPlan(plan);
+    setStep(1);
     if (plan.campaign) {
       if (plan.campaign.title) setFormTitle(plan.campaign.title);
       if (plan.campaign.objective) setFormObjective(plan.campaign.objective);
@@ -157,10 +181,44 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       if (plan.message.body) setCustomBody(plan.message.body);
       setSelectedTplId('custom');
     }
+    if (segments && segments.length > 0) {
+      setSelectedSegId(segments[0].id);
+    }
   };
 
-  const handleGenerateCampaignPlan = async () => {
-    if (!coPilotPrompt.trim()) return;
+  useEffect(() => {
+    if (initialVoicePlan) {
+      setViewMode('create');
+      applyAiPlanToForm(initialVoicePlan);
+      if (clearInitialVoicePlan) clearInitialVoicePlan();
+    }
+  }, [initialVoicePlan, clearInitialVoicePlan]);
+
+  const [coPilotListening, setCoPilotListening] = useState(false);
+  const coPilotRecognitionRef = useRef(null);
+
+  const getLangNameFromCode = (code) => {
+    const map = {
+      'en-IN': 'English',
+      'hi-IN': 'Hindi',
+      'ta-IN': 'Tamil',
+      'te-IN': 'Telugu',
+      'mr-IN': 'Marathi',
+      'bn-IN': 'Bengali',
+      'gu-IN': 'Gujarati',
+      'kn-IN': 'Kannada',
+      'ml-IN': 'Malayalam',
+      'pa-IN': 'Punjabi',
+      'or-IN': 'Odia',
+      'ur-IN': 'Urdu',
+      'as-IN': 'Assamese'
+    };
+    return map[code] || 'English';
+  };
+
+  const handleGenerateCampaignPlan = async (overridePrompt) => {
+    const promptToUse = (typeof overridePrompt === 'string' && overridePrompt.trim()) ? overridePrompt.trim() : coPilotPrompt.trim();
+    if (!promptToUse) return;
     setCoPilotLoading(true);
     setCoPilotError('');
     try {
@@ -168,8 +226,9 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: coPilotPrompt,
-          category: coPilotCategory
+          prompt: promptToUse,
+          category: coPilotCategory,
+          target_language: getLangNameFromCode(coPilotLang)
         })
       });
       const data = await response.json();
@@ -178,7 +237,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
       setCoPilotHistory(prev => [
         {
-          brief: coPilotPrompt,
+          brief: promptToUse,
           category: coPilotCategory,
           plan: data,
           timestamp: new Date().toISOString()
@@ -188,10 +247,51 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
       applyAiPlanToForm(data);
     } catch (err) {
-      console.error(err);
       setCoPilotError(err.message);
     } finally {
       setCoPilotLoading(false);
+    }
+  };
+
+  const startCoPilotListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+
+    if (coPilotListening && coPilotRecognitionRef.current) {
+      try { coPilotRecognitionRef.current.stop(); } catch (e) {}
+      setCoPilotListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN'; // Transcribe spoken voice cleanly into English text
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      recognition.onstart = () => setCoPilotListening(true);
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setCoPilotPrompt(transcript);
+        if (event.results[0].isFinal && transcript.trim()) {
+          setCoPilotListening(false);
+          handleGenerateCampaignPlan(transcript);
+        }
+      };
+      recognition.onerror = () => setCoPilotListening(false);
+      recognition.onend = () => setCoPilotListening(false);
+
+      coPilotRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error(err);
+      setCoPilotListening(false);
     }
   };
 
@@ -230,7 +330,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     { value: 'organizational_announcement', label: 'Organizational Announcement' }
   ];
 
-  const channelsList = ["email", "sms", "whatsapp", "push", "website", "telegram"];
+  const channelsList = ["email", "sms", "whatsapp", "push", "website", "telegram", "voice"];
 
   const aiTones = [
     { value: 'formal', label: 'Formal' },
@@ -1618,11 +1718,61 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600 }}>Describe what you want to communicate (2-3 sentences) *</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 600, marginBottom: 0 }}>
+                            Describe what you want to communicate (2-3 sentences) *
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <select
+                              value={coPilotLang}
+                              onChange={(e) => handleSpeechLangChange(e.target.value)}
+                              title="Select Voice Speech Language"
+                              style={{
+                                background: 'rgba(255,255,255,0.08)',
+                                color: 'var(--text-primary)',
+                                border: '1px solid var(--border-color-glass)',
+                                borderRadius: '8px',
+                                padding: '3px 8px',
+                                fontSize: '0.75rem',
+                                outline: 'none',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {INDIAN_SPEECH_LANGUAGES.map(l => (
+                                <option key={l.code} value={l.code} style={{ background: '#0f1420', color: '#fff' }}>
+                                  {l.label}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={startCoPilotListening}
+                              style={{
+                                background: coPilotListening ? '#ef4444' : 'rgba(76, 140, 252, 0.15)',
+                                border: coPilotListening ? '1px solid #f87171' : '1px solid rgba(76, 140, 252, 0.4)',
+                                color: coPilotListening ? '#fff' : 'hsl(var(--primary))',
+                                padding: '4px 10px',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: coPilotListening ? '0 0 10px rgba(239, 68, 68, 0.5)' : 'none',
+                                transition: 'all 0.2s'
+                              }}
+                              title={coPilotListening ? "Listening... Click to stop" : "Click to speak your campaign request"}
+                            >
+                              🎙️ {coPilotListening ? 'Listening...' : 'Speak via Mic'}
+                            </button>
+                          </div>
+                        </div>
                         <textarea
                           className="form-control"
-                          style={{ minHeight: '80px', fontSize: '0.88rem', resize: 'vertical', background: 'rgba(0,0,0,0.2)' }}
-                          placeholder="e.g. Draft an awareness campaign about a dengue vaccine drive in Ludhiana for students, advising parents to check school logs..."
+                          style={{ minHeight: '80px', fontSize: '0.88rem', resize: 'vertical', background: 'rgba(0,0,0,0.2)', border: coPilotListening ? '1px solid #ef4444' : '1px solid var(--input-border)' }}
+                          placeholder={coPilotListening ? "Listening to your voice..." : "e.g. Draft an awareness campaign about a dengue vaccine drive in Ludhiana for students..."}
                           value={coPilotPrompt}
                           onChange={(e) => setCoPilotPrompt(e.target.value)}
                         />
@@ -1751,93 +1901,6 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                           {preset.label}
                         </button>
                       ))}
-                    </div>
-
-                    {/* 🌐 Multi-Language Live Preview Selector & Vibrant Colorful Button */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justify: 'space-between',
-                      gap: '12px',
-                      flexWrap: 'wrap',
-                      padding: '12px 16px',
-                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%)',
-                      border: '1px solid rgba(168, 85, 247, 0.3)',
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 20px rgba(168, 85, 247, 0.1)',
-                      marginTop: '4px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>🌐</span>
-                        <div>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f472b6', display: 'block' }}>Multi-Language Live Preview</span>
-                          <span style={{ fontSize: '0.73rem', color: 'hsl(var(--text-muted))' }}>Preview or translate how this campaign looks across all 22 supported languages</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <select
-                          className="form-control"
-                          style={{
-                            width: '160px',
-                            padding: '7px 12px',
-                            fontSize: '0.85rem',
-                            background: 'rgba(15, 23, 42, 0.9)',
-                            border: '1px solid rgba(244, 114, 182, 0.4)',
-                            borderRadius: '8px',
-                            color: '#ffffff',
-                            fontWeight: 600
-                          }}
-                          value={coPilotSelectedLang}
-                          onChange={(e) => setCoPilotSelectedLang(e.target.value)}
-                        >
-                          {ALL_LANGUAGES.map(lang => (
-                            <option key={lang} value={lang}>{lang}</option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{
-                            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #ef4444 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '8px 18px',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.83rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 4px 15px rgba(236, 72, 153, 0.4)',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap'
-                          }}
-                          disabled={refineLoading}
-                          onClick={() => handleTranslateViewLanguage(coPilotSelectedLang)}
-                        >
-                          <span>{refineLoading ? 'Translating...' : `✨ Translate to ${coPilotSelectedLang}`}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className="btn btn-dark"
-                          style={{
-                            padding: '8px 14px',
-                            fontSize: '0.8rem',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            whiteSpace: 'nowrap',
-                            fontWeight: 600
-                          }}
-                          disabled={refineLoading}
-                          onClick={() => handleTranslateViewLanguage('English')}
-                          title="Reset campaign view back to English"
-                        >
-                          🇬🇧 Reset to English
-                        </button>
-                      </div>
                     </div>
                   </div>
 

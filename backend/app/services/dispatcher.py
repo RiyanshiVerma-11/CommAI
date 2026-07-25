@@ -27,6 +27,7 @@ from app.services.sms_service import send_sms
 from app.services.whatsapp_service import send_whatsapp
 from app.services.telegram_service import send_telegram
 from app.services.fcm_service import send_fcm_push, is_fcm_configured
+from app.services.voice_service import send_voice_call
 from app.routes.audience import build_segment_filter_query
 from app.config import settings
 
@@ -134,6 +135,13 @@ def dispatch_to_channel(
     elif channel == "sms":
         success, error = send_sms(audience.phone, body, email=audience.email, subject=subject)
         return success, error, "sms"
+
+    elif channel == "voice":
+        if not audience.phone:
+            return False, "No phone number on file for voice call", "voice"
+        target_lang = getattr(audience, "preferred_language", "Hindi") or "Hindi"
+        success, error = send_voice_call(audience.phone, body, lang=target_lang)
+        return success, error, "voice"
 
     elif channel == "push":
         # Check for per-recipient FCM token in custom_fields

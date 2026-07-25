@@ -59,6 +59,7 @@ function App() {
     }
   }, [theme]);
 
+
   // Compile auth headers
   const authHeaders = {
     'Authorization': `Bearer ${token}`
@@ -145,7 +146,13 @@ function App() {
   const [bulletinCount, setBulletinCount] = useState(0);
   const [operatorChatCount, setOperatorChatCount] = useState(0);
   const [liveAlert, setLiveAlert] = useState(null);
+  const [pendingVoicePlan, setPendingVoicePlan] = useState(null);
   const activeSirenRef = useRef(null);
+
+  const handleAutoCreateCampaign = (plan) => {
+    setPendingVoicePlan(plan);
+    setActiveTab('campaigns');
+  };
 
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
@@ -723,6 +730,8 @@ function App() {
         backendUrl={BACKEND_URL} 
         onBackToLanding={() => setView('landing')}
         initialRegister={viewRegister}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
     );
   }
@@ -764,6 +773,8 @@ function App() {
             headers={authHeaders}
             setActiveTab={setActiveTab}
             setAutofillPosterData={setAutofillPosterData}
+            initialVoicePlan={pendingVoicePlan}
+            clearInitialVoicePlan={() => setPendingVoicePlan(null)}
           />
         );
       case 'approvals':
@@ -1269,7 +1280,12 @@ function App() {
           {renderActiveView()}
         </main>
       </div>
-      <ChatbotWidget user={user} backendUrl={BACKEND_URL} token={token} />
+      <ChatbotWidget 
+        user={user} 
+        backendUrl={BACKEND_URL} 
+        token={token} 
+        onAutoCreateCampaign={handleAutoCreateCampaign} 
+      />
       
       {liveAlert && (
         <div style={{

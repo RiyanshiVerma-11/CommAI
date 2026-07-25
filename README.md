@@ -109,9 +109,9 @@ graph TD
 - **RAG Knowledge Base (`rag_service.py`)**: Embedded vector retrieval system indexing official government circulars, health advisory PDFs, and emergency guidelines for auto-answering citizen queries.
 - **Multi-Tier Zero-Downtime Translation Pipeline**: Failover sequence: Primary Groq 70B $\rightarrow$ Secondary Groq 8B $\rightarrow$ Google GTX Translate API across 23 official Indic languages.
 
-### 3. 🔊 Neural Indic AI Voice Bulletin & Voice Assistant Widget
-- **High-Fidelity Neural Speech**: Integrates Microsoft Edge Neural Speech synthesis for 23 official Indic languages (`hi-IN-MadhurNeural`, `hi-IN-SwaraNeural`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `en`, etc.).
-- **Zero-Downtime gTTS Fallback**: Automatic regional dialect fallback using Google Text-to-Speech (`pa`, `or`, `as`, `ne`, `sd`, `sa`).
+### 3. 🔊 Neural Indic AI Voice Bulletin & Voice Assistant Widget (23 Languages)
+- **High-Fidelity Neural Speech**: Integrates Microsoft Edge Neural Speech synthesis for 23 languages (the 22 Official Scheduled Languages of India + English: `hi-IN`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `pa`, `or`, `as`, `ne`, `sd`, `sa`, `mai`, `sat`, `ks`, `kok`, `doi`, `mni`, `brx`, `en`).
+- **Zero-Downtime gTTS & Twilio Voice Call Engine**: Automatic regional dialect fallback using Google Text-to-Speech and automated outbound emergency phone calls via Twilio Voice REST API & TwiML.
 - **React Portal Glassmorphic Audio Player**: Rendered dynamically via `ReactDOM.createPortal` directly on `document.body` to eliminate z-index clipping across dashboard views. Features variable playback speed (`0.75x`, `1.0x`, `1.25x`), line-by-line synchronized script highlighting, and live audio streaming.
 - **Multilingual AI Voice Assistant Widget (`ChatbotWidget.jsx`)**: Floating interactive voice assistant supporting Web Speech API speech recognition across 13 Indian languages (`hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `or-IN`, `ur-IN`, `as-IN`, `en-IN`), hands-free voice campaign composition, audio readout, and instant SOS escalation.
 

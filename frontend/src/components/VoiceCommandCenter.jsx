@@ -89,6 +89,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
   const [recipientsList, setRecipientsList] = useState(['All Citizens', 'Farmers', 'Healthcare Workers', 'Local Authorities']);
 
   const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
   const getDisplayName = () => {
     if (!user) return 'Manager';
@@ -98,10 +99,18 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
   };
 
   const ttsTimeoutRef = useRef(null);
+  const ttsPingRef = useRef(null);
   const isOpenRef = useRef(isOpen);
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  const clearTtsPing = () => {
+    if (ttsPingRef.current) {
+      clearInterval(ttsPingRef.current);
+      ttsPingRef.current = null;
+    }
+  };
 
   // Text-to-Speech playback helper with auto-listen callback
   const speakAloud = (text, autoListenAfter = false) => {
@@ -109,6 +118,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
       clearTimeout(ttsTimeoutRef.current);
       ttsTimeoutRef.current = null;
     }
+    clearTtsPing();
 
     if (!('speechSynthesis' in window)) {
       if (autoListenAfter && isOpenRef.current) startListening();
@@ -127,6 +137,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
       let triggered = false;
       const triggerListenOnce = () => {
+        clearTtsPing();
         if (!triggered) {
           triggered = true;
           if (ttsTimeoutRef.current) {
@@ -142,25 +153,38 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
         }
       };
 
-      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        // Periodic keep-alive for Chrome/Edge SpeechSynthesis 15-second audio engine bug
+        ttsPingRef.current = setInterval(() => {
+          if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+          } else {
+            clearTtsPing();
+          }
+        }, 3000);
+      };
+
       utterance.onend = () => triggerListenOnce();
       utterance.onerror = () => triggerListenOnce();
 
       // Dynamic safety timeout proportional to text length (never cut off active speech!)
-      // Approx 10 characters per second + 4 seconds buffer, min 8 seconds
-      const dynamicMs = Math.max(8000, Math.ceil((cleanText.length / 10) * 1000) + 4000);
+      const dynamicMs = Math.max(12000, Math.ceil((cleanText.length / 8) * 1000) + 6000);
       ttsTimeoutRef.current = setTimeout(() => {
         triggerListenOnce();
       }, dynamicMs);
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {
+      clearTtsPing();
       console.error('Speech synthesis error:', e);
       if (autoListenAfter && isOpenRef.current) startListening();
     }
   };
 
   const stopSpeaking = () => {
+    clearTtsPing();
     if (ttsTimeoutRef.current) {
       clearTimeout(ttsTimeoutRef.current);
       ttsTimeoutRef.current = null;
@@ -187,8 +211,10 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
   // Speech Recognition Start/Stop
   const startListening = () => {
-    // Cancel any active SpeechSynthesis so microphone channel is freed up
-    stopSpeaking();
+    // Only stop speech synthesis if it is NOT actively speaking to avoid killing Jarvis mid-sentence!
+    if ('speechSynthesis' in window && !window.speechSynthesis.speaking) {
+      stopSpeaking();
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -205,7 +231,9 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
       const speechLang = localStorage.getItem('comm_speech_lang') || 'en-IN';
       recognition.lang = speechLang;
       recognition.interimResults = true;
-      recognition.continuous = false;
+      recognition.continuous = true;
+
+      let lastCapturedTranscript = '';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -214,21 +242,31 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
       recognition.onresult = (event) => {
         let currentTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
+        lastCapturedTranscript = currentTranscript;
         setTranscript(currentTranscript);
-        if (event.results[0].isFinal && currentTranscript.trim()) {
-          setIsListening(false);
-          try { recognition.stop(); } catch(e) {}
-          handleProcessVoiceCommand(currentTranscript);
+        setStatusMessage(`🎙️ "${currentTranscript.trim()}"`);
+
+        // Reset silence timer on every new speech input fragment
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
         }
+
+        // Wait for 1.8 seconds of natural silence after speaking before processing command
+        silenceTimerRef.current = setTimeout(() => {
+          if (lastCapturedTranscript.trim()) {
+            stopListening();
+            handleProcessVoiceCommand(lastCapturedTranscript);
+          }
+        }, 1800);
       };
 
       recognition.onerror = (e) => {
         console.warn("Voice recognition error:", e.error);
-        setIsListening(false);
         if (e.error !== 'no-speech') {
+          setIsListening(false);
           setStatusMessage('Listening paused. Click mic or speak again.');
         }
       };
@@ -246,6 +284,10 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
   };
 
   const stopListening = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
@@ -259,32 +301,68 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
     // Check if user is confirming or cancelling an active voice action
     const isTargetedSend = cleanCmd.includes('send to') || cleanCmd.includes('send this to') || cleanCmd.includes('send it to');
-    if (pendingConfirmation && !isTargetedSend) {
-      const confirmWords = ['yes', 'yeah', 'yep', 'sure', 'confirm', 'proceed', 'go ahead', 'do it', 'ok', 'okay'];
-      const exactSendWords = ['send', 'send now', 'send alert', 'send message'];
-      const editWords = ['no', 'edit', 'cancel', 'stop', 'modify', 'dont'];
+    const activeCtx = pendingConfirmation || (activeResult ? { type: 'campaign', data: activeResult } : null);
 
-      const isConfirm = confirmWords.some(w => cleanCmd === w || cleanCmd.startsWith(w + ' ') || cleanCmd.endsWith(' ' + w)) || exactSendWords.includes(cleanCmd);
-      const isEdit = editWords.some(w => cleanCmd.includes(w));
+    if (activeCtx && !isTargetedSend) {
+      const confirmWords = [
+        'yes', 'yeah', 'yep', 'sure', 'confirm', 'proceed', 'go ahead', 'do it', 'ok', 'okay',
+        'send', 'send now', 'send alert', 'send message', 'broadcast', 'do broadcast',
+        'yes send', 'yes broadcast', 'yes do it', 'broadcast alert', 'send it'
+      ];
+      const editWords = ['no', 'edit', 'cancel', 'stop', 'modify', 'dont', "don't"];
+
+      // More precise matching: exact match OR starts/ends with confirm word — avoid loose includes
+      const isConfirm = confirmWords.some(w => {
+        if (cleanCmd === w) return true;
+        if (cleanCmd.startsWith(w + ' ') || cleanCmd.endsWith(' ' + w)) return true;
+        // Only allow broad includes for very short, unambiguous words
+        if (['yes', 'confirm', 'proceed'].includes(w) && cleanCmd.includes(w)) return true;
+        return false;
+      });
+      const isEdit = editWords.some(w => cleanCmd.includes(w) && !cleanCmd.includes('yes'));
 
       if (isConfirm) {
-        if (pendingConfirmation.type === 'operator_chat') {
-          window.dispatchEvent(new CustomEvent('commai_voice_send_operator_chat'));
-          const targetName = pendingConfirmation.data?.target_manager || 'staff';
+        if (activeCtx.type === 'operator_chat') {
+          const msgPayload = activeCtx.data?.message_text || activeCtx.data?.body || activeCtx.data?.description;
+          const chanPayload = activeCtx.data?.target_channel || 'general';
+
+          // 1. Dispatch event with detail payload to active OperatorChat page
+          window.dispatchEvent(new CustomEvent('commai_voice_send_operator_chat', {
+            detail: { message: msgPayload, channel: chanPayload }
+          }));
+
+          // 2. Direct HTTP fallback to backend API to guarantee DB persistence
+          if (msgPayload) {
+            try {
+              fetch(`${backendUrl}/api/operator-chat/messages`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: msgPayload, channel: chanPayload })
+              }).catch(() => {});
+            } catch (e) {}
+          }
+
+          const targetName = activeCtx.data?.target_manager || 'staff';
           const confirmText = `Confirmed ${getDisplayName()}! Message sent to ${targetName}. What would you like to do next?`;
           setStatusMessage(`🚀 Message Sent to ${targetName}`);
           setPendingConfirmation(null);
+          setActiveResult(null);
+          // Stay open and keep listening for next command
           speakAloud(confirmText, true);
           return;
         } else {
+          // Campaign / sentiment — proceed with normal action
           handleProceedAction();
-          setPendingConfirmation(null);
           return;
         }
       } else if (isEdit) {
         const cancelText = `Got it ${getDisplayName()}. You can edit the text directly on screen. What else can I help you with?`;
         setStatusMessage('✏️ Edit Mode Active');
         setPendingConfirmation(null);
+        setActiveResult(null);
         speakAloud(cancelText, true);
         return;
       }
@@ -301,7 +379,10 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ command: commandText })
+        body: JSON.stringify({
+          command: commandText,
+          active_context: activeCtx
+        })
       });
 
       if (!response.ok) throw new Error('Voice command processing failed');
@@ -320,15 +401,40 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
       setStatusMessage(`✅ Action Identified: ${data.action.replace('_', ' ').toUpperCase()}`);
 
-      // Immediately execute action and redirect directly to UI page (WITHOUT closing Cockpit!)
-      if (onExecuteVoiceCommand) {
+      // Handle direct send_operator_chat_message from backend affirmative reply
+      if (data.action === 'send_operator_chat_message') {
+        const msgPayload = data.message_text || data.body || data.description;
+        const chanPayload = data.target_channel || 'general';
+        window.dispatchEvent(new CustomEvent('commai_voice_send_operator_chat', {
+          detail: { message: msgPayload, channel: chanPayload }
+        }));
+        if (msgPayload) {
+          try {
+            fetch(`${backendUrl}/api/operator-chat/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ message: msgPayload, channel: chanPayload })
+            }).catch(() => {});
+          } catch (e) {}
+        }
+        setPendingConfirmation(null);
+        setActiveResult(null);
+      } else if (onExecuteVoiceCommand) {
+        // Immediately execute action and redirect directly to UI page
         onExecuteVoiceCommand(data);
       }
 
       // Check if action requires voice confirmation (like sending chat msg or broadcasting campaign)
-      if (data.requires_confirmation || ['create_campaign', 'emergency_broadcast', 'send_alert'].includes(data.action)) {
+      if (data.navigation_target === 'operator_chat' && (data.message_text || data.body || data.description)) {
+        setPendingConfirmation({ type: 'operator_chat', data });
+      } else if (data.requires_confirmation || ['create_campaign', 'emergency_broadcast', 'send_alert'].includes(data.action)) {
         const confType = (data.navigation_target === 'operator_chat') ? 'operator_chat' : 'campaign';
         setPendingConfirmation({ type: confType, data });
+      } else if (data.navigation_target === 'sentiment_map' || data.navigation_target === 'campaigns') {
+        setPendingConfirmation({ type: 'campaign', data });
       } else {
         setPendingConfirmation(null);
       }
@@ -349,11 +455,47 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
 
   // Manager Proceed / Confirm Action
   const handleProceedAction = () => {
-    if (!activeResult) return;
+    const targetResult = activeResult || pendingConfirmation?.data;
+    if (!targetResult) return;
     stopSpeaking();
 
+    const actionType = pendingConfirmation?.type || 'campaign';
+
+    // Special case: operator_chat — dispatch send event & fetch fallback, do NOT re-navigate
+    if (actionType === 'operator_chat' || targetResult.navigation_target === 'operator_chat') {
+      const msgPayload = targetResult.message_text || targetResult.body || targetResult.description;
+      const chanPayload = targetResult.target_channel || 'general';
+
+      window.dispatchEvent(new CustomEvent('commai_voice_send_operator_chat', {
+        detail: { message: msgPayload, channel: chanPayload }
+      }));
+
+      if (msgPayload) {
+        try {
+          fetch(`${backendUrl}/api/operator-chat/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: msgPayload, channel: chanPayload })
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      const targetName = targetResult.target_manager || 'staff';
+      const confirmText = `Confirmed ${getDisplayName()}! Message sent to ${targetName}. What would you like to do next?`;
+      setStatusMessage(`🚀 Message Sent to ${targetName}`);
+      setActiveResult(null);
+      setPendingConfirmation(null);
+      // Keep cockpit open and listen for next command
+      speakAloud(confirmText, true);
+      return;
+    }
+
+    // Campaign / Sentiment alert flow
     const updatedResult = {
-      ...activeResult,
+      ...targetResult,
       location_selected: selectedLocation,
       recipients_selected: selectedRecipients,
       user_confirmed: true
@@ -366,9 +508,9 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
       onExecuteVoiceCommand(updatedResult);
     }
 
-    setTimeout(() => {
-      setIsOpen(false);
-    }, 1200);
+    setActiveResult(null);
+    setPendingConfirmation(null);
+    setIsOpen(false);
   };
 
   return (
@@ -941,6 +1083,42 @@ const VoiceCommandCenter = ({ user, backendUrl, token, onExecuteVoiceCommand }) 
                 ))}
               </div>
             )}
+
+            {/* Close Jarvis Button at Bottom */}
+            <button
+              onClick={() => {
+                stopSpeaking();
+                stopListening();
+                setIsOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '14px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                color: '#f87171',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginTop: '4px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.18)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+              }}
+            >
+              ✕ Close Jarvis
+            </button>
           </div>
         </div>
       )}

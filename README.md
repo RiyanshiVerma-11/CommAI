@@ -187,7 +187,11 @@ graph TD
         </div>
       </td>
     </tr>
-  </table>
+  <div align="center" style="margin: 20px 0 10px 0;">
+    <img src="docs/screenshots/milestone%202/jarvis_ai_voice_command.png" alt="Jarvis AI Voice Cockpit" width="92%" style="border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+    <br/>
+    <span style="color: #e2e8f0; font-size: 0.88rem; font-style: italic;">🎙️ CommAI Voice Cockpit & Hands-Free Jarvis AI Action Center</span>
+  </div>
 
 </div>
 
@@ -254,10 +258,15 @@ graph TD
 
 ### 🚀 Advanced Audio, Visual & Analytics Features
 
-| AI Visual Poster Studio | Neural Indic Voice Bulletin Reader |
+| 🎙️ Hands-Free Jarvis AI Voice Cockpit | 🎨 AI Visual Poster Studio |
 | :---: | :---: |
-| ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png) | ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png) |
-| *Canvas composite engine with binary image streaming (`/api/poster/{id}/image`).* | *Edge-TTS & gTTS neural speech player across 23 Indic languages.* |
+| ![Jarvis AI Voice Cockpit](docs/screenshots/milestone%202/jarvis_ai_voice_command.png) | ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png) |
+| *Hands-free "Hey Jarvis" voice assistant & AI broadcast cockpit.* | *Canvas composite engine with binary image streaming (`/api/poster/{id}/image`).* |
+
+| Neural Indic Voice Bulletin Reader | Real-Time Inter-Operator Staff Chat |
+| :---: | :---: |
+| ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png) | ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png) |
+| *Edge-TTS & gTTS neural speech player across 23 Indic languages.* | *WebSocket chat room with role badges & audio chime alerts.* |
 
 | Real-Time Inter-Operator Staff Chat | Geospatial Sentiment Map & Heatmap |
 | :---: | :---: |

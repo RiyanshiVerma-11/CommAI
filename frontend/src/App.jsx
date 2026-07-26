@@ -169,7 +169,9 @@ function App() {
         title: voiceResult.title || 'Emergency Alert',
         description: voiceResult.description || voiceResult.body || 'Emergency alert for area.',
         recipients: voiceResult.recipients_selected || 'Students',
-        urgency: voiceResult.urgency || 'critical'
+        urgency: voiceResult.urgency || 'critical',
+        channels: (voiceResult.channels && voiceResult.channels.length > 0) ? voiceResult.channels : ['email'],
+        user_confirmed: voiceResult.user_confirmed || false
       });
       setActiveTab('sentiment_map');
       return;
@@ -191,7 +193,7 @@ function App() {
           body: voiceResult.body || voiceResult.description || `Dear {{first_name}}, important notice for citizens in ${voiceResult.location_selected || 'your area'}.`
         },
         delivery: {
-          channels: voiceResult.channels || ['email', 'whatsapp', 'sms'],
+          channels: voiceResult.channels || ['email'],
           audiences: [voiceResult.recipients_selected || 'All Citizens'],
           location: voiceResult.location_selected || 'All Locations'
         },

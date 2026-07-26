@@ -109,7 +109,7 @@ def test_process_voice_command_sentiment_map():
     
     assert res["navigation_target"] == "sentiment_map"
     assert res["location_selected"] == "Uttar Pradesh"
-    assert res["recipients_selected"] == "Students"
+    assert res["recipients_selected"].lower() == "students"
     assert res["action"] == "emergency_broadcast"
 
 

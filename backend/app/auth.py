@@ -3,6 +3,16 @@ from typing import List, Optional
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+import bcrypt
+# Patch bcrypt.hashpw to truncate inputs > 72 bytes for passlib 1.7.4 + bcrypt 4.x compatibility
+if hasattr(bcrypt, "hashpw"):
+    _orig_hashpw = bcrypt.hashpw
+    def _safe_hashpw(password, salt):
+        if isinstance(password, bytes) and len(password) > 72:
+            password = password[:72]
+        return _orig_hashpw(password, salt)
+    bcrypt.hashpw = _safe_hashpw
+
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
@@ -24,12 +34,12 @@ otp_cache = {
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        return pwd_context.verify(plain_password[:72], hashed_password)
     except Exception:
         return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(password[:72])
 
 def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None) -> str:
     to_encode = data.copy()

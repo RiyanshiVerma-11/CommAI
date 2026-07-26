@@ -314,6 +314,7 @@ def ai_nl_segment(
 
 class VoiceCommandRequest(BaseModel):
     command: str
+    active_context: Optional[dict] = None
 
     @validator("command")
     def command_not_empty(cls, v):
@@ -345,7 +346,8 @@ def ai_voice_command(
         prompt=request.command,
         user_role=user_role,
         user_name=user_name,
-        known_recipients=combined_recipients
+        known_recipients=combined_recipients,
+        active_context=request.active_context
     )
 
     existing = result.get("recipients_list", [])

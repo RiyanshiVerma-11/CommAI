@@ -99,6 +99,21 @@ const FEATURES = [
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    ),
+    accent: '#8b5cf6', bg: '#f3e8ff',
+    title: 'Jarvis AI Voice Cockpit',
+    desc: 'Hands-free voice assistant. Control campaign creation, send staff messages, issue state emergency alerts, and audit approvals using natural speech commands and "Hey Jarvis" wake word.',
+    badge: 'KILLER FEATURE 🔥',
+    isKiller: true,
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
       </svg>
     ),
@@ -669,19 +684,104 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             <h2 style={{ fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', color:T.text, lineHeight:1.15, marginBottom:16 }}>Unified Campaign Operations</h2>
             <p style={{ color:T.textSec, fontSize:'1.08rem', lineHeight:1.6 }}>Built for scale and simplicity — manage citizen registers, structure localized templates, and schedule deliveries under complete operator audit tracking.</p>
           </div>
+          {/* ════ Jarvis AI Killer Feature Banner ════ */}
+          <div style={{
+            background: theme === 'dark'
+              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.22) 0%, rgba(59, 130, 246, 0.15) 50%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 50%, #ffffff 100%)',
+            border: '1.5px solid rgba(139, 92, 246, 0.4)',
+            borderRadius: 24,
+            padding: '36px 40px',
+            marginBottom: 48,
+            boxShadow: '0 16px 40px rgba(139, 92, 246, 0.18)',
+            display: 'grid',
+            gridTemplateColumns: '1.2fr 1fr',
+            gap: 32,
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ position: 'absolute', top: -40, right: -40, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(139, 92, 246, 0.16)', border: '1px solid rgba(139, 92, 246, 0.4)', borderRadius: 20, padding: '4px 14px', marginBottom: 16 }}>
+                <span style={{ fontSize: '0.9rem' }}>⚡</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Killer Feature</span>
+              </div>
+              <h3 style={{ fontSize: '2.1rem', fontWeight: 850, color: T.text, lineHeight: 1.15, marginBottom: 14, letterSpacing: '-0.03em' }}>
+                Jarvis AI Voice Cockpit
+              </h3>
+              <p style={{ color: T.textSec, fontSize: '1.02rem', lineHeight: 1.65, marginBottom: 20 }}>
+                Control your entire communication center hands-free. Simply say <strong>"Hey Jarvis"</strong> out loud to auto-compose campaigns, dispatch staff messages, query audience registers, and issue emergency alerts with real-time speech synthesis & confirmation.
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {[
+                  '🎙️ Hands-Free "Hey Jarvis" Wake Word',
+                  '🧠 Natural AI Intent Engine',
+                  '💬 Staff Direct Chat Integration',
+                  '🔊 Interactive Spoken Confirmations'
+                ].map((tag, tIdx) => (
+                  <span key={tIdx} style={{ fontSize: '0.78rem', fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#ffffff', border: `1px solid ${T.border}`, color: T.text }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {/* Visual Speech Bubble Mockup */}
+            <div style={{ background: theme === 'dark' ? 'rgba(10, 14, 26, 0.9)' : '#ffffff', border: '1px solid rgba(139, 92, 246, 0.35)', borderRadius: 20, padding: 22, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${T.border}`, paddingBottom: 12, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }}></div>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: T.text }}>Jarvis AI Voice Cockpit</span>
+                </div>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#a78bfa', background: 'rgba(139, 92, 246, 0.15)', padding: '2px 8px', borderRadius: 8 }}>LISTENING</span>
+              </div>
+              <div style={{ background: theme === 'dark' ? 'rgba(139, 92, 246, 0.14)' : '#f3e8ff', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8b5cf6', marginBottom: 4 }}>🗣️ SPOKEN COMMAND</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: T.text, fontStyle: 'italic' }}>
+                  "Open operator staff chat and send a message 'hey managers all good'"
+                </div>
+              </div>
+              <div style={{ background: theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : '#f0fdf4', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: 12, padding: '12px 14px' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>🤖 JARVIS ACTION</div>
+                <div style={{ fontSize: '0.84rem', color: T.textSec, lineHeight: 1.4 }}>
+                  Navigated to Operator Chat, drafted message to staff, and requested manager confirmation: <em>"Yes send it"</em> → 🚀 Sent!
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
             {FEATURES.map(f => (
               <div key={f.title}
-                style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:T.radius, padding:28, cursor:'default', transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', position:'relative', overflow:'hidden' }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow=T.shadowLg; e.currentTarget.style.borderColor=T.blueMid; e.currentTarget.style.transform='translateY(-4px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.borderColor=T.border; e.currentTarget.style.transform='none'; }}>
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${f.accent}, transparent)` }}></div>
-                <div style={{ width:46, height:46, borderRadius:12, background:f.bg, display:'flex', alignItems:'center', justifyContent:'center', color:f.accent, marginBottom:18, boxShadow: `0 4px 10px ${f.accent}15` }}>
+                style={{ 
+                  background: f.isKiller 
+                    ? (theme === 'dark' ? 'linear-gradient(135deg, rgba(139,92,246,0.14) 0%, rgba(59,130,246,0.08) 100%)' : 'linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%)')
+                    : T.white, 
+                  border: f.isKiller ? `1.5px solid rgba(139,92,246,0.45)` : `1px solid ${T.border}`, 
+                  borderRadius: T.radius, 
+                  padding: 28, 
+                  cursor: 'default', 
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                  position: 'relative', 
+                  overflow: 'hidden',
+                  boxShadow: f.isKiller ? '0 8px 25px rgba(139,92,246,0.15)' : 'none'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = f.isKiller ? '0 12px 35px rgba(139,92,246,0.3)' : T.shadowLg; e.currentTarget.style.borderColor = f.isKiller ? '#8b5cf6' : T.blueMid; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = f.isKiller ? '0 8px 25px rgba(139,92,246,0.15)' : 'none'; e.currentTarget.style.borderColor = f.isKiller ? 'rgba(139,92,246,0.45)' : T.border; e.currentTarget.style.transform = 'none'; }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${f.accent}, ${f.isKiller ? '#3b82f6' : 'transparent'})` }}></div>
+                {f.badge && (
+                  <span style={{ position: 'absolute', top: 16, right: 16, background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px', borderRadius: 12, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(139,92,246,0.4)' }}>
+                    {f.badge}
+                  </span>
+                )}
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: f.accent, marginBottom: 18, boxShadow: `0 4px 10px ${f.accent}15` }}>
                   {f.icon}
                 </div>
-                <div style={{ fontWeight:800, fontSize:'1.05rem', color:T.text, marginBottom:10 }}>{f.title}</div>
-                <div style={{ fontSize:'0.88rem', color:T.textSec, lineHeight:1.6 }}>{f.desc}</div>
-                <div style={{ marginTop:18, color:f.accent, fontSize:'0.76rem', fontWeight:800, letterSpacing:'.04em' }}>BUILT INTO COMMAI →</div>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: T.text, marginBottom: 10 }}>{f.title}</div>
+                <div style={{ fontSize: '0.88rem', color: T.textSec, lineHeight: 1.6 }}>{f.desc}</div>
+                <div style={{ marginTop: 18, color: f.accent, fontSize: '0.76rem', fontWeight: 800, letterSpacing: '.04em' }}>
+                  {f.isKiller ? '⚡ VOICE ACTIVATED →' : 'BUILT INTO COMMAI →'}
+                </div>
               </div>
             ))}
           </div>

@@ -25,7 +25,7 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastDescription, setBroadcastDescription] = useState('');
   const [broadcastUrgency, setBroadcastUrgency] = useState('critical');
-  const [broadcastChannels, setBroadcastChannels] = useState(['email', 'whatsapp']);
+  const [broadcastChannels, setBroadcastChannels] = useState(['email', 'push']);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [submittingBroadcast, setSubmittingBroadcast] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState('');
@@ -38,27 +38,95 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
     "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Jammu and Kashmir", "Ladakh", "New Delhi"
   ];
 
-  // Auto-open broadcast modal when initiated via Jarvis AI Voice Command
+  // Auto-open or auto-broadcast emergency modal when initiated via Jarvis AI Voice Command
   useEffect(() => {
     if (initialVoiceAlert) {
-      setBroadcastState(initialVoiceAlert.state || 'Uttar Pradesh');
-      setBroadcastTitle(initialVoiceAlert.title || 'Emergency Alert');
-      setBroadcastDescription(initialVoiceAlert.description || `Emergency alert issued for ${initialVoiceAlert.recipients || 'citizens'}.`);
-      setBroadcastUrgency(initialVoiceAlert.urgency || 'critical');
-      setBroadcastChannels(['email', 'whatsapp', 'sms', 'push']);
+      const targetState = initialVoiceAlert.state || 'Uttar Pradesh';
+      const targetTitle = initialVoiceAlert.title || 'Emergency Alert';
+      let targetDesc = initialVoiceAlert.description || initialVoiceAlert.body || `Emergency alert issued for ${initialVoiceAlert.recipients || 'citizens'}.`;
+      const targetUrgency = initialVoiceAlert.urgency || 'critical';
+      const targetChannels = (initialVoiceAlert.channels && initialVoiceAlert.channels.length > 0) ? initialVoiceAlert.channels : ['email', 'push'];
+
+      // If description is short or copied from title, fallback to rich emergency advisory text immediately
+      if (!targetDesc || targetDesc.length < 80 || targetDesc === targetTitle) {
+        targetDesc = `🚨 EMERGENCY ADVISORY: A critical alert has been issued for citizens in ${targetState}. Move to higher ground NOW. Avoid traveling to low-lying areas, rivers, and streams. Keep phone charged and follow evacuation routes instructed by local authorities. Contact {{phone_number}} for emergency assistance. This is an official public notice.`;
+      }
+
+      setBroadcastState(targetState);
+      setBroadcastTitle(targetTitle);
+      setBroadcastDescription(targetDesc);
+      setBroadcastUrgency(targetUrgency);
+      setBroadcastChannels(targetChannels);
       setBroadcastSuccess('');
       setBroadcastError('');
       setShowBroadcastModal(true);
+
+      // Fetch full Groq AI generated description via API key asynchronously
+      fetch(`${backendUrl}/api/ai/generate`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: targetTitle, category: 'emergency', channel: 'email', tone: 'urgent' })
+      }).then(res => res.ok ? res.json() : null).then(data => {
+        if (data && data.body) {
+          setBroadcastDescription(data.body);
+        }
+      }).catch(() => {});
+
+      // If manager verbally confirmed ("yes send it"), immediately trigger the direct broadcast dispatch!
+      if (initialVoiceAlert.user_confirmed) {
+        handleDirectVoiceBroadcast({
+          state: targetState,
+          title: targetTitle,
+          description: targetDesc,
+          channels: targetChannels,
+          urgency: targetUrgency
+        });
+      }
+
       if (clearInitialVoiceAlert) clearInitialVoiceAlert();
     }
   }, [initialVoiceAlert, clearInitialVoiceAlert]);
+
+  const handleDirectVoiceBroadcast = async (alertPayload) => {
+    setSubmittingBroadcast(true);
+    setBroadcastSuccess('');
+    setBroadcastError('');
+
+    try {
+      const res = await fetch(`${backendUrl}/api/sentiment-map/broadcast-emergency`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(alertPayload)
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to broadcast emergency alert');
+      }
+
+      setBroadcastSuccess(`🚀 Emergency alert successfully broadcasted to ${alertPayload.state}!`);
+      setTimeout(() => {
+        setShowBroadcastModal(false);
+        setBroadcastSuccess('');
+        setBroadcastTitle('');
+        setBroadcastDescription('');
+      }, 3500);
+    } catch (err) {
+      setBroadcastError(err.message);
+    } finally {
+      setSubmittingBroadcast(false);
+    }
+  };
 
   const handleOpenModalForState = useCallback((stateName) => {
     setBroadcastState(stateName);
     setBroadcastTitle('');
     setBroadcastDescription('');
     setBroadcastUrgency('critical');
-    setBroadcastChannels(['email', 'whatsapp']);
+    setBroadcastChannels(['email', 'push']);
     setBroadcastSuccess('');
     setBroadcastError('');
     setShowBroadcastModal(true);

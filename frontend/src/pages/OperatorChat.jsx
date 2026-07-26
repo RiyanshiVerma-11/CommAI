@@ -32,10 +32,12 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     }
   }, [backendUrl, headers]);
 
-  // Handle voice command pre-fill of message text
+  // Guard: only pre-fill message from voice once (avoid overwriting on re-render / prop change)
+  const initialMessageConsumedRef = useRef(false);
   useEffect(() => {
-    if (initialMessage) {
+    if (initialMessage && !initialMessageConsumedRef.current) {
       setInputMsg(initialMessage);
+      initialMessageConsumedRef.current = true;
     }
   }, [initialMessage]);
 
@@ -144,11 +146,13 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     setChannel(dmChannelId);
   };
 
-  const handleSendMessage = async (e) => {
-    e?.preventDefault();
-    if (!inputMsg.trim() || sending) return;
+  const handleSendMessage = async (e, overrideMsg = null, overrideChan = null) => {
+    e?.preventDefault?.();
+    const payloadMsg = overrideMsg || (e && typeof e === 'object' && (e.detail?.message || e.detail?.message_text)) || inputMsg;
+    if (!payloadMsg || !payloadMsg.trim() || sending) return;
 
-    const textToSend = inputMsg.trim();
+    const textToSend = payloadMsg.trim();
+    const targetChannel = overrideChan || (e && typeof e === 'object' && e.detail?.channel) || channel;
     setInputMsg('');
     setSending(true);
 
@@ -161,7 +165,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
         },
         body: JSON.stringify({
           message: textToSend,
-          channel: channel,
+          channel: targetChannel,
         }),
       });
 
@@ -191,8 +195,10 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   });
 
   useEffect(() => {
-    const handleVoiceSend = () => {
-      handleSendMessageRef.current?.();
+    const handleVoiceSend = (e) => {
+      const detailMsg = e?.detail?.message || e?.detail?.message_text || null;
+      const detailChan = e?.detail?.channel || null;
+      handleSendMessageRef.current?.(e, detailMsg, detailChan);
     };
     window.addEventListener('commai_voice_send_operator_chat', handleVoiceSend);
     return () => window.removeEventListener('commai_voice_send_operator_chat', handleVoiceSend);

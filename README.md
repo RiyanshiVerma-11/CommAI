@@ -109,6 +109,14 @@ graph TD
 - **RAG Knowledge Base (`rag_service.py`)**: Embedded vector retrieval system indexing official government circulars, health advisory PDFs, and emergency guidelines for auto-answering citizen queries.
 - **Multi-Tier Zero-Downtime Translation Pipeline**: Failover sequence: Primary Groq 70B $\rightarrow$ Secondary Groq 8B $\rightarrow$ Google GTX Translate API across 23 official Indic languages.
 
+### 🎙️ ⚡ COMMAI VOICE COCKPIT & HANDS-FREE JARVIS AI (KILLER FEATURE)
+- **Hands-Free Wake-Word Detection ("Hey Jarvis" / "Hey Jarvis AI")**: **Background voice listener that continuously monitors for "Hey Jarvis" or "Hey Jarvis AI" on Admin and Manager dashboards. Automatically slides open the Voice Cockpit hands-free and greets the manager verbally.**
+- **Continuous Speech Dialogue & Auto-Mic Loop**: **CommAI speaks all status updates, AI-generated responses, and campaign summaries aloud via SpeechSynthesis. Right after the AI finishes speaking, the microphone AUTOMATICALLY opens in recording mode by default for hands-free follow-up commands.**
+- **Interactive Recipient Directory & Location Dropdowns**: **Parses spoken locations (e.g. Uttar Pradesh, Assam, Varanasi) and dynamically loads all individual recipient names (e.g. Riyanshi Verma, Nidhi Sharma, Palak, Yashvi, Ramesh Sharma) + target segments into interactive cockpit review dropdowns.**
+- **Groq 70B AI Campaign Content Generation**: **Instantly generates complete production-ready campaign copy (Catchy Title, Strategic Objective, Email/Push Subject Line, and Detailed Message Body with `{{first_name}}` placeholders).**
+- **One-Click Wizard Co-Pilot & Direct Broadcast**: **Clicking `✏️ Edit Wizard` populates the full campaign planner wizard instantly, while `🚀 Proceed / Confirm Broadcast` dispatches the alert directly.**
+- **Explicit Recording Controls**: **Features a prominent `🛑 Stop Recording` button for manual recording control anytime.**
+
 ### 3. 🔊 Neural Indic AI Voice Bulletin & Voice Assistant Widget (23 Languages)
 - **High-Fidelity Neural Speech**: Integrates Microsoft Edge Neural Speech synthesis for 23 languages (the 22 Official Scheduled Languages of India + English: `hi-IN`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `pa`, `or`, `as`, `ne`, `sd`, `sa`, `mai`, `sat`, `ks`, `kok`, `doi`, `mni`, `brx`, `en`).
 - **Zero-Downtime gTTS & Twilio Voice Call Engine**: Automatic regional dialect fallback using Google Text-to-Speech and automated outbound emergency phone calls via Twilio Voice REST API & TwiML.

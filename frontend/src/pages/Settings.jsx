@@ -967,9 +967,9 @@ const Settings = ({ user, backendUrl, headers }) => {
                   <div className="form-group">
                     <label className="form-label">Default CallMeBot API Key</label>
                     <input
-                      type="text"
+                      type="password"
                       className="form-control"
-                      placeholder="Enter API Key from WhatsApp message"
+                      placeholder={callMeBotKey ? '****************' : 'Enter API Key from WhatsApp message'}
                       value={callMeBotKey}
                       onChange={(e) => setCallMeBotKey(e.target.value)}
                     />

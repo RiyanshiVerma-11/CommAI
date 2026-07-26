@@ -17,6 +17,7 @@ from app.services.ai_service import (
     plan_complete_campaign,
     refine_campaign_plan,
     generate_chat_reply,
+    process_voice_command,
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Content Engine"])
@@ -309,5 +310,49 @@ def ai_nl_segment(
         "explanation": explanation,
         "estimated_size": size
     }
+
+
+class VoiceCommandRequest(BaseModel):
+    command: str
+
+    @validator("command")
+    def command_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Voice command cannot be empty")
+        return v.strip()
+
+
+from app.models import Segment
+
+@router.post("/voice-command")
+def ai_voice_command(
+    request: VoiceCommandRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_any_authenticated),
+):
+    """Process Admin/Manager Voice Command and return navigation target, pre-selected location/recipients, and spoken response."""
+    user_name = getattr(current_user, "full_name", "Manager")
+    user_role = getattr(current_user, "role", "campaign_manager")
+
+    audiences = db.query(Audience).filter(Audience.is_deleted == False, Audience.is_active == True).all()
+    recipient_names = [f"{a.first_name} {a.last_name}" for a in audiences]
+    segments = db.query(Segment).all()
+    segment_names = [s.name for s in segments]
+
+    combined_recipients = list(dict.fromkeys(recipient_names + segment_names + ["All Citizens", "Educational Institutions", "Farmers", "Healthcare Workers", "Local Authorities"]))
+
+    result = process_voice_command(
+        prompt=request.command,
+        user_role=user_role,
+        user_name=user_name,
+        known_recipients=combined_recipients
+    )
+
+    existing = result.get("recipients_list", [])
+    result["recipients_list"] = list(dict.fromkeys(existing + combined_recipients))
+
+    return result
+
+
 
 

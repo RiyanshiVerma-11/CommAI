@@ -385,7 +385,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       fetchCampaigns();
     } else {
       fetchSegmentsAndTemplates();
-      if (!editingCampId) {
+      if (!editingCampId && !initialVoicePlan && !currentAiPlan) {
         setStep(1);
         setFormTitle('');
         setFormDesc('');

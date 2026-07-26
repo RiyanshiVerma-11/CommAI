@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const OperatorChat = ({ user, backendUrl, headers }) => {
+const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTargetManager, initialMessage }) => {
   const [messages, setMessages] = useState([]);
-  const [channel, setChannel] = useState('general');
+  const [channel, setChannel] = useState(initialChannel || 'general');
   const [staffMembers, setStaffMembers] = useState([]);
   const [activeDmUser, setActiveDmUser] = useState(null);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
@@ -31,6 +31,37 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
       console.error('Error fetching staff list for DMs:', err);
     }
   }, [backendUrl, headers]);
+
+  // Handle voice command pre-fill of message text
+  useEffect(() => {
+    if (initialMessage) {
+      setInputMsg(initialMessage);
+    }
+  }, [initialMessage]);
+
+  // Handle voice command auto-selection of Channel or 1-on-1 Private DM
+  useEffect(() => {
+    if (initialChannel && !initialTargetManager) {
+      setChannel(initialChannel);
+    }
+  }, [initialChannel, initialTargetManager]);
+
+  useEffect(() => {
+    if (initialTargetManager && staffMembers.length > 0 && user) {
+      const query = initialTargetManager.toLowerCase();
+      const matched = staffMembers.find(s => 
+        (s.full_name && s.full_name.toLowerCase().includes(query)) ||
+        (s.email && s.email.toLowerCase().includes(query)) ||
+        (s.username && s.username.toLowerCase().includes(query))
+      );
+      if (matched) {
+        const sortedIds = [user.id, matched.id].sort();
+        const dmChannelId = `dm:${sortedIds[0]}:${sortedIds[1]}`;
+        setActiveDmUser(matched);
+        setChannel(dmChannelId);
+      }
+    }
+  }, [initialTargetManager, staffMembers, user]);
 
   const fetchMessages = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
@@ -152,6 +183,20 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
       setSending(false);
     }
   };
+
+  // Voice confirmation listener: triggers send when user confirms verbally via voice cockpit
+  const handleSendMessageRef = useRef(handleSendMessage);
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+  });
+
+  useEffect(() => {
+    const handleVoiceSend = () => {
+      handleSendMessageRef.current?.();
+    };
+    window.addEventListener('commai_voice_send_operator_chat', handleVoiceSend);
+    return () => window.removeEventListener('commai_voice_send_operator_chat', handleVoiceSend);
+  }, []);
 
   const handleDeleteMessage = async (msgId) => {
     if (!window.confirm('Are you sure you want to delete this message?')) return;
@@ -278,7 +323,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
                 padding: '8px 16px',
                 borderRadius: '10px',
                 border: channel === ch.id ? '1px solid hsl(var(--primary))' : '1px solid var(--border-color-glass)',
-                background: channel === ch.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                background: channel === ch.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(99, 102, 241, 0.06)',
                 color: channel === ch.id ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
                 fontWeight: channel === ch.id ? '700' : '500',
                 cursor: 'pointer',
@@ -293,7 +338,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
 
         {/* Private Direct Messages with Staff Section */}
         {otherStaff.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(0, 0, 0, 0.18)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(99, 102, 241, 0.06))', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.18)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <span style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', color: 'hsl(270, 95%, 75%)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 🔒 Private Staff DMs ({otherStaff.length}):
@@ -311,7 +356,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
                     padding: '6px 12px 6px 28px',
                     borderRadius: '8px',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: 'rgba(255, 255, 255, 0.05)',
+                    background: 'rgba(139, 92, 246, 0.08)',
                     color: 'hsl(var(--text-primary))',
                     fontSize: '0.82rem',
                     outline: 'none',
@@ -349,7 +394,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
                         padding: '6px 14px',
                         borderRadius: '20px',
                         border: isSelected ? '1px solid rgba(236, 72, 153, 0.8)' : '1px solid rgba(255, 255, 255, 0.08)',
-                        background: isSelected ? 'rgba(236, 72, 153, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                        background: isSelected ? 'rgba(236, 72, 153, 0.2)' : 'rgba(139, 92, 246, 0.06)',
                         color: isSelected ? '#ec4899' : 'hsl(var(--text-secondary))',
                         fontWeight: isSelected ? '700' : '500',
                         cursor: 'pointer',
@@ -378,7 +423,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
         <div style={{
           padding: '16px 20px',
           borderBottom: '1px solid var(--border-color-glass)',
-          background: channel.startsWith('dm:') ? 'linear-gradient(90deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)' : 'rgba(0, 0, 0, 0.2)',
+          background: channel.startsWith('dm:') ? 'linear-gradient(90deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)' : 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.08) 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -458,7 +503,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
                   {/* Message Bubble Card */}
                   <div style={{
                     maxWidth: '75%',
-                    background: isSelf ? 'rgba(59, 130, 246, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                    background: isSelf ? 'rgba(59, 130, 246, 0.16)' : 'rgba(139, 92, 246, 0.07)',
                     border: `1px solid ${isSelf ? 'rgba(59, 130, 246, 0.35)' : 'var(--border-color-glass)'}`,
                     borderRadius: isSelf ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
                     padding: '12px 16px',
@@ -511,7 +556,7 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
         </div>
 
         {/* Quick Operators Presets */}
-        <div style={{ padding: '8px 16px', background: 'rgba(0, 0, 0, 0.15)', borderTop: '1px solid var(--border-color-glass)', display: 'flex', gap: '8px', overflowX: 'auto', alignItems: 'center' }}>
+        <div style={{ padding: '8px 16px', background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%)', borderTop: '1px solid rgba(99, 102, 241, 0.12)', display: 'flex', gap: '8px', overflowX: 'auto', alignItems: 'center' }}>
           <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: '600', flexShrink: 0 }}>Quick Actions:</span>
           {[
             { label: '🚨 Shift Alert: Flood Warning', text: '🚨 Shift Alert: Heavy flood warning triggered. Please review Emergency Bulletins.' },
@@ -532,14 +577,14 @@ const OperatorChat = ({ user, backendUrl, headers }) => {
         </div>
 
         {/* Input Bar Form */}
-        <form onSubmit={handleSendMessage} style={{ padding: '14px 18px', background: 'rgba(0, 0, 0, 0.25)', borderTop: '1px solid var(--border-color-glass)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <form onSubmit={handleSendMessage} style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.6))', borderTop: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', gap: '10px', alignItems: 'center' }}>
           <input
             type="text"
             className="form-control"
             placeholder={activeDmUser ? `Private DM with ${activeDmUser.full_name}...` : `Message #${headerInfo.label.split(' ')[0]} (Admins & Managers)...`}
             value={inputMsg}
             onChange={(e) => setInputMsg(e.target.value)}
-            style={{ borderRadius: '10px', padding: '12px 16px', background: 'rgba(255, 255, 255, 0.04)' }}
+            style={{ borderRadius: '10px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)' }}
           />
           <button
             type="submit"

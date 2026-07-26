@@ -54,7 +54,7 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
     return {
         "SMTP_EMAIL": settings.SMTP_EMAIL,
         "SMTP_APP_PASSWORD": "****************" if settings.SMTP_APP_PASSWORD else "",
-        "CALLMEBOT_DEFAULT_APIKEY": settings.CALLMEBOT_DEFAULT_APIKEY,
+        "CALLMEBOT_DEFAULT_APIKEY": "****************" if settings.CALLMEBOT_DEFAULT_APIKEY else "",
         "DEFAULT_COUNTRY_CODE": settings.DEFAULT_COUNTRY_CODE,
         "GROQ_API_KEY": "****************" if settings.GROQ_API_KEY else "",
         "TELEGRAM_BOT_TOKEN": "****************" if settings.TELEGRAM_BOT_TOKEN else "",
@@ -103,9 +103,13 @@ def update_settings(
         update_data["FCM_SERVICE_ACCOUNT_JSON"] = settings_in.FCM_SERVICE_ACCOUNT_JSON
     elif settings_in.FCM_SERVICE_ACCOUNT_JSON == "":
         update_data["FCM_SERVICE_ACCOUNT_JSON"] = ""
+
+    if settings_in.CALLMEBOT_DEFAULT_APIKEY and settings_in.CALLMEBOT_DEFAULT_APIKEY != "****************":
+        update_data["CALLMEBOT_DEFAULT_APIKEY"] = settings_in.CALLMEBOT_DEFAULT_APIKEY
+    elif settings_in.CALLMEBOT_DEFAULT_APIKEY == "":
+        update_data["CALLMEBOT_DEFAULT_APIKEY"] = ""
         
     update_data["SMTP_EMAIL"] = settings_in.SMTP_EMAIL
-    update_data["CALLMEBOT_DEFAULT_APIKEY"] = settings_in.CALLMEBOT_DEFAULT_APIKEY
     update_data["DEFAULT_COUNTRY_CODE"] = settings_in.DEFAULT_COUNTRY_CODE
     update_data["TELEGRAM_CHAT_ID"] = settings_in.TELEGRAM_CHAT_ID
     update_data["DAILY_CAP_EMAIL"] = settings_in.DAILY_CAP_EMAIL

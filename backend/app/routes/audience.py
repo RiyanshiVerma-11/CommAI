@@ -188,16 +188,16 @@ def create_audience(
     db: Session = Depends(get_db),
     current_user = Depends(require_manager_or_higher)
 ):
-    # Check duplicate phone
-    db_aud_phone = db.query(Audience).filter(Audience.phone == aud_in.phone, Audience.is_deleted == False).first()
-    if db_aud_phone:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number already exists")
+    # Check duplicate phone if phone provided
+    if aud_in.phone and aud_in.phone.strip():
+        db_aud_phone = db.query(Audience).filter(Audience.phone == aud_in.phone, Audience.is_deleted == False).first()
+        if db_aud_phone:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number already exists")
         
-    # Check duplicate email if email exists
-    if aud_in.email:
-        db_aud_email = db.query(Audience).filter(Audience.email == aud_in.email, Audience.is_deleted == False).first()
-        if db_aud_email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email address already exists")
+    # Check duplicate email (mandatory)
+    db_aud_email = db.query(Audience).filter(Audience.email == aud_in.email, Audience.is_deleted == False).first()
+    if db_aud_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email address already exists")
             
     # Language and Channel list validations
     for lang in aud_in.preferred_languages:
@@ -210,7 +210,7 @@ def create_audience(
             
     aud = Audience(
         first_name=aud_in.first_name,
-        last_name=aud_in.last_name,
+        last_name=aud_in.last_name or "",
         email=aud_in.email,
         phone=aud_in.phone,
         preferred_languages=serialize_list(aud_in.preferred_languages),

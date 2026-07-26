@@ -3,7 +3,7 @@ import GlassCard from '../components/GlassCard';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData }) => {
+const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData, initialVoiceAlert, clearInitialVoiceAlert }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersGroupRef = useRef(null);
@@ -37,6 +37,21 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
     "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
     "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Jammu and Kashmir", "Ladakh", "New Delhi"
   ];
+
+  // Auto-open broadcast modal when initiated via Jarvis AI Voice Command
+  useEffect(() => {
+    if (initialVoiceAlert) {
+      setBroadcastState(initialVoiceAlert.state || 'Uttar Pradesh');
+      setBroadcastTitle(initialVoiceAlert.title || 'Emergency Alert');
+      setBroadcastDescription(initialVoiceAlert.description || `Emergency alert issued for ${initialVoiceAlert.recipients || 'citizens'}.`);
+      setBroadcastUrgency(initialVoiceAlert.urgency || 'critical');
+      setBroadcastChannels(['email', 'whatsapp', 'sms', 'push']);
+      setBroadcastSuccess('');
+      setBroadcastError('');
+      setShowBroadcastModal(true);
+      if (clearInitialVoiceAlert) clearInitialVoiceAlert();
+    }
+  }, [initialVoiceAlert, clearInitialVoiceAlert]);
 
   const handleOpenModalForState = useCallback((stateName) => {
     setBroadcastState(stateName);

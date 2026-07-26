@@ -38,7 +38,7 @@ class Audience(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     email = Column(String(255), nullable=True, index=True)
-    phone = Column(String(20), unique=True, nullable=False, index=True)
+    phone = Column(String(20), nullable=True, index=True)
     preferred_languages = Column(Text, nullable=False)  # JSON serialized array of strings, e.g., '["Hindi", "English"]'
     occupation = Column(String(100), nullable=False, index=True)
     age = Column(Integer, nullable=False, index=True)

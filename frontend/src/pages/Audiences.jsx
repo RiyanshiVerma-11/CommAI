@@ -24,11 +24,14 @@ const Audiences = ({ user, backendUrl, headers }) => {
   
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState('personal'); // 'personal', 'demographics', 'preferences'
   const [editId, setEditId] = useState(null);
   const [formFirst, setFormFirst] = useState('');
   const [formLast, setFormLast] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formLangs, setFormLangs] = useState([]);
   const [formOcc, setFormOcc] = useState('General Public');
   const [formAge, setFormAge] = useState(30);
@@ -202,6 +205,8 @@ const Audiences = ({ user, backendUrl, headers }) => {
     setFormLast('');
     setFormEmail('');
     setFormPhone('');
+    setFormPassword('');
+    setShowPassword(false);
     setFormLangs(['English']);
     setFormOcc('General Public');
     setFormAge(30);
@@ -216,16 +221,19 @@ const Audiences = ({ user, backendUrl, headers }) => {
     setFormCustomFields([]);
     setFormTelegramUser('');
     setFormError('');
+    setModalTab('personal');
     setModalOpen(true);
   };
 
   const handleOpenEdit = (aud) => {
     setEditId(aud.id);
     setFormFirst(aud.first_name);
-    setFormLast(aud.last_name);
+    setFormLast(aud.last_name || '');
     setFormEmail(aud.email || '');
     setFormPhone(aud.phone);
-    setFormLangs(aud.preferred_languages);
+    setFormPassword('');
+    setShowPassword(false);
+    setFormLangs(aud.preferred_languages || []);
     setFormOcc(aud.occupation);
     setFormAge(aud.age);
     setFormGender(aud.gender);
@@ -235,18 +243,20 @@ const Audiences = ({ user, backendUrl, headers }) => {
     setFormOrg(aud.organization || '');
     setFormDept(aud.department || '');
     setFormDesig(aud.designation || '');
-    setFormChannels(aud.preferred_channels);
+    setFormChannels(aud.preferred_channels || []);
     setFormCustomFields(aud.custom_fields ? Object.entries(aud.custom_fields).map(([k, v]) => ({ key: k, value: String(v) })) : []);
     const tgVal = aud.custom_fields?.telegram_username || aud.custom_fields?.telegram_chat_id || '';
     setFormTelegramUser(tgVal);
     setFormError('');
+    setModalTab('personal');
     setModalOpen(true);
   };
 
   const handleSaveAudience = async (e) => {
     e.preventDefault();
-    if (!formFirst || !formLast || !formPhone || !formState || !formDistrict || !formCity) {
-      setFormError('Mandatory fields missing (First name, Last name, Phone, State, District, City required)');
+    if (!formFirst || !formEmail || !formState || !formDistrict || !formCity) {
+      setFormError('Mandatory fields missing (First Name, Email, State, District, and City required)');
+      setModalTab('personal');
       return;
     }
     setFormError('');
@@ -269,12 +279,12 @@ const Audiences = ({ user, backendUrl, headers }) => {
 
     const payload = {
       first_name: formFirst,
-      last_name: formLast,
+      last_name: formLast || '',
       email: formEmail || null,
       phone: formPhone,
       preferred_languages: formLangs,
       occupation: formOcc,
-      age: parseInt(formAge),
+      age: parseInt(formAge) || 30,
       gender: formGender,
       state: formState,
       district: formDistrict,
@@ -286,6 +296,10 @@ const Audiences = ({ user, backendUrl, headers }) => {
       custom_fields: customFieldsDict,
       is_active: true
     };
+
+    if (formPassword && formPassword.trim()) {
+      payload.password = formPassword.trim();
+    }
 
     try {
       const url = editId ? `${backendUrl}/api/audiences/${editId}` : `${backendUrl}/api/audiences`;
@@ -1003,7 +1017,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                 </div>
 
                 {segBreakdowns && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px', background: 'rgba(255, 255, 255, 0.015)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.03)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(6, 182, 212, 0.04))', padding: '16px', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
                     <div>
                       <h4 style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', marginBottom: '10px', textTransform: 'uppercase', fontWeight: 'bold' }}>Languages</h4>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1015,7 +1029,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                                 <span>{lang}</span>
                                 <span style={{ fontWeight: 'bold', color: 'hsl(var(--primary))' }}>{pct}% ({count})</span>
                               </div>
-                              <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '100px', overflow: 'hidden' }}>
+                              <div style={{ height: '6px', background: 'rgba(99, 102, 241, 0.12)', borderRadius: '100px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))', borderRadius: '100px' }}></div>
                               </div>
                             </div>
@@ -1036,7 +1050,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                                 <span>{occ}</span>
                                 <span style={{ fontWeight: 'bold', color: 'hsl(var(--accent))' }}>{pct}% ({count})</span>
                               </div>
-                              <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '100px', overflow: 'hidden' }}>
+                              <div style={{ height: '6px', background: 'rgba(99, 102, 241, 0.12)', borderRadius: '100px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, hsl(var(--accent)), hsl(187, 92%, 50%))', borderRadius: '100px' }}></div>
                               </div>
                             </div>
@@ -1057,7 +1071,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                                 <span>{state}</span>
                                 <span style={{ fontWeight: 'bold', color: 'hsl(var(--primary))' }}>{pct}% ({count})</span>
                               </div>
-                              <div style={{ height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '100px', overflow: 'hidden' }}>
+                              <div style={{ height: '6px', background: 'rgba(99, 102, 241, 0.12)', borderRadius: '100px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(187, 92%, 50%))', borderRadius: '100px' }}></div>
                               </div>
                             </div>
@@ -1167,184 +1181,435 @@ const Audiences = ({ user, backendUrl, headers }) => {
         </div>
       )}
 
-      {/* --- ADD/EDIT MODAL --- */}
+      {/* --- GORGEOUS 3-STEP AUDIENCE WIZARD MODAL --- */}
       {modalOpen && (
-        <div className="modal-overlay">
-          <GlassCard className="modal-content animate-fade-in">
-            <h2 style={{ fontSize: '1.35rem', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-              {editId ? '✏️ Edit Recipient Profile' : '👥 Create Audience Profile'}
-            </h2>
+        <div className="modal-backdrop animate-fade-in" style={{ zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <GlassCard className="modal-content animate-zoom-in" style={{ maxWidth: '780px', width: '95%', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {editId ? '✏️ Edit Recipient Profile' : '👥 Create Audience Profile'}
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.83rem', color: 'hsl(var(--text-secondary))' }}>
+                  {modalTab === 'personal' && 'Step 1 of 3: Enter personal identity, contact details & account password.'}
+                  {modalTab === 'demographics' && 'Step 2 of 3: Specify regional demographics, location & occupation.'}
+                  {modalTab === 'preferences' && 'Step 3 of 3: Configure delivery channels, languages & custom fields.'}
+                </p>
+              </div>
+              <button 
+                onClick={() => setModalOpen(false)} 
+                style={{ background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.2rem', color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form Error Banner */}
             {formError && (
-              <div className="glass-card danger-text" style={{ padding: '10px 14px', marginBottom: '16px', fontSize: '0.85rem', background: 'rgba(244, 63, 94, 0.1)', borderColor: 'rgba(244, 63, 94, 0.2)' }}>
-                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1.1rem', height: '1.1rem', marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                {formError}
+              <div className="glass-card danger-text animate-shake" style={{ padding: '12px 16px', marginBottom: '20px', fontSize: '0.88rem', background: 'rgba(244, 63, 94, 0.12)', borderColor: 'rgba(244, 63, 94, 0.25)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                <span>{formError}</span>
               </div>
             )}
 
+            {/* 3-Step Wizard Navigation Tabs (Vibrant Cyan-Indigo Gradient Styling) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '24px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))', padding: '8px', borderRadius: '14px', border: '1px solid rgba(6, 182, 212, 0.25)', boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)' }}>
+              <button
+                type="button"
+                onClick={() => setModalTab('personal')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: modalTab === 'personal' ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: modalTab === 'personal' ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255, 255, 255, 0.04)',
+                  color: modalTab === 'personal' ? '#ffffff' : '#94a3b8',
+                  fontWeight: modalTab === 'personal' ? '800' : '600',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: modalTab === 'personal' ? '0 4px 20px rgba(6, 182, 212, 0.45)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                <span>👤</span> 1. Personal Profile
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('demographics')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: modalTab === 'demographics' ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: modalTab === 'demographics' ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255, 255, 255, 0.04)',
+                  color: modalTab === 'demographics' ? '#ffffff' : '#94a3b8',
+                  fontWeight: modalTab === 'demographics' ? '800' : '600',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: modalTab === 'demographics' ? '0 4px 20px rgba(6, 182, 212, 0.45)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                <span>📍</span> 2. Demographics & Job
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab('preferences')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: modalTab === 'preferences' ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: modalTab === 'preferences' ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255, 255, 255, 0.04)',
+                  color: modalTab === 'preferences' ? '#ffffff' : '#94a3b8',
+                  fontWeight: modalTab === 'preferences' ? '800' : '600',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: modalTab === 'preferences' ? '0 4px 20px rgba(6, 182, 212, 0.45)' : 'none',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                <span>⚙️</span> 3. Channels & Handles
+              </button>
+            </div>
+
             <form onSubmit={handleSaveAudience}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">First Name *</label>
-                  <input type="text" className="form-control" value={formFirst} onChange={(e) => setFormFirst(e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Last Name *</label>
-                  <input type="text" className="form-control" value={formLast} onChange={(e) => setFormLast(e.target.value)} required />
-                </div>
-              </div>
+              {/* STEP 1: PERSONAL PROFILE & AUTHENTICATION */}
+              {modalTab === 'personal' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>First Name <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formFirst} 
+                        onChange={(e) => setFormFirst(e.target.value)} 
+                        placeholder="e.g. Sita" 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Last Name <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', fontWeight: 'normal' }}>(Optional)</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formLast} 
+                        onChange={(e) => setFormLast(e.target.value)} 
+                        placeholder="e.g. Devi (Leave blank if none)" 
+                      />
+                    </div>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Phone Number *</label>
-                  <input type="text" className="form-control" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="e.g. +919876543210" required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <input type="email" className="form-control" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="e.g. sita@health.org" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Telegram Handle / ID</label>
-                  <input type="text" className="form-control" value={formTelegramUser} onChange={(e) => setFormTelegramUser(e.target.value)} placeholder="e.g. @username or 1339647710" />
-                </div>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Email Address <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="email" 
+                        className="form-control" 
+                        value={formEmail} 
+                        onChange={(e) => setFormEmail(e.target.value)} 
+                        placeholder="e.g. sita@health.org" 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Phone Number <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', fontWeight: 'normal' }}>(Optional)</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formPhone} 
+                        onChange={(e) => setFormPhone(e.target.value)} 
+                        placeholder="e.g. +919876543210" 
+                      />
+                    </div>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Occupation</label>
-                  <select className="form-control" value={formOcc} onChange={(e) => setFormOcc(e.target.value)}>
-                    {occupations.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Age *</label>
-                  <input type="number" className="form-control" value={formAge} onChange={(e) => setFormAge(e.target.value)} min="0" max="120" required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Gender</label>
-                  <select className="form-control" value={formGender} onChange={(e) => setFormGender(e.target.value)}>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Telegram Handle / ID</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formTelegramUser} 
+                        onChange={(e) => setFormTelegramUser(e.target.value)} 
+                        placeholder="e.g. @username or 1339647710" 
+                      />
+                    </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">State *</label>
-                  <input type="text" className="form-control" value={formState} onChange={(e) => setFormState(e.target.value)} required placeholder="e.g. Uttar Pradesh" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">District *</label>
-                  <input type="text" className="form-control" value={formDistrict} onChange={(e) => setFormDistrict(e.target.value)} required placeholder="e.g. Varanasi" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">City *</label>
-                  <input type="text" className="form-control" value={formCity} onChange={(e) => setFormCity(e.target.value)} required placeholder="e.g. Varanasi" />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Organization</label>
-                  <input type="text" className="form-control" value={formOrg} onChange={(e) => setFormOrg(e.target.value)} placeholder="e.g. Public Health NGO" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <input type="text" className="form-control" value={formDept} onChange={(e) => setFormDept(e.target.value)} placeholder="e.g. Primary Care" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Designation</label>
-                  <input type="text" className="form-control" value={formDesig} onChange={(e) => setFormDesig(e.target.value)} placeholder="e.g. Nurse Practitioner" />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Preferred Languages (Choose multiple)</label>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', maxHeight: '90px', overflowY: 'auto', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '10px' }}>
-                  {languages.slice(0, 10).map(lang => (
-                    <label key={lang} style={{ display: 'flex', gap: '4px', fontSize: '0.85rem', cursor: 'pointer', alignItems: 'center' }}>
-                      <input type="checkbox" checked={formLangs.includes(lang)} onChange={() => handleCheckLang(lang)} />
-                      {lang}
-                    </label>
-                  ))}
-                  <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>+ more official languages seeded</span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Preferred Channels</label>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  {channels.map(ch => (
-                    <label key={ch} style={{ display: 'flex', gap: '6px', cursor: 'pointer', alignItems: 'center', textTransform: 'capitalize' }}>
-                      <input type="checkbox" checked={formChannels.includes(ch)} onChange={() => handleCheckChannel(ch)} />
-                      {ch}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginTop: '16px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>Custom Metadata Fields</label>
-                  <button 
-                    type="button" 
-                    className="btn btn-dark" 
-                    style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto' }}
-                    onClick={() => setFormCustomFields(prev => [...prev, { key: '', value: '' }])}
-                  >
-                    + Add Field
-                  </button>
-                </div>
-                
-                {formCustomFields.length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', margin: 0, fontStyle: 'italic' }}>
-                    No dynamic custom fields configured for this profile.
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '120px', overflowY: 'auto', padding: '4px' }}>
-                    {formCustomFields.map((field, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>
+                        {editId ? 'Update Account Password' : 'Set Account Password'} <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', fontWeight: 'normal' }}>(Optional)</span>
+                      </label>
+                      <div style={{ position: 'relative' }}>
                         <input 
-                          type="text" 
+                          type={showPassword ? 'text' : 'password'}
                           className="form-control" 
-                          placeholder="Key (e.g. Crop)" 
-                          value={field.key} 
-                          onChange={(e) => {
-                            const newFields = [...formCustomFields];
-                            newFields[idx].key = e.target.value;
-                            setFormCustomFields(newFields);
-                          }}
-                          style={{ width: '45%' }}
+                          value={formPassword} 
+                          onChange={(e) => setFormPassword(e.target.value)} 
+                          placeholder="Min 6 characters" 
+                          style={{ paddingRight: '40px' }}
                         />
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          placeholder="Value (e.g. Wheat)" 
-                          value={field.value} 
-                          onChange={(e) => {
-                            const newFields = [...formCustomFields];
-                            newFields[idx].value = e.target.value;
-                            setFormCustomFields(newFields);
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{
+                            position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem',
+                            color: 'hsl(var(--text-muted))'
                           }}
-                          style={{ width: '45%' }}
-                        />
-                        <button 
-                          type="button" 
-                          className="btn btn-danger" 
-                          style={{ padding: '8px 12px', background: 'rgba(244, 63, 94, 0.15)', border: 'none', cursor: 'pointer' }}
-                          onClick={() => setFormCustomFields(prev => prev.filter((_, i) => i !== idx))}
                         >
-                          ✕
+                          {showPassword ? '🙈' : '👁️'}
                         </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <div>
+              {/* STEP 2: DEMOGRAPHICS & LOCATION */}
+              {modalTab === 'demographics' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Occupation</label>
+                      <select className="form-control" value={formOcc} onChange={(e) => setFormOcc(e.target.value)}>
+                        {occupations.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Age <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        value={formAge} 
+                        onChange={(e) => setFormAge(e.target.value)} 
+                        min="0" 
+                        max="120" 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Gender</label>
+                      <select className="form-control" value={formGender} onChange={(e) => setFormGender(e.target.value)}>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Non-Binary">Non-Binary</option>
+                        <option value="Prefer Not to Say">Prefer Not to Say</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>State <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formState} 
+                        onChange={(e) => setFormState(e.target.value)} 
+                        placeholder="e.g. Uttar Pradesh" 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>District <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formDistrict} 
+                        onChange={(e) => setFormDistrict(e.target.value)} 
+                        placeholder="e.g. Varanasi" 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>City <span style={{ color: '#f43f5e' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formCity} 
+                        onChange={(e) => setFormCity(e.target.value)} 
+                        placeholder="e.g. Varanasi" 
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Organization</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formOrg} 
+                        onChange={(e) => setFormOrg(e.target.value)} 
+                        placeholder="e.g. Public Health NGO" 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Department</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formDept} 
+                        onChange={(e) => setFormDept(e.target.value)} 
+                        placeholder="e.g. Primary Care" 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>Designation</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={formDesig} 
+                        onChange={(e) => setFormDesig(e.target.value)} 
+                        placeholder="e.g. Nurse Practitioner" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: CHANNELS & CUSTOM METADATA */}
+              {modalTab === 'preferences' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Preferred Languages Checkbox Grid */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                      Preferred Languages (Choose multiple)
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px', maxHeight: '140px', overflowY: 'auto', padding: '12px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.05))', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.18)' }}>
+                      {languages.map(lang => {
+                        const isChecked = formLangs.includes(lang);
+                        return (
+                          <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer', color: isChecked ? '#06b6d4' : 'hsl(var(--text-secondary))', fontWeight: isChecked ? '600' : '400' }}>
+                            <input type="checkbox" checked={isChecked} onChange={() => handleCheckLang(lang)} />
+                            {lang}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Preferred Channels Chip Grid */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                      Preferred Channels
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {channels.map(ch => {
+                        const isSelected = formChannels.includes(ch);
+                        return (
+                          <div
+                            key={ch}
+                            onClick={() => handleCheckChannel(ch)}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '20px',
+                              border: `1.5px solid ${isSelected ? '#06b6d4' : 'rgba(255, 255, 255, 0.1)'}`,
+                              background: isSelected ? 'rgba(6, 182, 212, 0.15)' : 'rgba(99, 102, 241, 0.06)',
+                              color: isSelected ? '#06b6d4' : 'hsl(var(--text-secondary))',
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              fontWeight: isSelected ? '700' : '500',
+                              textTransform: 'lowercase',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            {isSelected && <span>✓</span>}
+                            {ch}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Metadata Fields */}
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Custom Metadata Fields</label>
+                      <button 
+                        type="button" 
+                        className="btn btn-dark" 
+                        style={{ padding: '4px 10px', fontSize: '0.78rem', height: 'auto', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)' }}
+                        onClick={() => setFormCustomFields(prev => [...prev, { key: '', value: '' }])}
+                      >
+                        + Add Field
+                      </button>
+                    </div>
+                    
+                    {formCustomFields.length === 0 ? (
+                      <p style={{ fontSize: '0.83rem', color: 'hsl(var(--text-muted))', margin: 0, fontStyle: 'italic' }}>
+                        No dynamic custom fields configured for this profile.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '130px', overflowY: 'auto', padding: '4px' }}>
+                        {formCustomFields.map((field, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              type="text" 
+                              className="form-control" 
+                              placeholder="Key (e.g. Crop)" 
+                              value={field.key} 
+                              onChange={(e) => {
+                                const newFields = [...formCustomFields];
+                                newFields[idx].key = e.target.value;
+                                setFormCustomFields(newFields);
+                              }}
+                              style={{ width: '45%' }}
+                            />
+                            <input 
+                              type="text" 
+                              className="form-control" 
+                              placeholder="Value (e.g. Wheat)" 
+                              value={field.value} 
+                              onChange={(e) => {
+                                const newFields = [...formCustomFields];
+                                newFields[idx].value = e.target.value;
+                                setFormCustomFields(newFields);
+                              }}
+                              style={{ width: '45%' }}
+                            />
+                            <button 
+                              type="button" 
+                              className="btn btn-danger" 
+                              style={{ padding: '8px 12px', background: 'rgba(244, 63, 94, 0.15)', border: 'none', cursor: 'pointer', borderRadius: '6px' }}
+                              onClick={() => setFormCustomFields(prev => prev.filter((_, i) => i !== idx))}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Navigation Footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" className="btn btn-dark" onClick={() => setModalOpen(false)} style={{ padding: '10px 20px' }}>
+                    Cancel
+                  </button>
                   {editId && (
                     <button 
                       type="button" 
@@ -1353,21 +1618,40 @@ const Audiences = ({ user, backendUrl, headers }) => {
                         handleDeleteAudience(editId);
                         setModalOpen(false);
                       }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                      style={{ padding: '10px 16px', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', color: '#f43f5e' }}
                     >
-                      <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                       Delete Profile
                     </button>
                   )}
                 </div>
+
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button type="button" className="btn btn-dark" onClick={() => setModalOpen(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    {editId ? 'Save Changes' : 'Create Profile'}
-                  </button>
+                  {modalTab === 'demographics' && (
+                    <button type="button" className="btn btn-dark" onClick={() => setModalTab('personal')} style={{ padding: '10px 20px' }}>
+                      ← Back
+                    </button>
+                  )}
+                  {modalTab === 'preferences' && (
+                    <button type="button" className="btn btn-dark" onClick={() => setModalTab('demographics')} style={{ padding: '10px 20px' }}>
+                      ← Back
+                    </button>
+                  )}
+
+                  {modalTab === 'personal' && (
+                    <button type="button" className="btn btn-primary" onClick={() => setModalTab('demographics')} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)' }}>
+                      Next: Demographics →
+                    </button>
+                  )}
+                  {modalTab === 'demographics' && (
+                    <button type="button" className="btn btn-primary" onClick={() => setModalTab('preferences')} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)' }}>
+                      Next: Preferences →
+                    </button>
+                  )}
+                  {modalTab === 'preferences' && (
+                    <button type="submit" className="btn btn-primary" style={{ padding: '10px 28px', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)' }}>
+                      {editId ? '💾 Save Changes' : '✨ Create Profile'}
+                    </button>
+                  )}
                 </div>
               </div>
             </form>
@@ -1439,7 +1723,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
                   <pre style={{
                     padding: '12px',
                     borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.04)',
+                    background: 'rgba(139, 92, 246, 0.08)',
                     border: '1px solid var(--border-color-glass)',
                     fontSize: '0.78rem',
                     fontFamily: 'monospace',

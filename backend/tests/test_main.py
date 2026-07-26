@@ -229,7 +229,7 @@ class TestRBAC:
     def test_audience_cannot_create_audience(self):
         aud_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
         payload = {
-            "first_name": "Test", "last_name": "Audience", "phone": "9876543210",
+            "first_name": "Test", "last_name": "Audience", "email": "testaud@test.com", "phone": "9876543210",
             "preferred_languages": ["English"], "occupation": "Student",
             "age": 21, "gender": "Male", "state": "Maharashtra",
             "district": "Pune", "city": "Pune", "preferred_channels": ["email"]
@@ -379,7 +379,7 @@ class TestAudienceCRUD:
     def test_duplicate_phone_rejected(self):
         admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
         payload = {
-            "first_name": "Dup", "last_name": "Phone",
+            "first_name": "Dup", "last_name": "Phone", "email": "dup@test.com",
             "phone": "9876543210",  # already exists from RBAC test
             "preferred_languages": ["English"], "occupation": "Student",
             "age": 21, "gender": "Male", "state": "Maharashtra",
@@ -415,7 +415,7 @@ class TestAudienceCRUD:
         admin_headers = get_auth_headers(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD)
         # Create one to delete
         payload = {
-            "first_name": "Delete", "last_name": "Me",
+            "first_name": "Delete", "last_name": "Me", "email": "delete@test.com",
             "phone": "9876543299", "preferred_languages": ["English"],
             "occupation": "Student", "age": 20, "gender": "Male",
             "state": "Delhi", "district": "Delhi", "city": "Delhi",
@@ -832,6 +832,7 @@ class TestOptionBEnhancements:
         payload = {
             "first_name": "Metadata",
             "last_name": "User",
+            "email": "meta@test.com",
             "phone": "9876543231",
             "preferred_languages": ["English"],
             "occupation": "Student",
@@ -1003,7 +1004,7 @@ class TestAICampaignPlanner:
             }
         }
         
-        monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint: mock_plan)
+        monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint, target_language=None: mock_plan)
         
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
         response = client.post(
@@ -1427,3 +1428,17 @@ class TestEmergencyContacts:
             headers=manager_headers
         )
         assert response.status_code == 404
+
+    def test_ai_voice_command_parsing(self):
+        manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
+        response = client.post(
+            "/api/ai/voice-command",
+            json={"command": "Emergency! Flash flood warning for Assam, send immediately to all audiences"},
+            headers=manager_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "action" in data
+        assert "spoken_response" in data
+        assert data["location_selected"] in ["Assam", "All Locations"]
+

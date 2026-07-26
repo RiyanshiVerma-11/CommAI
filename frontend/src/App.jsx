@@ -20,6 +20,7 @@ import SentimentMap from './pages/SentimentMap';
 import CitizenConversations from './pages/CitizenConversations';
 import LiveBulletins from './pages/LiveBulletins';
 import OperatorChat from './pages/OperatorChat';
+import VoiceCommandCenter from './components/VoiceCommandCenter';
 
 
 
@@ -147,11 +148,69 @@ function App() {
   const [operatorChatCount, setOperatorChatCount] = useState(0);
   const [liveAlert, setLiveAlert] = useState(null);
   const [pendingVoicePlan, setPendingVoicePlan] = useState(null);
+  const [pendingVoiceAlert, setPendingVoiceAlert] = useState(null);
+  const [pendingOperatorChatTarget, setPendingOperatorChatTarget] = useState(null);
   const activeSirenRef = useRef(null);
 
   const handleAutoCreateCampaign = (plan) => {
     setPendingVoicePlan(plan);
     setActiveTab('campaigns');
+  };
+
+  const handleExecuteVoiceCommand = (voiceResult) => {
+    if (!voiceResult) return;
+
+    const targetTab = voiceResult.navigation_target || 'campaigns';
+
+    // Special case for Sentiment Map emergency alert voice command
+    if (targetTab === 'sentiment_map') {
+      setPendingVoiceAlert({
+        state: voiceResult.location_selected || 'Uttar Pradesh',
+        title: voiceResult.title || 'Emergency Alert',
+        description: voiceResult.description || voiceResult.body || 'Emergency alert for area.',
+        recipients: voiceResult.recipients_selected || 'Students',
+        urgency: voiceResult.urgency || 'critical'
+      });
+      setActiveTab('sentiment_map');
+      return;
+    }
+
+    // For campaign/emergency/wizard actions, build a full voice plan and switch to campaigns
+    const isCampaignAction = ['emergency_broadcast', 'create_campaign', 'send_alert'].includes(voiceResult.action) || voiceResult.open_wizard;
+
+    if (isCampaignAction) {
+      const voicePlan = {
+        campaign: {
+          title: voiceResult.title || 'Voice Command Campaign',
+          objective: voiceResult.objective || voiceResult.description || 'Generated via Voice Cockpit',
+          campaign_type: voiceResult.category || (voiceResult.action === 'emergency_broadcast' ? 'emergency_alert' : 'awareness_drive'),
+          description: voiceResult.description || ''
+        },
+        message: {
+          subject: voiceResult.subject || `[${voiceResult.location_selected || 'Notice'}] ${voiceResult.title || 'Important Alert'}`,
+          body: voiceResult.body || voiceResult.description || `Dear {{first_name}}, important notice for citizens in ${voiceResult.location_selected || 'your area'}.`
+        },
+        delivery: {
+          channels: voiceResult.channels || ['email', 'whatsapp', 'sms'],
+          audiences: [voiceResult.recipients_selected || 'All Citizens'],
+          location: voiceResult.location_selected || 'All Locations'
+        },
+        user_confirmed: voiceResult.user_confirmed || false
+      };
+
+      setPendingVoicePlan(voicePlan);
+      setActiveTab('campaigns');
+    } else {
+      // For navigation-only actions (approvals, audiences, operator_chat, etc.)
+      if (targetTab === 'operator_chat') {
+        setPendingOperatorChatTarget({
+          channel: voiceResult.target_channel || 'general',
+          targetManager: voiceResult.target_manager || null,
+          initialMessage: voiceResult.message_text || voiceResult.body || null
+        });
+      }
+      setActiveTab(targetTab);
+    }
   };
 
   const activeTabRef = useRef(activeTab);
@@ -874,6 +933,8 @@ function App() {
             headers={authHeaders}
             setActiveTab={setActiveTab}
             setAutofillPosterData={setAutofillPosterData}
+            initialVoiceAlert={pendingVoiceAlert}
+            clearInitialVoiceAlert={() => setPendingVoiceAlert(null)}
           />
         );
       case 'citizen_conversations':
@@ -901,6 +962,9 @@ function App() {
             user={user}
             backendUrl={BACKEND_URL}
             headers={authHeaders}
+            initialChannel={pendingOperatorChatTarget?.channel}
+            initialTargetManager={pendingOperatorChatTarget?.targetManager}
+            initialMessage={pendingOperatorChatTarget?.initialMessage}
           />
         );
       default:
@@ -1283,6 +1347,12 @@ function App() {
         backendUrl={BACKEND_URL} 
         token={token} 
         onAutoCreateCampaign={handleAutoCreateCampaign} 
+      />
+      <VoiceCommandCenter
+        user={user}
+        backendUrl={BACKEND_URL}
+        token={token}
+        onExecuteVoiceCommand={handleExecuteVoiceCommand}
       />
       
       {liveAlert && (

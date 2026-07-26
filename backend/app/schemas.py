@@ -112,9 +112,9 @@ class OTPVerify(CustomBaseModel):
 
 class AudienceBase(CustomBaseModel):
     first_name: str
-    last_name: str
-    email: Optional[EmailStr] = None
-    phone: str
+    last_name: Optional[str] = ""
+    email: EmailStr
+    phone: Optional[str] = ""
     preferred_languages: List[str] = Field(default_factory=list)
     occupation: str
     age: int = Field(..., ge=0, le=120)
@@ -132,6 +132,8 @@ class AudienceBase(CustomBaseModel):
 class AudienceCreate(AudienceBase):
     @field_validator("phone")
     def validate_phone(cls, v):
+        if not v or not v.strip():
+            return ""
         # Allow numbers with optional country prefix like +91
         digits = "".join(filter(str.isdigit, v))
         if len(digits) < 10 or len(digits) > 15:

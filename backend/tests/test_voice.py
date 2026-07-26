@@ -45,7 +45,7 @@ def test_generate_twiml():
 
 
 @patch("app.services.voice_service.requests.post")
-@patch("os.getenv")
+@patch("app.services.voice_service.os.getenv")
 def test_send_voice_call_success(mock_getenv, mock_post):
     def getenv_side_effect(key, default=None):
         env_map = {
@@ -75,7 +75,7 @@ def test_send_voice_call_success(mock_getenv, mock_post):
 
 
 @patch("app.services.voice_service.requests.post")
-@patch("os.getenv")
+@patch("app.services.voice_service.os.getenv")
 def test_send_voice_call_unverified_trial_number(mock_getenv, mock_post):
     def getenv_side_effect(key, default=None):
         env_map = {
@@ -99,3 +99,27 @@ def test_send_voice_call_unverified_trial_number(mock_getenv, mock_post):
     success, err = send_voice_call("9876543210", "Test alert", "English")
     assert success is True
     assert err == "trial_unverified"
+
+
+def test_process_voice_command_sentiment_map():
+    from app.services.ai_service import process_voice_command
+    
+    cmd = "create a sentiment map emergency alert for uttar pradesh student for flood alert"
+    res = process_voice_command(prompt=cmd, user_role="campaign_manager", user_name="Test")
+    
+    assert res["navigation_target"] == "sentiment_map"
+    assert res["location_selected"] == "Uttar Pradesh"
+    assert res["recipients_selected"] == "Students"
+    assert res["action"] == "emergency_broadcast"
+
+
+def test_process_voice_command_send_to_person():
+    from app.services.ai_service import process_voice_command
+    
+    cmd = "send this to riyanshi verma"
+    res = process_voice_command(prompt=cmd, user_role="campaign_manager", user_name="Test")
+    
+    assert res["navigation_target"] != "operator_chat"
+    assert res["recipients_selected"] == "Riyanshi Verma"
+    assert res["action"] == "send_alert"
+

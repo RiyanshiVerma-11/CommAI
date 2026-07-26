@@ -1,22 +1,18 @@
 # CommAI: Enterprise Multilingual Mass Communication & Emergency Public Awareness SaaS Platform
 
-<div align="center">
+<img src="logo.jpeg" alt="CommAI Logo" width="180" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 
-  <img src="logo.jpeg" alt="CommAI Logo" width="180" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
+### *Empowering Organizations with AI-Driven Multilingual Outreach, Omnichannel Dispatch & Four-Eye Emergency Governance*
 
-  ### *Empowering Organizations with AI-Driven Multilingual Outreach, Omnichannel Dispatch & Four-Eye Emergency Governance*
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev)
+[![Groq LLM](https://img.shields.io/badge/Groq_AI-Llama_3.3_70B-FF6F00?style=for-the-badge&logo=openai)](https://groq.com)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
 
-  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
-  [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
-  [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-  [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
-  [![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev)
-  [![Groq LLM](https://img.shields.io/badge/Groq_AI-Llama_3.3_70B-FF6F00?style=for-the-badge&logo=openai)](https://groq.com)
-  [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
-
-  [**Explore Features**](#-core-saas-feature-pillars) • [**Visual Screenshot Tour**](#-interactive-visual-tour--screenshots) • [**Architecture & ERD**](#-system-architecture--data-engineering) • [**API Specs**](#-api-specification--gateway-matrix) • [**Quick Start**](#-getting-started--deployment-guide)
-
-</div>
+[**Explore Features**](#-core-saas-feature-pillars) • [**Visual Screenshot Tour**](#-interactive-visual-tour--screenshots) • [**Architecture & ERD**](#-system-architecture--data-engineering) • [**API Specs**](#-api-specification--gateway-matrix) • [**Quick Start**](#-getting-started--deployment-guide)
 
 ---
 
@@ -109,14 +105,14 @@ graph TD
 - **RAG Knowledge Base (`rag_service.py`)**: Embedded vector retrieval system indexing official government circulars, health advisory PDFs, and emergency guidelines for auto-answering citizen queries.
 - **Multi-Tier Zero-Downtime Translation Pipeline**: Failover sequence: Primary Groq 70B $\rightarrow$ Secondary Groq 8B $\rightarrow$ Google GTX Translate API across 23 official Indic languages.
 
-<div align="center" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); padding: 28px; border-radius: 24px; border: 2px solid #8b5cf6; box-shadow: 0 15px 35px rgba(139, 92, 246, 0.35); margin: 25px 0;">
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); padding: 28px; border-radius: 24px; border: 2px solid #8b5cf6; box-shadow: 0 15px 35px rgba(139, 92, 246, 0.35); margin: 25px 0;">
 
-  <h2 align="center" style="color: #c084fc; margin-top: 0; font-size: 1.85rem; text-shadow: 0 0 15px rgba(192, 132, 252, 0.5);">
+  <h2 style="color: #c084fc; margin-top: 0; font-size: 1.85rem; text-shadow: 0 0 15px rgba(192, 132, 252, 0.5); text-align: left;">
     🎙️ ⚡ COMMAI VOICE COCKPIT & HANDS-FREE JARVIS AI <br/>
     <span style="color: #38bdf8; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px;">⭐ THE PLATFORM'S FLAGSHIP KILLER FEATURE ⭐</span>
   </h2>
 
-  <p style="color: #ffffff; font-size: 1.05rem; line-height: 1.6; max-width: 900px; margin: 0 auto 20px auto; font-weight: 500;">
+  <p style="color: #ffffff; font-size: 1.05rem; line-height: 1.6; margin: 0 0 20px 0; font-weight: 500; text-align: left;">
     A revolutionary hands-free AI voice assistant that lets Admins & Campaign Managers control broadcasts, navigate emergency modules, target audience segments, and dictate localized messaging—all using natural voice interaction.
   </p>
 
@@ -187,7 +183,9 @@ graph TD
         </div>
       </td>
     </tr>
-  <div align="center" style="margin: 20px 0 10px 0;">
+  </table>
+
+  <div style="margin: 20px 0 10px 0; text-align: left;">
     <img src="docs/screenshots/milestone%202/jarvis_ai_voice_command.png" alt="Jarvis AI Voice Cockpit" width="92%" style="border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
     <br/>
     <span style="color: #e2e8f0; font-size: 0.88rem; font-style: italic;">🎙️ CommAI Voice Cockpit & Hands-Free Jarvis AI Action Center</span>
@@ -235,22 +233,22 @@ graph TD
 ### 🏆 Core Platform Foundation & Governance
 
 | Public Landing Page | Login & 2FA OTP Verification |
-| :---: | :---: |
+| :--- | :--- |
 | ![Public Landing Page](docs/screenshots/milestone%201/landing.png) | ![Login Screen](docs/screenshots/milestone%201/login.png) |
 | *Public entry portal with live voice bulletin player & SOS trigger.* | *Secure login with JWT authentication & 2FA OTP verification code.* |
 
 | Executive Overview Dashboard | Audience Management & NL Segment Builder |
-| :---: | :---: |
+| :--- | :--- |
 | ![Overview Dashboard](docs/screenshots/milestone%201/dashboard.png) | ![Audience Management](docs/screenshots/milestone%201/audiences.png) |
 | *High-level telemetry for active campaigns, reach & system health.* | *Demographic management with Natural Language AI segmentation.* |
 
 | Multi-Channel Template Library | Campaign Planner & AI Assistant |
-| :---: | :---: |
+| :--- | :--- |
 | ![Template Library](docs/screenshots/milestone%201/templates.png) | ![Campaign Planner](docs/screenshots/milestone%201/campaigns.png) |
 | *Central repository with variable interpolation (`{{first_name}}`).* | *Multi-channel broadcast manager with AI subject line generator.* |
 
 | Four-Eye Maker-Checker Approvals Queue | Gateway Diagnostics Dashboard |
-| :---: | :---: |
+| :--- | :--- |
 | ![Approvals Queue](docs/screenshots/milestone%201/approvals.png) | ![System Diagnostics Dashboard](docs/screenshots/milestone%201/settings.png) |
 | *Safety guardrail queue requiring approval for campaigns $\ge 100$ recipients.* | *Real-time latency diagnostics for Groq, SMTP, WhatsApp & FCM.* |
 
@@ -259,22 +257,22 @@ graph TD
 ### 🚀 Advanced Audio, Visual & Analytics Features
 
 | 🎙️ Hands-Free Jarvis AI Voice Cockpit | 🎨 AI Visual Poster Studio |
-| :---: | :---: |
+| :--- | :--- |
 | ![Jarvis AI Voice Cockpit](docs/screenshots/milestone%202/jarvis_ai_voice_command.png) | ![AI Visual Poster Studio](docs/screenshots/milestone%202/poster_studio.png) |
 | *Hands-free "Hey Jarvis" voice assistant & AI broadcast cockpit.* | *Canvas composite engine with binary image streaming (`/api/poster/{id}/image`).* |
 
 | Neural Indic Voice Bulletin Reader | Real-Time Inter-Operator Staff Chat |
-| :---: | :---: |
+| :--- | :--- |
 | ![Neural Voice Bulletin Player](docs/screenshots/milestone%202/live_bulletins.png) | ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png) |
 | *Edge-TTS & gTTS neural speech player across 23 Indic languages.* | *WebSocket chat room with role badges & audio chime alerts.* |
 
 | Real-Time Inter-Operator Staff Chat | Geospatial Sentiment Map & Heatmap |
-| :---: | :---: |
+| :--- | :--- |
 | ![Real-Time Operator Staff Chat](docs/screenshots/milestone%202/staff_chat.png) | ![Geospatial Sentiment Map](docs/screenshots/milestone%202/sentiment_map.png) |
 | *WebSocket chat room with role badges & audio chime alerts.* | *District-level citizen sentiment map and emergency feedback heatmap.* |
 
 | Citizen Emergency SOS Inbox | RAG-Powered AI Help Desk & Support |
-| :---: | :---: |
+| :--- | :--- |
 | ![Emergency Inbox & SOS Tracking](docs/screenshots/milestone%202/emergency_inbox.png) | ![Support Queries & AI Help Desk](docs/screenshots/milestone%202/admin_portal_for_support_queries.png) |
 | *SOS queue with priority escalation & automated AI response drafting.* | *Citizen support desk powered by RAG vector knowledge search.* |
 
@@ -506,7 +504,7 @@ sequenceDiagram
 ## 📑 API Specification & Gateway Matrix
 
 | Module | Endpoint | Method | Description |
-| :--- | :--- | :---: | :--- |
+| :--- | :--- | :--- | :--- |
 | **Auth** | `/api/auth/token` | `POST` | Authenticate user credentials & issue JWT token |
 | **Auth** | `/api/auth/request-otp` | `POST` | Request dynamic 6-digit real-time email OTP code |
 | **Auth** | `/api/auth/verify-otp` | `POST` | Verify real-time email 2FA OTP code |

@@ -109,13 +109,87 @@ graph TD
 - **RAG Knowledge Base (`rag_service.py`)**: Embedded vector retrieval system indexing official government circulars, health advisory PDFs, and emergency guidelines for auto-answering citizen queries.
 - **Multi-Tier Zero-Downtime Translation Pipeline**: Failover sequence: Primary Groq 70B $\rightarrow$ Secondary Groq 8B $\rightarrow$ Google GTX Translate API across 23 official Indic languages.
 
-### 🎙️ ⚡ COMMAI VOICE COCKPIT & HANDS-FREE JARVIS AI (KILLER FEATURE)
-- **Hands-Free Wake-Word Detection ("Hey Jarvis" / "Hey Jarvis AI")**: **Background voice listener that continuously monitors for "Hey Jarvis" or "Hey Jarvis AI" on Admin and Manager dashboards. Automatically slides open the Voice Cockpit hands-free and greets the manager verbally.**
-- **Continuous Speech Dialogue & Auto-Mic Loop**: **CommAI speaks all status updates, AI-generated responses, and campaign summaries aloud via SpeechSynthesis. Right after the AI finishes speaking, the microphone AUTOMATICALLY opens in recording mode by default for hands-free follow-up commands.**
-- **Interactive Recipient Directory & Location Dropdowns**: **Parses spoken locations (e.g. Uttar Pradesh, Assam, Varanasi) and dynamically loads all individual recipient names (e.g. Riyanshi Verma, Nidhi Sharma, Palak, Yashvi, Ramesh Sharma) + target segments into interactive cockpit review dropdowns.**
-- **Groq 70B AI Campaign Content Generation**: **Instantly generates complete production-ready campaign copy (Catchy Title, Strategic Objective, Email/Push Subject Line, and Detailed Message Body with `{{first_name}}` placeholders).**
-- **One-Click Wizard Co-Pilot & Direct Broadcast**: **Clicking `✏️ Edit Wizard` populates the full campaign planner wizard instantly, while `🚀 Proceed / Confirm Broadcast` dispatches the alert directly.**
-- **Explicit Recording Controls**: **Features a prominent `🛑 Stop Recording` button for manual recording control anytime.**
+<div align="center" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); padding: 28px; border-radius: 24px; border: 2px solid #8b5cf6; box-shadow: 0 15px 35px rgba(139, 92, 246, 0.35); margin: 25px 0;">
+
+  <h2 align="center" style="color: #c084fc; margin-top: 0; font-size: 1.85rem; text-shadow: 0 0 15px rgba(192, 132, 252, 0.5);">
+    🎙️ ⚡ COMMAI VOICE COCKPIT & HANDS-FREE JARVIS AI <br/>
+    <span style="color: #38bdf8; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px;">⭐ THE PLATFORM'S FLAGSHIP KILLER FEATURE ⭐</span>
+  </h2>
+
+  <p style="color: #ffffff; font-size: 1.05rem; line-height: 1.6; max-width: 900px; margin: 0 auto 20px auto; font-weight: 500;">
+    A revolutionary hands-free AI voice assistant that lets Admins & Campaign Managers control broadcasts, navigate emergency modules, target audience segments, and dictate localized messaging—all using natural voice interaction.
+  </p>
+
+  <table width="100%" style="border-collapse: collapse; border: none; text-align: left;">
+    <tr>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(139, 92, 246, 0.18); border-left: 4px solid #a78bfa; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #e9d5ff; font-size: 1.05rem; font-weight: 700;">
+            🔊 Hands-Free Wake-Word Detection ("Hey Jarvis")
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            Continuous background listener on Admin & Manager dashboards monitoring for <code style="color: #e9d5ff; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">"Hey Jarvis"</code> or <code style="color: #e9d5ff; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">"Hey Jarvis AI"</code>. Automatically slides open the Voice Cockpit hands-free and greets the manager verbally.
+          </p>
+        </div>
+      </td>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(6, 182, 212, 0.18); border-left: 4px solid #38bdf8; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #bae6fd; font-size: 1.05rem; font-weight: 700;">
+            🔄 Continuous Speech Dialogue & Auto-Mic Loop
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            CommAI speaks all status updates, AI-generated responses, and campaign summaries aloud via SpeechSynthesis. Right after speaking, the microphone <b style="color: #38bdf8;">AUTOMATICALLY opens in recording mode</b> by default for seamless follow-up commands.
+          </p>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(16, 185, 129, 0.18); border-left: 4px solid #34d399; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #a7f3d0; font-size: 1.05rem; font-weight: 700;">
+            👥 Dynamic Recipient Directory & Location Intelligence
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            Parses spoken locations (e.g. <i style="color: #6ee7b7;">Uttar Pradesh, Assam, Varanasi</i>) and dynamically loads individual recipient names (e.g. <i style="color: #6ee7b7;">Riyanshi Verma, Nidhi Sharma, Palak, Yashvi, Ramesh Sharma</i>) + target segments into interactive review dropdowns.
+          </p>
+        </div>
+      </td>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(245, 158, 11, 0.18); border-left: 4px solid #fbbf24; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #fde68a; font-size: 1.05rem; font-weight: 700;">
+            🤖 Groq 70B AI Campaign Copy Generation
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            Instantly generates production-ready campaign copy (Catchy Title, Strategic Objective, Email/Push Subject Line, and Detailed Message Body with <code style="color: #fde68a; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">{{first_name}}</code> placeholders).
+          </p>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(236, 72, 153, 0.18); border-left: 4px solid #f472b6; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #fbcfe8; font-size: 1.05rem; font-weight: 700;">
+            🚀 One-Click Wizard Co-Pilot & Direct Broadcast
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            Clicking <code style="color: #fbcfe8; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">✏️ Edit Wizard</code> populates the campaign planner wizard instantly, while <code style="color: #fbcfe8; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">🚀 Proceed / Confirm Broadcast</code> dispatches alerts directly.
+          </p>
+        </div>
+      </td>
+      <td width="50%" style="padding: 10px; vertical-align: top;">
+        <div style="background: rgba(239, 68, 68, 0.18); border-left: 4px solid #f87171; padding: 14px; border-radius: 12px;">
+          <h4 style="margin: 0 0 6px 0; color: #fecdd3; font-size: 1.05rem; font-weight: 700;">
+            🛑 Explicit Recording Controls
+          </h4>
+          <p style="margin: 0; color: #ffffff; font-size: 0.9rem; line-height: 1.55;">
+            Features a prominent <code style="color: #fecdd3; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px;">🛑 Stop Recording</code> button and visual audio wave animations for manual recording control anytime.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+</div>
 
 ### 3. 🔊 Neural Indic AI Voice Bulletin & Voice Assistant Widget (23 Languages)
 - **High-Fidelity Neural Speech**: Integrates Microsoft Edge Neural Speech synthesis for 23 languages (the 22 Official Scheduled Languages of India + English: `hi-IN`, `bn`, `ta`, `te`, `mr`, `gu`, `kn`, `ml`, `ur`, `pa`, `or`, `as`, `ne`, `sd`, `sa`, `mai`, `sat`, `ks`, `kok`, `doi`, `mni`, `brx`, `en`).

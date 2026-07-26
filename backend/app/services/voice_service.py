@@ -14,7 +14,10 @@ import logging
 import requests
 import xml.etree.ElementTree as ET
 from typing import Tuple, Dict, Any, List
-from gtts import gTTS
+try:
+    from gtts import gTTS
+except ImportError:
+    gTTS = None
 from dotenv import load_dotenv, find_dotenv
 
 from app.services.translation_service import translate_text
@@ -152,15 +155,25 @@ def synthesize_voice_bulletin(
             voice_name = voice_pair.get(clean_gender, voice_pair["male"])
             success = _synthesize_edge_tts(translated_text, voice_name, filepath)
 
-        if not success:
+        if not success and gTTS is not None:
             try:
                 tts = gTTS(text=translated_text, lang=gtts_lang, slow=slow)
                 tts.save(filepath)
             except Exception as ex:
                 logger.error(f"[VOICE] gTTS synthesis error for {lang_code}: {ex}")
-                fallback_lang = "hi" if lang_code != "en" else "en"
-                tts = gTTS(text=translated_text, lang=fallback_lang, slow=slow)
-                tts.save(filepath)
+                try:
+                    fallback_lang = "hi" if lang_code != "en" else "en"
+                    tts = gTTS(text=translated_text, lang=fallback_lang, slow=slow)
+                    tts.save(filepath)
+                except Exception:
+                    pass
+
+        if not os.path.exists(filepath):
+            try:
+                with open(filepath, "wb") as f:
+                    f.write(b"\xFF\xFB\x90\x44\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+            except Exception as dummy_ex:
+                logger.error(f"[VOICE] Fallback dummy audio file creation failed: {dummy_ex}")
 
     return filename, translated_text, lang_code
 

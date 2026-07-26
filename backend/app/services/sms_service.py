@@ -69,15 +69,13 @@ def send_sms(
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             to_phone = f"+{clean_phone}"
             
-            # Twilio international routes require clean GSM-compatible SMS body text
-            import unicodedata
-            clean_body = unicodedata.normalize('NFKD', message).encode('ascii', 'ignore').decode('ascii').strip()
-            if not clean_body or len(clean_body) < 5:
-                # If message was pure non-ASCII (e.g. Hindi Devanagari script), format clean English summary
-                clean_subj = unicodedata.normalize('NFKD', subject or 'CommAI Public Announcement').encode('ascii', 'ignore').decode('ascii').strip() or "CommAI Public Announcement"
-                send_body = f"[{clean_subj}] Important public update. Please check your CommAI portal for full details."
-            else:
-                send_body = clean_body
+            # Twilio natively supports UCS-2 Unicode for Hindi, Telugu, and all Indic languages
+            send_body = message.strip() if message else ""
+            if subject and subject.strip() and not send_body.startswith(subject.strip()):
+                send_body = f"{subject.strip()}\n{send_body}"
+            
+            if not send_body:
+                send_body = "CommAI Public Announcement"
 
             payload = {
                 "From": twilio_from,

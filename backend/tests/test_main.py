@@ -1003,7 +1003,7 @@ class TestAICampaignPlanner:
             }
         }
         
-        monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint: mock_plan)
+        monkeypatch.setattr(ai, "plan_complete_campaign", lambda brief, category_hint=None, **kwargs: mock_plan)
         
         manager_headers = get_auth_headers(settings.MANAGER_EMAIL, settings.MANAGER_PASSWORD)
         response = client.post(

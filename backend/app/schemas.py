@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 class CustomBaseModel(BaseModel):
     @field_validator(
@@ -10,8 +12,12 @@ class CustomBaseModel(BaseModel):
     )
     @classmethod
     def serialize_naive_datetime(cls, v):
-        if isinstance(v, datetime) and v.tzinfo is None:
-            return v.replace(tzinfo=timezone.utc)
+        if isinstance(v, datetime):
+            if v.tzinfo is None:
+                # Treat naive datetime input as Indian Standard Time (IST UTC+05:30)
+                v = v.replace(tzinfo=IST).astimezone(timezone.utc)
+            else:
+                v = v.astimezone(timezone.utc)
         return v
 
 # --- AUTH SCHEMAS ---
@@ -270,6 +276,9 @@ class CampaignResponse(CampaignBase):
     target_audience_count: int
     estimated_reach: int
     estimated_cost: float = 0.0
+    sent_count: Optional[int] = 0
+    failed_count: Optional[int] = 0
+    dispatched_at: Optional[datetime] = None
     override_channel_preferences: Optional[bool] = False
     created_by: str
     updated_by: Optional[str] = None

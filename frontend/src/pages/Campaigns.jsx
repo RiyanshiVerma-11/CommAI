@@ -3485,24 +3485,30 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 </div>
 
                 {/* Counters grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '12px' }}>
-                  <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>EFFECTIVENESS INDEX</span>
-                    <span style={{ fontSize: '1.4rem', fontWeight: '800', color: (deliverySummary.effectiveness_score || 85) >= 80 ? '#10b981' : (deliverySummary.effectiveness_score || 85) >= 50 ? '#f59e0b' : '#ef4444' }}>
-                      {deliverySummary.effectiveness_score || 85}/100
+                <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.1fr 1fr 1fr', gap: '10px' }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>EFFECTIVENESS</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '800', color: (deliverySummary.effectiveness_score || 0) >= 80 ? '#10b981' : (deliverySummary.effectiveness_score || 0) >= 50 ? '#f59e0b' : '#ef4444' }}>
+                      {deliverySummary.effectiveness_score || 0}/100
                     </span>
                   </div>
-                  <div style={{ background: 'rgba(0, 176, 255, 0.05)', border: '1px solid rgba(0, 176, 255, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>TARGET CITIZENS</span>
-                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#00b0ff' }}>{deliverySummary.target_count}</span>
+                  <div style={{ background: 'rgba(0, 176, 255, 0.05)', border: '1px solid rgba(0, 176, 255, 0.15)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>TARGET CITIZENS</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#00b0ff' }}>{deliverySummary.target_count}</span>
                   </div>
-                  <div style={{ background: 'rgba(0, 230, 118, 0.05)', border: '1px solid rgba(0, 230, 118, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>CHANNEL MESSAGES SENT</span>
-                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#00e676' }}>{deliverySummary.sent_count}</span>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>CITIZENS REACHED</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#10b981' }}>
+                      {deliverySummary.unique_recipients_reached !== undefined ? deliverySummary.unique_recipients_reached : deliverySummary.target_count}
+                    </span>
                   </div>
-                  <div style={{ background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>FAILED DISPATCHES</span>
-                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#ff1744' }}>{deliverySummary.failed_count}</span>
+                  <div style={{ background: 'rgba(0, 230, 118, 0.05)', border: '1px solid rgba(0, 230, 118, 0.15)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>MESSAGES SENT</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#00e676' }}>{deliverySummary.sent_count}</span>
+                  </div>
+                  <div style={{ background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>FAILED</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '700', color: '#ff1744' }}>{deliverySummary.failed_count}</span>
                   </div>
                 </div>
 

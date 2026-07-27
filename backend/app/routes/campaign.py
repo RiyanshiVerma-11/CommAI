@@ -84,7 +84,7 @@ def calculate_reach(db: Session, segment_id: Optional[str], campaign_channels: L
             
     return target_count, reach_count
 
-def calculate_campaign_cost(db: Session, segment_id: Optional[str], campaign_channels: List[str]) -> float:
+def calculate_campaign_cost(db: Session, segment_id: Optional[str], campaign_channels: List[str], override_channel_preferences: bool = False) -> float:
     if not segment_id or not campaign_channels:
         return 0.0
         
@@ -101,7 +101,7 @@ def calculate_campaign_cost(db: Session, segment_id: Optional[str], campaign_cha
     for aud in audiences:
         preferred = deserialize_list(aud.preferred_channels)
         for ch in campaign_channels:
-            if ch in preferred:
+            if override_channel_preferences or not preferred or ch in preferred:
                 if ch == "sms":
                     total_cost += 0.02
                 elif ch == "whatsapp":
@@ -113,7 +113,12 @@ def format_campaign_response(camp: Campaign) -> CampaignResponse:
     db = object_session(camp)
     estimated_cost = 0.0
     if db and camp.segment_id:
-        estimated_cost = calculate_campaign_cost(db, camp.segment_id, deserialize_list(camp.channel_preferences))
+        estimated_cost = calculate_campaign_cost(
+            db, 
+            camp.segment_id, 
+            deserialize_list(camp.channel_preferences),
+            bool(camp.override_channel_preferences)
+        )
 
     custom_subject = None
     custom_body = None
@@ -139,6 +144,9 @@ def format_campaign_response(camp: Campaign) -> CampaignResponse:
         target_audience_count=camp.target_audience_count,
         estimated_reach=camp.estimated_reach,
         estimated_cost=estimated_cost,
+        sent_count=camp.sent_count or 0,
+        failed_count=camp.failed_count or 0,
+        dispatched_at=camp.dispatched_at,
         created_by=camp.created_by,
         updated_by=camp.updated_by,
         scheduled_at=camp.scheduled_at,
@@ -297,7 +305,7 @@ def update_campaign(
 
             # --- Maker-Checker Approval Escalation ---
             # If the user is not an admin, and the campaign is emergency or has a target count >= 100,
-            # force state to pending_approval.
+            # force state to pending_approval when creating/editing drafts.
             template = db.query(Template).filter(Template.id == target_tpl).first()
             is_emergency = template and template.category == "emergency"
             
@@ -305,8 +313,8 @@ def update_campaign(
             target_count, _ = calculate_reach(db, target_seg, channels_list)
             
             if current_user.role != "admin" and (is_emergency or target_count >= 100):
-                # Force status to pending_approval and skip scheduling checks
-                camp_in.status = "pending_approval"
+                if camp.status in ["draft", "pending_approval"]:
+                    camp_in.status = "pending_approval"
             
             if camp_in.status == "scheduled":
                 target_sched = camp_in.scheduled_at if camp_in.scheduled_at is not None else camp.scheduled_at
@@ -315,12 +323,17 @@ def update_campaign(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Cannot schedule campaign: A valid scheduled date/time is required."
                     )
-                # Ensure date is compared offset-naive (in UTC)
-                sched_naive = target_sched.replace(tzinfo=None)
-                if sched_naive <= datetime.datetime.utcnow():
+                # Ensure date comparison handles IST (UTC+05:30) and UTC correctly
+                if target_sched.tzinfo is not None:
+                    sched_utc_naive = target_sched.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                else:
+                    ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+                    sched_utc_naive = target_sched.replace(tzinfo=ist_tz).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
+                if sched_utc_naive <= datetime.datetime.utcnow():
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Cannot schedule campaign: Scheduled time must be in the future."
+                        detail="Cannot schedule campaign: Scheduled time must be in the future (IST / UTC)."
                     )
                 
     # 2. Verify relationships if updated
@@ -565,13 +578,13 @@ def get_campaign_delivery_summary(
         CampaignFeedback.campaign_id == id,
         CampaignFeedback.feedback_type.in_(["helpful", "excellent"])
     ).count()
-    pos_sentiment_pct = round((positive_feedbacks / feedback_count * 100), 1) if feedback_count > 0 else 80.0
+    pos_sentiment_pct = round((positive_feedbacks / feedback_count * 100), 1) if feedback_count > 0 else 0.0
     
     effectiveness_score = min(100, max(0, int(round(
         (open_rate_pct * 0.35) + (delivery_rate_pct * 0.35) + (pos_sentiment_pct * 0.30)
     ))))
     if total_logs == 0:
-        effectiveness_score = 85 if camp.status in ["active", "completed"] else 0
+        effectiveness_score = 0
 
     overall_engagement_pct = round(
         (delivery_rate_pct * 0.4) + (open_rate_pct * 0.4) + (min(feedback_participation_pct * 5, 100) * 0.2),
@@ -785,8 +798,13 @@ def approve_campaign(
     old_status = camp.status
     new_status = "active"
     if camp.scheduled_at:
-        sched_naive = camp.scheduled_at.replace(tzinfo=None)
-        if sched_naive > datetime.datetime.utcnow():
+        if camp.scheduled_at.tzinfo is not None:
+            sched_utc_naive = camp.scheduled_at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        else:
+            ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+            sched_utc_naive = camp.scheduled_at.replace(tzinfo=ist_tz).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
+        if sched_utc_naive > datetime.datetime.utcnow():
             new_status = "scheduled"
 
     camp.status = new_status

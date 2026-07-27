@@ -546,6 +546,25 @@ def get_campaign_delivery_summary(
     if not camp:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
         
+    logs = db.query(DeliveryLog).filter(DeliveryLog.campaign_id == id).all()
+    total_logs = len(logs)
+    delivered_count = sum(1 for l in logs if l.status in ["sent", "delivered", "read"])
+    read_count = sum(1 for l in logs if l.status == "read")
+    
+    from app.models import CampaignFeedback
+    feedback_count = db.query(CampaignFeedback).filter(CampaignFeedback.campaign_id == id).count()
+    
+    target_count = camp.target_audience_count or 1
+    delivery_rate_pct = round((delivered_count / total_logs * 100), 1) if total_logs > 0 else 0.0
+    open_rate_pct = round((read_count / delivered_count * 100), 1) if delivered_count > 0 else 0.0
+    feedback_participation_pct = round((feedback_count / target_count * 100), 1) if target_count > 0 else 0.0
+    
+    # Composite participation score
+    overall_engagement_pct = round(
+        (delivery_rate_pct * 0.4) + (open_rate_pct * 0.4) + (min(feedback_participation_pct * 5, 100) * 0.2),
+        1
+    )
+
     return CampaignDeliverySummary(
         id=camp.id,
         title=camp.title,
@@ -553,8 +572,93 @@ def get_campaign_delivery_summary(
         target_count=camp.target_audience_count,
         sent_count=camp.sent_count,
         failed_count=camp.failed_count,
+        delivered_count=delivered_count,
+        read_count=read_count,
+        delivery_rate_pct=delivery_rate_pct,
+        open_rate_pct=open_rate_pct,
+        feedback_participation_pct=feedback_participation_pct,
+        overall_engagement_pct=overall_engagement_pct,
         dispatched_at=camp.dispatched_at
     )
+
+
+@router.get("/{id}/participation-metrics")
+def get_campaign_participation_metrics(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager_or_higher)
+):
+    """
+    Get detailed aggregated survey/event participation & engagement metrics for a campaign.
+    """
+    camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
+    if not camp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    logs = db.query(DeliveryLog).filter(DeliveryLog.campaign_id == id).all()
+    total_dispatched = len(logs)
+
+    status_counts = {"sent": 0, "delivered": 0, "read": 0, "failed": 0}
+    channel_metrics = {}
+
+    for l in logs:
+        st = l.status if l.status in status_counts else "sent"
+        status_counts[st] += 1
+
+        ch = l.channel or "unknown"
+        if ch not in channel_metrics:
+            channel_metrics[ch] = {"total": 0, "delivered": 0, "read": 0, "failed": 0}
+        channel_metrics[ch]["total"] += 1
+        if l.status in ["sent", "delivered", "read"]:
+            channel_metrics[ch]["delivered"] += 1
+        if l.status == "read":
+            channel_metrics[ch]["read"] += 1
+        if l.status == "failed":
+            channel_metrics[ch]["failed"] += 1
+
+    delivered_total = status_counts["sent"] + status_counts["delivered"] + status_counts["read"]
+    read_total = status_counts["read"]
+
+    from app.models import CampaignFeedback
+    feedbacks = db.query(CampaignFeedback).filter(CampaignFeedback.campaign_id == id).all()
+    feedback_count = len(feedbacks)
+    
+    avg_rating = round(sum(f.rating for f in feedbacks) / feedback_count, 2) if feedback_count > 0 else 0.0
+    
+    type_breakdown = {}
+    for f in feedbacks:
+        type_breakdown[f.feedback_type] = type_breakdown.get(f.feedback_type, 0) + 1
+
+    target_pop = camp.target_audience_count or total_dispatched or 1
+
+    delivery_rate_pct = round((delivered_total / total_dispatched * 100), 1) if total_dispatched > 0 else 0.0
+    open_rate_pct = round((read_total / delivered_total * 100), 1) if delivered_total > 0 else 0.0
+    participation_pct = round((feedback_count / target_pop * 100), 1) if target_pop > 0 else 0.0
+
+    overall_engagement_index = round(
+        (delivery_rate_pct * 0.35) + (open_rate_pct * 0.35) + (min(participation_pct * 5, 100) * 0.3),
+        1
+    )
+
+    return {
+        "campaign_id": camp.id,
+        "campaign_title": camp.title,
+        "status": camp.status,
+        "target_audience_count": camp.target_audience_count,
+        "total_dispatched": total_dispatched,
+        "delivered_count": delivered_total,
+        "read_count": read_total,
+        "failed_count": status_counts["failed"],
+        "delivery_rate_pct": delivery_rate_pct,
+        "open_rate_pct": open_rate_pct,
+        "feedback_responses_count": feedback_count,
+        "feedback_participation_pct": participation_pct,
+        "average_user_rating": avg_rating,
+        "feedback_type_breakdown": type_breakdown,
+        "overall_engagement_pct": overall_engagement_index,
+        "channel_metrics": channel_metrics,
+        "dispatched_at": camp.dispatched_at.isoformat() if camp.dispatched_at else None
+    }
 
 
 @router.get("/{id}/delivery-logs", response_model=List[DeliveryLogResponse])

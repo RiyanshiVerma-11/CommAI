@@ -5,12 +5,13 @@ Handles inbound citizen messages and generates contextual responses.
 import datetime
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response, RedirectResponse
 from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from app.database import get_db
-from app.models import Audience, CitizenMessage
+from app.models import Audience, CitizenMessage, DeliveryLog, Campaign
 from app.auth import require_any_authenticated, require_manager_or_higher
 from app.services.rag_service import generate_rag_response, populate_knowledge_base
 
@@ -198,3 +199,104 @@ def handle_telegram_webhook(update: dict):
     token = settings.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN")
     process_telegram_update(update, token)
     return {"status": "ok"}
+
+
+class DeliveryStatusCallbackRequest(BaseModel):
+    delivery_log_id: Optional[str] = None
+    recipient: Optional[str] = None
+    channel: Optional[str] = None
+    status: str  # sent, delivered, read, failed
+    error_message: Optional[str] = None
+    campaign_id: Optional[str] = None
+
+
+@router.post("/delivery-status")
+def handle_delivery_status_callback(
+    payload: DeliveryStatusCallbackRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Generic delivery status callback endpoint for external gateways (Twilio, Meta, SMS/Email providers).
+    Updates DeliveryLog status from sent -> delivered -> read -> failed.
+    """
+    valid_statuses = ["sent", "delivered", "read", "failed"]
+    new_status = payload.status.lower().strip()
+    if new_status not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid delivery status '{payload.status}'. Allowed: {valid_statuses}"
+        )
+
+    log = None
+    if payload.delivery_log_id:
+        log = db.query(DeliveryLog).filter(DeliveryLog.id == payload.delivery_log_id).first()
+
+    if not log and payload.recipient:
+        query = db.query(DeliveryLog).filter(DeliveryLog.recipient_info == payload.recipient)
+        if payload.campaign_id:
+            query = query.filter(DeliveryLog.campaign_id == payload.campaign_id)
+        if payload.channel:
+            query = query.filter(DeliveryLog.channel == payload.channel)
+        log = query.order_by(DeliveryLog.sent_at.desc()).first()
+
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Matching DeliveryLog entry not found for callback."
+        )
+
+    old_status = log.status
+    log.status = new_status
+    if payload.error_message:
+        log.error_message = payload.error_message
+
+    db.commit()
+    logger.info(f"[WEBHOOK-DELIVERY] Log {log.id} updated: {old_status} -> {new_status}")
+
+    return {
+        "status": "success",
+        "delivery_log_id": log.id,
+        "old_status": old_status,
+        "new_status": new_status,
+        "updated_at": datetime.datetime.utcnow().isoformat()
+    }
+
+
+@router.get("/pixel/{delivery_id}")
+def email_open_tracking_pixel(
+    delivery_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    1x1 transparent GIF tracking pixel. Triggered when recipient opens campaign email.
+    Updates DeliveryLog status to 'read' (open rate tracking).
+    """
+    log = db.query(DeliveryLog).filter(DeliveryLog.id == delivery_id).first()
+    if log and log.status in ["sent", "delivered"]:
+        log.status = "read"
+        db.commit()
+        logger.info(f"[TRACKING-PIXEL] Email opened for log {delivery_id}")
+
+    # 1x1 transparent GIF binary
+    pixel_bytes = bytes.fromhex("47494638396101000100800000ffffff00000021f90401000000002c00000000010001000002024401003b")
+    return Response(content=pixel_bytes, media_type="image/gif")
+
+
+@router.get("/click/{delivery_id}")
+def link_click_tracking(
+    delivery_id: str,
+    target_url: Optional[str] = "https://gov.in",
+    db: Session = Depends(get_db),
+):
+    """
+    Track click-throughs (CTR) in campaign messages.
+    Updates DeliveryLog status to 'read' and redirects recipient to target URL.
+    """
+    log = db.query(DeliveryLog).filter(DeliveryLog.id == delivery_id).first()
+    if log and log.status in ["sent", "delivered"]:
+        log.status = "read"
+        db.commit()
+        logger.info(f"[TRACKING-CLICK] Link clicked for log {delivery_id}")
+
+    return RedirectResponse(url=target_url)
+

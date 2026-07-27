@@ -3,11 +3,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: commai_backend
     ports:
       - "8001:8000"
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - .env
     environment:
@@ -15,14 +15,12 @@ services:
       - SECRET_KEY=72210fafca4045a19f2a95b15deb9108comm-ai-secret-key-super-secure
 
   frontend:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: commai_frontend
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       - backend
     environment:
@@ -30,3 +28,4 @@ services:
 
 volumes:
   db-data:
+

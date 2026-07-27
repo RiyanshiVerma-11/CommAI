@@ -187,9 +187,34 @@ def dispatch_to_channel(
         return success, error, "telegram"
 
     elif channel == "website":
-        # Website channel: log-only, no direct delivery target
-        logger.info(f"[WEBSITE] Banner content for {audience.first_name}: {body[:80]}...")
-        return True, "website_logged", "website"
+        # Website channel: log to server output and automatically broadcast to connected WebSockets in realtime
+        logger.info(f"[WEBSITE] Banner content for {audience.first_name} ({audience.state}): {body[:80]}...")
+        
+        try:
+            import asyncio
+            from app.services.websocket_manager import bulletin_manager
+
+            payload = {
+                "type": "campaign_alert",
+                "id": f"web_{audience.id}_{int(datetime.datetime.utcnow().timestamp())}",
+                "title": subject or "Website Broadcast Banner",
+                "message": body,
+                "description": body,
+                "urgency": "critical" if any(w in (subject or "").lower() for w in ["emergency", "critical", "warning", "alert"]) else "normal",
+                "channel": "website",
+                "target_state": audience.state,
+                "created_at": datetime.datetime.utcnow().isoformat()
+            }
+
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(bulletin_manager.broadcast(payload))
+            except RuntimeError:
+                asyncio.run(bulletin_manager.broadcast(payload))
+        except Exception as ws_err:
+            logger.error(f"[WEBSITE-WS] Failed to broadcast website channel alert via WebSocket: {ws_err}")
+
+        return True, "website_broadcast_sent", "website"
 
     else:
         return False, f"Unknown channel: {channel}", channel
@@ -283,6 +308,9 @@ def _dispatch_campaign_worker(campaign_id: str):
             campaign.dispatched_at = datetime.datetime.utcnow()
             db.commit()
             return
+
+        # Ensure target_audience_count reflects the exact count of resolved audience members
+        campaign.target_audience_count = len(audience_members)
 
         # 4. Parse campaign channels
         channels = json.loads(campaign.channel_preferences) if campaign.channel_preferences else []

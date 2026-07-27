@@ -3479,39 +3479,80 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         </tr>
                       </thead>
                       <tbody>
-                        {deliveryLogs.length === 0 ? (
-                          <tr>
-                            <td colSpan="4" style={{ textAlign: 'center', color: 'hsl(var(--text-muted))', padding: '16px' }}>
-                              No log entries found.
-                            </td>
-                          </tr>
-                        ) : (
-                          deliveryLogs.map(log => (
-                            <tr key={log.id}>
-                              <td style={{ fontWeight: '500' }}>{log.audience_name}</td>
-                              <td style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
-                                <span style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px' }}>{log.channel}</span>
+                        {(() => {
+                          if (deliveryLogs.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', color: 'hsl(var(--text-muted))', padding: '16px' }}>
+                                  No log entries found.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          // Group delivery logs by recipient to combine multi-channel dispatches on a single row
+                          const groupedMap = new Map();
+                          deliveryLogs.forEach(log => {
+                            const key = log.audience_id || log.audience_name || log.id;
+                            if (!groupedMap.has(key)) {
+                              groupedMap.set(key, {
+                                id: key,
+                                audience_name: log.audience_name,
+                                channels: [],
+                                addresses: [],
+                                allSent: true,
+                                hasFailed: false,
+                                errors: []
+                              });
+                            }
+                            const group = groupedMap.get(key);
+                            if (log.channel && !group.channels.includes(log.channel)) {
+                              group.channels.push(log.channel);
+                            }
+                            if (log.recipient_info && !group.addresses.includes(log.recipient_info)) {
+                              group.addresses.push(log.recipient_info);
+                            }
+                            if (log.status !== 'sent' && log.status !== 'delivered' && log.status !== 'read') {
+                              group.allSent = false;
+                            }
+                            if (log.status === 'failed') {
+                              group.hasFailed = true;
+                              if (log.error_message && !group.errors.includes(log.error_message)) {
+                                group.errors.push(log.error_message);
+                              }
+                            }
+                          });
+
+                          const groupedList = Array.from(groupedMap.values());
+
+                          return groupedList.map(group => (
+                            <tr key={group.id}>
+                              <td style={{ fontWeight: '500' }}>{group.audience_name}</td>
+                              <td style={{ textTransform: 'lowercase', fontSize: '0.78rem' }}>
+                                <span style={{ padding: '3px 8px', background: 'rgba(0, 176, 255, 0.1)', color: '#00b0ff', border: '1px solid rgba(0, 176, 255, 0.25)', borderRadius: '4px', fontWeight: 'bold' }}>
+                                  {group.channels.join(', ')}
+                                </span>
                               </td>
                               <td>
                                 <span style={{ 
-                                  color: log.status === 'sent' ? '#00e676' : '#ff1744', 
+                                  color: !group.hasFailed ? '#00e676' : '#ff1744', 
                                   fontWeight: 'bold',
                                   fontSize: '0.8rem'
                                 }}>
-                                  {log.status === 'sent' ? '✓ SENT' : '✗ FAILED'}
+                                  {!group.hasFailed ? '✓ SENT' : '✗ FAILED'}
                                 </span>
-                                {log.error_message && (
+                                {group.errors.length > 0 && (
                                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>
-                                    {log.error_message}
+                                    {group.errors.join(' | ')}
                                   </span>
                                 )}
                               </td>
-                              <td style={{ fontFamily: 'monospace', color: 'hsl(var(--text-secondary))' }}>
-                                {log.recipient_info || 'N/A'}
+                              <td style={{ fontFamily: 'monospace', color: 'hsl(var(--text-secondary))', fontSize: '0.8rem' }}>
+                                {group.addresses.join(' | ') || 'N/A'}
                               </td>
                             </tr>
-                          ))
-                        )}
+                          ));
+                        })()}
                       </tbody>
                     </table>
                   </div>

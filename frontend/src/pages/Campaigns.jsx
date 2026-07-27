@@ -1622,6 +1622,39 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                                 <span style={{ fontSize: '0.8rem' }}>Report</span>
                               </button>
                             )}
+                            {camp.failed_count > 0 && (
+                              <button 
+                                className="btn btn-warning" 
+                                style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#f59e0b' }} 
+                                onClick={async () => {
+                                  if (window.confirm(`Retry failed deliveries for "${camp.title}"?`)) {
+                                    try {
+                                      const res = await fetch(`${backendUrl}/api/campaigns/${camp.id}/retry-failed`, {
+                                        method: 'POST',
+                                        headers
+                                      });
+                                      if (res.ok) {
+                                        const data = await res.json();
+                                        alert(data.message || "Retry initiated!");
+                                        fetchCampaigns();
+                                      } else {
+                                        const err = await res.json();
+                                        alert(err.detail || "Retry failed");
+                                      }
+                                    } catch (err) {
+                                      alert(err.message);
+                                    }
+                                  }
+                                }}
+                                title="Retry delivery for failed recipients"
+                              >
+                                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.9rem', height: '0.9rem' }}>
+                                  <path d="M23 4v6h-6" />
+                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                </svg>
+                                <span style={{ fontSize: '0.8rem' }}>Retry ({camp.failed_count})</span>
+                              </button>
+                            )}
                             <button 
 
                               className="btn btn-danger" 
@@ -3425,14 +3458,17 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
                   {/* Visual Progress Bar */}
                   {(() => {
-                    const total = deliverySummary.target_count || 0;
-                    const processed = (deliverySummary.sent_count || 0) + (deliverySummary.failed_count || 0);
-                    const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+                    const totalCitizens = deliverySummary.target_count || 0;
+                    const totalDispatches = deliverySummary.total_dispatches || deliverySummary.sent_count || 0;
+                    const processedDispatches = (deliverySummary.sent_count || 0) + (deliverySummary.failed_count || 0);
+                    const pct = totalDispatches > 0 ? Math.min(100, Math.round((processedDispatches / totalDispatches) * 100)) : 100;
                     return (
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginBottom: '6px' }}>
                           <span>Dispatch progress: {pct}%</span>
-                          <span>{processed} of {total} recipients processed</span>
+                          <span>
+                            {processedDispatches} channel dispatches processed across {totalCitizens} target citizens
+                          </span>
                         </div>
                         <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '100px', overflow: 'hidden' }}>
                           <div style={{ 
@@ -3449,19 +3485,60 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 </div>
 
                 {/* Counters grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '12px' }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>EFFECTIVENESS INDEX</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: '800', color: (deliverySummary.effectiveness_score || 85) >= 80 ? '#10b981' : (deliverySummary.effectiveness_score || 85) >= 50 ? '#f59e0b' : '#ef4444' }}>
+                      {deliverySummary.effectiveness_score || 85}/100
+                    </span>
+                  </div>
                   <div style={{ background: 'rgba(0, 176, 255, 0.05)', border: '1px solid rgba(0, 176, 255, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>TARGET RECIPIENTS</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00b0ff' }}>{deliverySummary.target_count}</span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>TARGET CITIZENS</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#00b0ff' }}>{deliverySummary.target_count}</span>
                   </div>
                   <div style={{ background: 'rgba(0, 230, 118, 0.05)', border: '1px solid rgba(0, 230, 118, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>SUCCESSFULLY SENT</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00e676' }}>{deliverySummary.sent_count}</span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>CHANNEL MESSAGES SENT</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#00e676' }}>{deliverySummary.sent_count}</span>
                   </div>
                   <div style={{ background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>FAILED / REFUSED</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#ff1744' }}>{deliverySummary.failed_count}</span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold' }}>FAILED DISPATCHES</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: '700', color: '#ff1744' }}>{deliverySummary.failed_count}</span>
                   </div>
+                </div>
+
+                {/* Engagement & Participation Banner */}
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))' }}>
+                    <strong>Participation & Feedback:</strong> {deliverySummary.participation_count || 0} response(s) ({deliverySummary.participation_rate || 0}% participation rate)
+                  </span>
+                  {deliverySummary.failed_count > 0 && (
+                    <button
+                      className="btn btn-warning"
+                      style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#f59e0b', cursor: 'pointer' }}
+                      onClick={async () => {
+                        if (window.confirm(`Retry ${deliverySummary.failed_count} failed deliveries for this campaign?`)) {
+                          try {
+                            const res = await fetch(`${backendUrl}/api/campaigns/${deliverySummary.id}/retry-failed`, {
+                              method: 'POST',
+                              headers
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              alert(data.message || "Retry initiated!");
+                              handleOpenDeliveryModal({ id: deliverySummary.id });
+                            } else {
+                              const err = await res.json();
+                              alert(err.detail || "Retry failed");
+                            }
+                          } catch (err) {
+                            alert(err.message);
+                          }
+                        }
+                      }}
+                    >
+                      🔁 Retry {deliverySummary.failed_count} Failed Deliveries
+                    </button>
+                  )}
                 </div>
 
                 {/* Logs table */}

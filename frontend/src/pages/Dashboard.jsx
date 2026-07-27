@@ -858,6 +858,55 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
         </GlassCard>
       </div>
 
+      {/* Language-Wise Analytics Chart Widget */}
+      <GlassCard style={{ padding: '28px', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: '700', color: 'hsl(var(--text-primary))', margin: 0, letterSpacing: '-0.02em' }}>
+              🌐 Language-Wise Reach & Delivery Analytics
+            </h2>
+            <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '4px' }}>
+              Audience target distribution and message deliveries broken down by preferred Indian language.
+            </p>
+          </div>
+          <span style={{ fontSize: '0.78rem', background: 'hsl(var(--primary) / 10%)', color: 'hsl(var(--primary))', padding: '4px 10px', borderRadius: '20px', fontWeight: '700' }}>
+            {(s.language_analytics || []).length} Languages Tracked
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          {(s.language_analytics || []).map((langItem, idx) => {
+            const maxReach = Math.max(...(s.language_analytics || []).map(l => l.reach), 1);
+            const reachPct = Math.round((langItem.reach / maxReach) * 100);
+            const deliveryRate = langItem.reach > 0 ? Math.round((langItem.delivered / langItem.reach) * 100) : 0;
+            const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+            const color = colors[idx % colors.length];
+
+            return (
+              <div key={langItem.language} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color }}></span>
+                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>{langItem.language}</span>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '800', color: color, background: `${color}15`, padding: '2px 8px', borderRadius: '6px' }}>
+                    {deliveryRate}% Delivered
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'hsl(var(--text-muted))', marginBottom: '6px', fontWeight: '500' }}>
+                  <span>Target Reach: <strong style={{ color: 'hsl(var(--text-primary))' }}>{langItem.reach}</strong></span>
+                  <span>Delivered: <strong style={{ color: 'hsl(var(--accent))' }}>{langItem.delivered}</strong></span>
+                </div>
+
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: `${reachPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${color}cc)`, borderRadius: '4px', transition: 'width 0.6s ease-in-out' }}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </GlassCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '32px' }}>
         <GlassCard style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '28px' }}>

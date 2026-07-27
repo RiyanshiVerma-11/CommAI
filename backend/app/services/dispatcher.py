@@ -614,3 +614,93 @@ def _dispatch_campaign_worker(campaign_id: str):
 
     finally:
         db.close()
+
+
+def retry_failed_deliveries(campaign_id: str) -> Dict[str, Any]:
+    """
+    Background trigger to retry failed delivery logs for a given campaign.
+    """
+    thread = threading.Thread(
+        target=_retry_failed_deliveries_worker,
+        args=(campaign_id,),
+        daemon=True,
+        name=f"retry-dispatcher-{campaign_id[:8]}"
+    )
+    thread.start()
+    logger.info(f"[DISPATCHER-RETRY] Started retry background worker for campaign {campaign_id}")
+    return {"status": "started", "campaign_id": campaign_id}
+
+
+def _retry_failed_deliveries_worker(campaign_id: str):
+    """
+    Worker that re-attempts delivery for all failed DeliveryLog records of a campaign.
+    """
+    db = SessionLocal()
+    try:
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if not campaign:
+            logger.error(f"[DISPATCHER-RETRY] Campaign {campaign_id} not found")
+            return
+
+        template = db.query(Template).filter(Template.id == campaign.template_id).first() if campaign.template_id else None
+
+        failed_logs = db.query(DeliveryLog).filter(
+            DeliveryLog.campaign_id == campaign_id,
+            DeliveryLog.status == "failed"
+        ).all()
+
+        if not failed_logs:
+            logger.info(f"[DISPATCHER-RETRY] No failed logs to retry for campaign {campaign_id}")
+            return
+
+        logger.info(f"[DISPATCHER-RETRY] Retrying {len(failed_logs)} failed logs for campaign '{campaign.title}'")
+
+        newly_sent = 0
+        still_failed = 0
+
+        for log in failed_logs:
+            audience = db.query(Audience).filter(Audience.id == log.audience_id).first()
+            if not audience:
+                continue
+
+            subject = template.subject_template if template else campaign.title
+            body = template.body_template if template else (campaign.description or campaign.title)
+
+            success, error, actual_channel = dispatch_to_channel(
+                channel=log.channel,
+                audience=audience,
+                subject=subject,
+                body=body
+            )
+
+            if success:
+                log.status = "sent"
+                log.error_message = None
+                log.sent_at = datetime.datetime.utcnow()
+                newly_sent += 1
+            else:
+                log.error_message = f"[RETRY FAILED] {error}"
+                log.sent_at = datetime.datetime.utcnow()
+                still_failed += 1
+
+        # Recalculate campaign counts
+        total_sent = db.query(DeliveryLog).filter(
+            DeliveryLog.campaign_id == campaign_id,
+            DeliveryLog.status.in_(["sent", "delivered", "read"])
+        ).count()
+        total_failed = db.query(DeliveryLog).filter(
+            DeliveryLog.campaign_id == campaign_id,
+            DeliveryLog.status == "failed"
+        ).count()
+
+        campaign.sent_count = total_sent
+        campaign.failed_count = total_failed
+        db.commit()
+
+        logger.info(f"[DISPATCHER-RETRY] Finished retry for campaign {campaign_id}: {newly_sent} recovered, {still_failed} failed")
+
+    except Exception as e:
+        logger.error(f"[DISPATCHER-RETRY] Error retrying campaign {campaign_id}: {e}", exc_info=True)
+    finally:
+        db.close()
+

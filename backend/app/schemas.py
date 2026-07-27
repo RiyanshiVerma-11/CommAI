@@ -332,12 +332,17 @@ class CampaignDeliverySummary(CustomBaseModel):
     target_count: int
     sent_count: int
     failed_count: int
+    total_dispatches: int = 0
+    unique_recipients_reached: int = 0
     delivered_count: int = 0
     read_count: int = 0
     delivery_rate_pct: float = 0.0
     open_rate_pct: float = 0.0
     feedback_participation_pct: float = 0.0
     overall_engagement_pct: float = 0.0
+    effectiveness_score: int = 0
+    participation_count: int = 0
+    participation_rate: float = 0.0
     dispatched_at: Optional[datetime] = None
 
 

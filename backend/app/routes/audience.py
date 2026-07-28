@@ -285,6 +285,8 @@ def update_audience(
                 usr.designation = aud.designation
             if aud.is_active is not None:
                 usr.is_active = aud.is_active
+            if aud.preferred_languages:
+                usr.preferred_languages = aud.preferred_languages
     
     db.commit()
     db.refresh(aud)

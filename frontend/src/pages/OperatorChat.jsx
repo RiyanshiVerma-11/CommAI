@@ -32,12 +32,12 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     }
   }, [backendUrl, headers]);
 
-  // Guard: only pre-fill message from voice once (avoid overwriting on re-render / prop change)
-  const initialMessageConsumedRef = useRef(false);
+  // Update on-screen message input whenever a new voice command initialMessage arrives
+  const lastProcessedMsgRef = useRef('');
   useEffect(() => {
-    if (initialMessage && !initialMessageConsumedRef.current) {
+    if (initialMessage && initialMessage !== lastProcessedMsgRef.current) {
       setInputMsg(initialMessage);
-      initialMessageConsumedRef.current = true;
+      lastProcessedMsgRef.current = initialMessage;
     }
   }, [initialMessage]);
 
@@ -51,11 +51,19 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   useEffect(() => {
     if (initialTargetManager && staffMembers.length > 0 && user) {
       const query = initialTargetManager.toLowerCase();
-      const matched = staffMembers.find(s => 
-        (s.full_name && s.full_name.toLowerCase().includes(query)) ||
-        (s.email && s.email.toLowerCase().includes(query)) ||
-        (s.username && s.username.toLowerCase().includes(query))
-      );
+      const queryWords = query.split(/\s+/).filter(w => w.length > 2);
+      const matched = staffMembers.find(s => {
+        const fullNameLower = (s.full_name || '').toLowerCase();
+        const firstNameLower = fullNameLower.split(' ')[0] || '';
+        const emailLower = (s.email || '').toLowerCase();
+
+        return (
+          fullNameLower.includes(query) ||
+          query.includes(fullNameLower) ||
+          queryWords.some(w => w !== 'manager' && w !== 'admin' && (firstNameLower === w || fullNameLower.includes(w) || emailLower.includes(w)))
+        );
+      });
+
       if (matched) {
         const sortedIds = [user.id, matched.id].sort();
         const dmChannelId = `dm:${sortedIds[0]}:${sortedIds[1]}`;
@@ -198,11 +206,12 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     const handleVoiceSend = (e) => {
       const detailMsg = e?.detail?.message || e?.detail?.message_text || null;
       const detailChan = e?.detail?.channel || null;
-      handleSendMessageRef.current?.(e, detailMsg, detailChan);
+      const targetChan = (channel && channel.startsWith('dm:')) ? channel : (detailChan || channel);
+      handleSendMessageRef.current?.(e, detailMsg, targetChan);
     };
     window.addEventListener('commai_voice_send_operator_chat', handleVoiceSend);
     return () => window.removeEventListener('commai_voice_send_operator_chat', handleVoiceSend);
-  }, []);
+  }, [channel]);
 
   const handleDeleteMessage = async (msgId) => {
     if (!window.confirm('Are you sure you want to delete this message?')) return;

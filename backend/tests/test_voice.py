@@ -123,3 +123,26 @@ def test_process_voice_command_send_to_person():
     assert res["recipients_selected"] == "Riyanshi Verma"
     assert res["action"] == "send_alert"
 
+
+def test_process_voice_command_unspecified_location():
+    from app.services.ai_service import process_voice_command
+    
+    cmd = "create emergency alert for heatwave warning"
+    res = process_voice_command(prompt=cmd, user_role="campaign_manager", user_name="Test")
+    
+    assert "which state or location" in res["spoken_response"].lower()
+    assert res["channels"] == ["email", "push"]
+    assert "move to higher ground" not in res["description"].lower()
+
+
+def test_process_voice_command_dm_dictation():
+    from app.services.ai_service import process_voice_command
+    
+    cmd = "send message to Yashvi saying please review the draft campaign"
+    res = process_voice_command(prompt=cmd, user_role="campaign_manager", user_name="Test")
+    
+    assert res["navigation_target"] == "operator_chat"
+    assert res["action"] == "navigate"
+    assert "yashvi" in res["spoken_response"].lower()
+
+

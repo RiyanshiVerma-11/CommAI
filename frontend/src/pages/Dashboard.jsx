@@ -51,6 +51,40 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
   const [alertTab, setAlertTab] = useState('emergency');
   const [liveCriticalAlerts, setLiveCriticalAlerts] = useState([]);
 
+  // List modal drill-down state
+  const [listModalType, setListModalType] = useState(null);
+  const [modalItems, setModalItems] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const fetchModalItems = async (type) => {
+    setListModalType(type);
+    setModalLoading(true);
+    setModalItems([]);
+    
+    let endpoint = '';
+    if (type === 'audiences') endpoint = '/api/audiences';
+    else if (type === 'segments') endpoint = '/api/segments';
+    else if (type === 'drafts') endpoint = '/api/campaigns';
+    else if (type === 'templates') endpoint = '/api/templates';
+    else if (type === 'delivered') endpoint = '/api/dashboard/delivery-logs?status=sent';
+    else if (type === 'failed') endpoint = '/api/dashboard/delivery-logs?status=failed';
+
+    try {
+      const response = await fetch(`${backendUrl}${endpoint}`, { headers });
+      if (response.ok) {
+        let data = await response.json();
+        if (type === 'drafts') {
+          data = data.filter(c => c.status === 'draft');
+        }
+        setModalItems(data);
+      }
+    } catch (err) {
+      console.error(`Failed to load items for modal:`, err);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   // Emergency modal state
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencySubject, setEmergencySubject] = useState('');
@@ -690,7 +724,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
       </div>
 
       <div className="dashboard-grid">
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('audiences')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Total Audiences</span>
             <div style={{ background: 'hsl(var(--primary) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -711,7 +749,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         </GlassCard>
 
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('segments')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Dynamic Segments</span>
             <div style={{ background: 'hsl(var(--secondary) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -731,7 +773,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         </GlassCard>
 
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('drafts')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Draft Campaigns</span>
             <div style={{ background: 'hsl(var(--accent) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -750,7 +796,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         </GlassCard>
 
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('templates')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Templates Library</span>
             <div style={{ background: 'hsl(var(--warning) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -768,7 +818,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         </GlassCard>
 
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('delivered')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Messages Delivered</span>
             <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -790,7 +844,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         </GlassCard>
 
-        <GlassCard className="stat-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => fetchModalItems('failed')}
+          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Failed Dispatches</span>
             <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1058,6 +1116,226 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           )}
         </GlassCard>
       </div>
+
+      {listModalType && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <GlassCard style={{ 
+            padding: '32px', 
+            width: '100%', 
+            maxWidth: '850px', 
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <button 
+              onClick={() => setListModalType(null)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                color: 'hsl(var(--text-muted))',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                fontWeight: '600',
+                zIndex: 10
+              }}
+            >
+              &times;
+            </button>
+
+            <h3 style={{ 
+              marginBottom: '4px', 
+              fontWeight: 800, 
+              color: 'hsl(var(--text-primary))',
+              fontSize: '1.5rem',
+              textTransform: 'capitalize' 
+            }}>
+              {listModalType === 'drafts' ? 'Draft Campaigns' : listModalType === 'delivered' ? 'Messages Delivered' : listModalType === 'failed' ? 'Failed Dispatches' : listModalType}
+            </h3>
+            <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.88rem', marginBottom: '24px' }}>
+              Showing the current records stored in the database.
+            </p>
+
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: '300px' }}>
+              {modalLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: 'hsl(var(--text-secondary))', fontWeight: 600 }}>
+                  Loading records...
+                </div>
+              ) : modalItems.length === 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: 'hsl(var(--text-muted))' }}>
+                  No records found.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1.5px solid rgba(255,255,255,0.08)', color: 'hsl(var(--text-muted))', textAlign: 'left' }}>
+                      {listModalType === 'audiences' && (
+                        <>
+                          <th style={{ padding: '12px 8px' }}>Name</th>
+                          <th style={{ padding: '12px 8px' }}>Contact</th>
+                          <th style={{ padding: '12px 8px' }}>Occupation</th>
+                          <th style={{ padding: '12px 8px' }}>State</th>
+                          <th style={{ padding: '12px 8px' }}>Languages</th>
+                        </>
+                      )}
+                      {listModalType === 'segments' && (
+                        <>
+                          <th style={{ padding: '12px 8px' }}>Segment Name</th>
+                          <th style={{ padding: '12px 8px' }}>Filter Criteria</th>
+                        </>
+                      )}
+                      {listModalType === 'drafts' && (
+                        <>
+                          <th style={{ padding: '12px 8px' }}>Campaign Title</th>
+                          <th style={{ padding: '12px 8px' }}>Channels</th>
+                          <th style={{ padding: '12px 8px' }}>Est. Reach</th>
+                          <th style={{ padding: '12px 8px' }}>Created At</th>
+                        </>
+                      )}
+                      {listModalType === 'templates' && (
+                        <>
+                          <th style={{ padding: '12px 8px' }}>Template Name</th>
+                          <th style={{ padding: '12px 8px' }}>Channel</th>
+                          <th style={{ padding: '12px 8px' }}>Content Preview</th>
+                        </>
+                      )}
+                      {(listModalType === 'delivered' || listModalType === 'failed') && (
+                        <>
+                          <th style={{ padding: '12px 8px' }}>Recipient</th>
+                          <th style={{ padding: '12px 8px' }}>Campaign</th>
+                          <th style={{ padding: '12px 8px' }}>Channel</th>
+                          <th style={{ padding: '12px 8px' }}>Time</th>
+                          {listModalType === 'failed' && <th style={{ padding: '12px 8px' }}>Error Details</th>}
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalItems.map((item, index) => (
+                      <tr 
+                        key={item.id || index} 
+                        style={{ 
+                          borderBottom: '1px solid var(--border-color-glass)', 
+                          color: 'hsl(var(--text-secondary))',
+                          background: index % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' 
+                        }}
+                      >
+                        {listModalType === 'audiences' && (
+                          <>
+                            <td style={{ padding: '12px 8px', fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{item.first_name} {item.last_name}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div style={{ fontSize: '0.85rem' }}>{item.email}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{item.phone}</div>
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>{item.occupation || 'N/A'}</td>
+                            <td style={{ padding: '12px 8px' }}>{item.state || 'N/A'}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              {(() => {
+                                try {
+                                  const parsed = typeof item.preferred_languages === 'string' ? JSON.parse(item.preferred_languages) : item.preferred_languages;
+                                  return Array.isArray(parsed) ? parsed.join(', ') : String(parsed || '');
+                                } catch (e) {
+                                  return String(item.preferred_languages || '');
+                                }
+                              })()}
+                            </td>
+                          </>
+                        )}
+                        {listModalType === 'segments' && (
+                          <>
+                            <td style={{ padding: '12px 8px', fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{item.name}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>
+                              {typeof item.filter_criteria === 'string' ? item.filter_criteria : JSON.stringify(item.filter_criteria || {})}
+                            </td>
+                          </>
+                        )}
+                        {listModalType === 'drafts' && (
+                          <>
+                            <td style={{ padding: '12px 8px', fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{item.title}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              {(() => {
+                                try {
+                                  const parsed = typeof item.channels === 'string' ? JSON.parse(item.channels) : item.channels;
+                                  return Array.isArray(parsed) ? parsed.join(', ') : String(parsed || '');
+                                } catch (e) {
+                                  return String(item.channels || '');
+                                }
+                              })()}
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>{item.estimated_reach || 0} / {item.target_audience_size || 0}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '0.8rem' }}>
+                              {item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A'}
+                            </td>
+                          </>
+                        )}
+                        {listModalType === 'templates' && (
+                          <>
+                            <td style={{ padding: '12px 8px', fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{item.title}</td>
+                            <td style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold' }}>{item.channel}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.body || item.description || ''}
+                            </td>
+                          </>
+                        )}
+                        {(listModalType === 'delivered' || listModalType === 'failed') && (
+                          <>
+                            <td style={{ padding: '12px 8px', fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{item.recipient_name}</td>
+                            <td style={{ padding: '12px 8px' }}>{item.campaign_title}</td>
+                            <td style={{ padding: '12px 8px', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold' }}>{item.channel}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '0.8rem' }}>
+                              {item.sent_at ? new Date(item.sent_at).toLocaleString() : 'N/A'}
+                            </td>
+                            {listModalType === 'failed' && (
+                              <td style={{ padding: '12px 8px', color: 'hsl(var(--danger))', fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.error_details || 'Unknown Error'}
+                              </td>
+                            )}
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+              <button 
+                onClick={() => setListModalType(null)}
+                className="btn"
+                style={{
+                  padding: '8px 24px',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'hsl(var(--text-primary))',
+                  border: '1px solid var(--border-color-glass)',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 };

@@ -11,8 +11,9 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   const [segments, setSegments] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [recipients, setRecipients] = useState([]);
-  const [targetType, setTargetType] = useState('segment'); // 'segment' or 'recipient'
   const [selectedRecipientId, setSelectedRecipientId] = useState('');
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState([]);
+  const [recipientSearchTerm, setRecipientSearchTerm] = useState('');
 
   const getPreferredChannelsText = (rec) => {
     if (!rec.preferred_channels) return 'None';
@@ -38,8 +39,24 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    let formatted = String(dateStr);
+    if (!formatted.endsWith('Z') && !formatted.includes('+') && !formatted.includes('-')) {
+      formatted += 'Z';
+    }
+    const d = new Date(formatted);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleString();
+  };
+
+  const cleanPlaceholderSignoffs = (str) => {
+    if (!str) return '';
+    return str.replace(/[\r\n]+\s*(?:Regards|Sincerely|Warm regards|Best regards|Thanks|अभिनंदन|सधन्यवाद|शुभकामनाएं)?\s*,?\s*\[[^\]]{1,35}\]\s*$/gi, '').trim();
+  };
+
   // --- WIZARD STATES ---
   const [step, setStep] = useState(1);
+  const [targetType, setTargetType] = useState('segment'); // 'segment' or 'recipient'
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formObjective, setFormObjective] = useState('');
@@ -178,11 +195,30 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
     if (plan.message) {
       if (plan.message.subject) setCustomSubject(plan.message.subject);
-      if (plan.message.body) setCustomBody(plan.message.body);
-      setSelectedTplId('custom');
+      if (plan.message.body) setCustomBody(cleanPlaceholderSignoffs(plan.message.body));
     }
+    setSelectedTplId('custom');
+
     if (segments && segments.length > 0) {
-      setSelectedSegId(segments[0].id);
+      const targetLoc = plan.delivery?.location || plan.location || '';
+      const matchingSeg = segments.find(s => targetLoc && s.name.toLowerCase().includes(targetLoc.toLowerCase()));
+      setSelectedSegId(matchingSeg ? matchingSeg.id : segments[0].id);
+    }
+
+    if (plan.delivery && plan.delivery.audiences && recipients && recipients.length > 0) {
+      const auds = plan.delivery.audiences;
+      const matchedIds = [];
+      recipients.forEach(r => {
+        const fullName = `${r.first_name} ${r.last_name || ''}`.trim().toLowerCase();
+        if (auds.some(a => typeof a === 'string' && (fullName.includes(a.toLowerCase()) || a.toLowerCase().includes(r.first_name.toLowerCase())))) {
+          matchedIds.push(r.id);
+        }
+      });
+      if (matchedIds.length > 0) {
+        setTargetType('recipient');
+        setSelectedRecipientIds(matchedIds);
+        setSelectedRecipientId(matchedIds[0]);
+      }
     }
   };
 
@@ -190,6 +226,11 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     if (initialVoicePlan) {
       setViewMode('create');
       applyAiPlanToForm(initialVoicePlan);
+      if (initialVoicePlan.user_confirmed) {
+        setTimeout(() => {
+          handlePublishCampaign(true);
+        }, 400);
+      }
       if (clearInitialVoicePlan) clearInitialVoicePlan();
     }
   }, [initialVoicePlan, clearInitialVoicePlan]);
@@ -366,8 +407,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       const segRes = await fetch(`${backendUrl}/api/segments`, { headers });
       const tplRes = await fetch(`${backendUrl}/api/templates`, { headers });
       if (segRes.ok && tplRes.ok) {
-        setSegments(await segRes.json());
-        setTemplates(await tplRes.json());
+        const segData = await segRes.json();
+        const tplData = await tplRes.json();
+        setSegments(segData);
+        setTemplates(tplData);
+        if (segData && segData.length > 0) {
+          setSelectedSegId(prev => prev || segData[0].id);
+        }
       }
       
       const recRes = await fetch(`${backendUrl}/api/audiences?limit=500`, { headers });
@@ -649,18 +695,29 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       setStep(2);
     } else if (step === 2) {
       if (targetType === 'recipient') {
-        if (!selectedRecipientId) {
-          setWizardError('Please select an individual recipient');
+        const activeIds = selectedRecipientIds.length > 0 
+          ? selectedRecipientIds 
+          : (selectedRecipientId ? [selectedRecipientId] : []);
+
+        if (activeIds.length === 0) {
+          setWizardError('Please select at least one individual recipient');
           return;
         }
         
-        const recipient = recipients.find(r => r.id === selectedRecipientId);
-        if (!recipient) {
-          setWizardError('Selected recipient not found');
+        const matchedRecipients = recipients.filter(r => activeIds.includes(r.id));
+        if (matchedRecipients.length === 0) {
+          setWizardError('Selected recipient(s) not found');
           return;
         }
-        const recipientName = `${recipient.first_name} ${recipient.last_name || ''}`.trim();
-        const expectedSegmentName = `Direct: ${recipientName} (${recipient.id.substring(0, 8)})`;
+
+        let expectedSegmentName = '';
+        if (matchedRecipients.length === 1) {
+          const rName = `${matchedRecipients[0].first_name} ${matchedRecipients[0].last_name || ''}`.trim();
+          expectedSegmentName = `Direct: ${rName} (${matchedRecipients[0].id.substring(0, 8)})`;
+        } else {
+          const firstRName = `${matchedRecipients[0].first_name} ${matchedRecipients[0].last_name || ''}`.trim();
+          expectedSegmentName = `Direct Group: ${firstRName} + ${matchedRecipients.length - 1} others (${matchedRecipients[0].id.substring(0, 6)})`;
+        }
         
         const existingSeg = segments.find(s => s.name === expectedSegmentName);
         if (existingSeg) {
@@ -673,8 +730,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
               headers: { ...headers, 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 name: expectedSegmentName,
-                description: `Direct message target for ${recipientName}`,
-                filter_criteria: { ids: [selectedRecipientId] },
+                description: `Direct message target for ${matchedRecipients.length} recipient(s)`,
+                filter_criteria: { ids: activeIds },
                 is_dynamic: true
               })
             });
@@ -756,16 +813,26 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
   };
 
-  const handlePublishCampaign = async () => {
+  const handlePublishCampaign = async (bypassConfirm = false) => {
+    let activeSegId = selectedSegId;
+    if (!activeSegId && segments && segments.length > 0) {
+      activeSegId = segments[0].id;
+      setSelectedSegId(activeSegId);
+    }
+
+    let activeTplId = selectedTplId || 'custom';
+
     const targetStatus = isScheduled ? 'scheduled' : 'active';
     const scheduleDateStr = isScheduled && scheduledTime ? new Date(scheduledTime).toLocaleString() : '';
     
-    const confirmMessage = isScheduled
-      ? `⚠️ WARNING: This will SCHEDULE this campaign to trigger deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()} at ${scheduleDateStr}.\n\nDo you want to proceed?`
-      : `⚠️ WARNING: Launching this campaign will trigger REAL deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()}.\n\nDo you want to proceed?`;
+    if (!bypassConfirm) {
+      const confirmMessage = isScheduled
+        ? `⚠️ WARNING: This will SCHEDULE this campaign to trigger deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()} at ${scheduleDateStr}.\n\nDo you want to proceed?`
+        : `⚠️ WARNING: Launching this campaign will trigger REAL deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()}.\n\nDo you want to proceed?`;
 
-    if (!window.confirm(confirmMessage)) {
-      return;
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
     }
 
     const payload = {
@@ -773,10 +840,10 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       description: formDesc || null,
       objective: formObjective,
       campaign_type: formType,
-      segment_id: selectedSegId,
-      template_id: selectedTplId === 'custom' ? null : (selectedTplId || null),
-      custom_subject: selectedTplId === 'custom' ? customSubject : null,
-      custom_body: selectedTplId === 'custom' ? customBody : null,
+      segment_id: activeSegId,
+      template_id: activeTplId === 'custom' ? null : (activeTplId || null),
+      custom_subject: activeTplId === 'custom' ? customSubject : null,
+      custom_body: activeTplId === 'custom' ? customBody : null,
       channel_preferences: selectedChannels,
       override_channel_preferences: overrideChannelPreferences,
       status: targetStatus,
@@ -1486,7 +1553,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         </td>
                         <td>{getStatusBadge(camp.status)}</td>
                         <td style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
-                          {new Date(camp.created_at).toLocaleString()}
+                          {formatDate(camp.scheduled_at || camp.created_at)}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px' }}>
@@ -2163,8 +2230,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                       <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '16px' }}>
                         <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: 'hsl(var(--primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Proactive AI Suggestions</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {currentAiPlan.metadata?.suggestions && currentAiPlan.metadata.suggestions.length > 0 ? (
-                            currentAiPlan.metadata.suggestions.map((suggestion, index) => (
+                          {currentAiPlan.metadata?.suggestions && currentAiPlan.metadata?.suggestions.length > 0 ? (
+                            currentAiPlan.metadata?.suggestions.map((suggestion, index) => (
                               <div key={index} style={{
                                 padding: '6px 12px', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: '8px',
                                 fontSize: '0.78rem', color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', gap: '8px'
@@ -2341,24 +2408,126 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   </select>
                 </div>
               ) : (
-                <div className="form-group animate-fade-in">
-                  <label className="form-label">Select Individual Recipient *</label>
-                  <select
+                <div className="form-group animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label" style={{ margin: 0 }}>
+                      Select Direct Recipients * ({selectedRecipientIds.length || (selectedRecipientId ? 1 : 0)} selected)
+                    </label>
+                    {(selectedRecipientIds.length > 0 || selectedRecipientId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRecipientIds([]);
+                          setSelectedRecipientId('');
+                          setSelectedSegId('');
+                        }}
+                        style={{
+                          background: 'none', border: 'none', color: '#ef4444',
+                          fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600
+                        }}
+                      >
+                        Clear All Selections
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search Input */}
+                  <input
+                    type="text"
                     className="form-control"
-                    value={selectedRecipientId}
-                    onChange={(e) => {
-                      setSelectedRecipientId(e.target.value);
-                      setSelectedSegId('');
-                    }}
-                    required
-                  >
-                    <option value="">-- Choose Recipient --</option>
-                    {recipients.map(rec => (
-                      <option key={rec.id} value={rec.id}>
-                        {rec.first_name} {rec.last_name || ''} ({rec.phone || rec.email || 'No Contact'}) | Channels: {getPreferredChannelsText(rec)} | Lang: {getPreferredLanguagesText(rec)}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="🔍 Search recipients by name, phone, or email..."
+                    value={recipientSearchTerm}
+                    onChange={(e) => setRecipientSearchTerm(e.target.value)}
+                    style={{ fontSize: '0.88rem' }}
+                  />
+
+                  {/* Selected Badges */}
+                  {(selectedRecipientIds.length > 0 || selectedRecipientId) && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '10px', background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: '12px' }}>
+                      {recipients
+                        .filter(r => selectedRecipientIds.includes(r.id) || r.id === selectedRecipientId)
+                        .map(r => (
+                          <span
+                            key={r.id}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px',
+                              padding: '4px 10px', borderRadius: '16px',
+                              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3))',
+                              border: '1px solid rgba(139, 92, 246, 0.5)',
+                              color: '#f8fafc', fontSize: '0.78rem', fontWeight: 600
+                            }}
+                          >
+                            👤 {r.first_name} {r.last_name || ''} ({r.phone || r.email || 'No contact'})
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentList = selectedRecipientIds.length > 0 ? selectedRecipientIds : (selectedRecipientId ? [selectedRecipientId] : []);
+                                const updated = currentList.filter(id => id !== r.id);
+                                setSelectedRecipientIds(updated);
+                                setSelectedRecipientId(updated[0] || '');
+                                setSelectedSegId('');
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '0.85rem', padding: 0, marginLeft: '2px' }}
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Recipient Checkbox Select List */}
+                  <div style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--border-color-glass)', borderRadius: '12px', padding: '10px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {recipients
+                      .filter(r => {
+                        if (!recipientSearchTerm.trim()) return true;
+                        const term = recipientSearchTerm.toLowerCase();
+                        const name = `${r.first_name} ${r.last_name || ''}`.toLowerCase();
+                        const phone = (r.phone || '').toLowerCase();
+                        const email = (r.email || '').toLowerCase();
+                        return name.includes(term) || phone.includes(term) || email.includes(term);
+                      })
+                      .map(rec => {
+                        const isChecked = selectedRecipientIds.includes(rec.id) || rec.id === selectedRecipientId;
+                        return (
+                          <label
+                            key={rec.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '12px',
+                              padding: '8px 12px', borderRadius: '8px',
+                              background: isChecked ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255,255,255,0.02)',
+                              border: `1px solid ${isChecked ? 'rgba(139, 92, 246, 0.35)' : 'rgba(255,255,255,0.05)'}`,
+                              cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                const currentList = selectedRecipientIds.length > 0 ? selectedRecipientIds : (selectedRecipientId ? [selectedRecipientId] : []);
+                                let updated;
+                                if (isChecked) {
+                                  updated = currentList.filter(id => id !== rec.id);
+                                } else {
+                                  updated = [...currentList, rec.id];
+                                }
+                                setSelectedRecipientIds(updated);
+                                setSelectedRecipientId(updated[0] || '');
+                                setSelectedSegId('');
+                              }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#f8fafc' }}>
+                                {rec.first_name} {rec.last_name || ''}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                📞 {rec.phone || 'No phone'} | 📧 {rec.email || 'No email'} | 💬 Channels: {getPreferredChannelsText(rec)} | 🌐 Lang: {getPreferredLanguagesText(rec)}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
 
@@ -2374,13 +2543,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 </div>
               </div>
 
-              {((targetType === 'segment' && selectedSegId) || (targetType === 'recipient' && selectedRecipientId)) && (
+              {((targetType === 'segment' && selectedSegId) || (targetType === 'recipient' && (selectedRecipientIds.length > 0 || selectedRecipientId))) && (
                 <GlassCard style={{ background: 'transparent', padding: '24px', display: 'grid', gridTemplateColumns: '1fr 180px', alignItems: 'center', gap: '20px', borderColor: 'var(--border-color-glass)' }}>
                   <div>
                     <h4 style={{ fontSize: '1.1rem', color: 'hsl(var(--primary))', marginBottom: '6px', fontWeight: '500' }}>Target Reach Analysis</h4>
                     <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.5' }}>
                       {targetType === 'recipient' 
-                        ? 'Targeting an individual recipient directly.' 
+                        ? 'Targeting individual recipient(s) directly.' 
                         : 'Citizen contact overlap validation based on preferred channel details (phone and email indexes).'
                       }
                     </p>
@@ -2389,8 +2558,10 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                     {targetType === 'recipient' ? (
                       <div style={{ textAlign: 'center' }}>
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>EST. IMPACT REACH</span>
-                        <span className="reach-card-value">1</span>
-                        <span style={{ display: 'block', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>member targeted</span>
+                        <span className="reach-card-value">{selectedRecipientIds.length || (selectedRecipientId ? 1 : 0)}</span>
+                        <span style={{ display: 'block', fontSize: '0.8rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>
+                          {(selectedRecipientIds.length || (selectedRecipientId ? 1 : 0)) === 1 ? 'member targeted' : 'members targeted'}
+                        </span>
                       </div>
                     ) : evalLoading ? (
                       <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>Re-evaluating reach...</span>

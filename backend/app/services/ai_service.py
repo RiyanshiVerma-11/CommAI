@@ -1,6 +1,8 @@
 import logging
 import re
 import requests
+from typing import List, Optional
+from pydantic import BaseModel, Field
 from app.config import settings
 
 logger = logging.getLogger("commai.ai_service")
@@ -107,6 +109,8 @@ PLACEHOLDER_GUARD = (
     "{{first_name}}, {{last_name}}, {{city}}, {{occupation}}, {{organization}}, "
     "{{department}}, etc.). Keep them exactly as they are in the source text, "
     "retaining the braces and variable names.\n"
+    "CRITICAL SIGN-OFF RULE: Do NOT add bracketed placeholder signatures like '[Your Name]', '[आपका नाम]', "
+    "'[Your Title]', '[Organization Name]', or '[Sender Name]' at the end of the text.\n"
 )
 
 OUTPUT_GUARD = (
@@ -213,14 +217,24 @@ def _call_groq(system_prompt: str, user_content: str, temperature: float = 0.3, 
 
 
 def _clean_output(text: str) -> str:
-    """Strip stray markdown fences or wrapping quotes that models sometimes add."""
+    """Strip stray markdown fences, wrapping quotes, or placeholder signatures at the end."""
+    if not text:
+        return ""
     if text.startswith("```") and text.endswith("```"):
         lines = text.split("\n")
         if len(lines) >= 3:
             text = "\n".join(lines[1:-1]).strip()
     if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
         text = text[1:-1].strip()
-    return text
+
+    # Remove trailing bracketed sign-offs like [Your Name], [आपका नाम], [Insert Name], [Company], etc.
+    text = re.sub(
+        r'[\r\n]+\s*(?:Regards|Sincerely|Warm regards|Best regards|Thanks|अभिनंदन|सधन्यवाद|शुभकामनाएं)?\s*,?\s*\[[^\]]{1,35}\]\s*$',
+        '',
+        text,
+        flags=re.IGNORECASE
+    )
+    return text.strip()
 
 
 def _clean_json_string(text: str) -> str:
@@ -975,6 +989,29 @@ def generate_chat_reply(message: str, history: list, user_role: str = "general")
         return _get_offline_chat_reply(message, user_role)
 
 
+class VoiceCommandResponse(BaseModel):
+    action: str = Field(description="Action to perform")
+    navigation_target: str = Field(description="Target screen tab")
+    target_channel: Optional[str] = "general"
+    target_manager: Optional[str] = None
+    message_text: Optional[str] = None
+    requires_confirmation: bool = True
+    spoken_response: str = Field(description="Response spoken back to the user")
+    title: Optional[str] = "Voice Alert"
+    objective: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    location_selected: Optional[str] = "All Locations"
+    locations_list: Optional[List[str]] = ["All Locations"]
+    recipients_selected: Optional[str] = "All Citizens"
+    recipients_list: Optional[List[str]] = ["All Citizens"]
+    category: Optional[str] = "announcement"
+    urgency: Optional[str] = "normal"
+    description: Optional[str] = None
+    channels: Optional[List[str]] = ["email", "push"]
+    auto_trigger: bool = False
+
+
 def process_voice_command(prompt: str, user_role: str = "campaign_manager", user_name: str = "Manager", known_recipients: list = None, active_context: dict = None) -> dict:
     """
     Process high-level voice command for Admin/Manager Voice Cockpit.
@@ -986,12 +1023,27 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
     title_role = "Admin" if user_role == "admin" else "Manager"
     display_name = f"{title_role} {user_name}" if user_name else title_role
 
-    prompt_clean = prompt.strip().lower()
-    confirm_words = ["yes", "yeah", "yep", "sure", "confirm", "proceed", "go ahead", "do it", "ok", "okay", "broadcast", "send", "send it", "do broadcast"]
-    is_affirmative = any(prompt_clean == w or prompt_clean.startswith(w + " ") or prompt_clean.endswith(" " + w) or prompt_clean.startswith("yes ") for w in confirm_words)
+    prompt_clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', prompt).strip().lower()
+    prompt_clean = re.sub(r'\s+', ' ', prompt_clean)
 
-    if is_affirmative and active_context:
+    confirm_words = [
+        "yes", "yeah", "yep", "sure", "confirm", "proceed", "go ahead", "do it", "ok", "okay",
+        "broadcast", "send", "send it", "yes send", "yes send it", "do broadcast", "send message",
+        "ha", "haan", "ha send kr de", "ha send kar de", "haan send kr de", "bhej do", "ha bhej do", "send kar do"
+    ]
+    is_affirmative = any(
+        prompt_clean == w or prompt_clean.startswith(w + " ") or prompt_clean.endswith(" " + w) or re.search(r'\b(yes|confirm|proceed|ok|okay|send|bhej)\b', prompt_clean)
+        for w in confirm_words
+    )
+
+    has_pending_confirmation = False
+    ctx_data = {}
+    if active_context and isinstance(active_context, dict):
         ctx_data = active_context.get("data") or active_context.get("active_result") or active_context
+        if isinstance(ctx_data, dict):
+            has_pending_confirmation = bool(ctx_data.get("requires_confirmation") or ctx_data.get("type") in ["operator_chat", "campaign"] or ctx_data.get("action") in ["emergency_broadcast", "create_campaign", "send_alert", "navigate"])
+
+    if is_affirmative and has_pending_confirmation:
         nav_target = ctx_data.get("navigation_target") or "sentiment_map"
 
         if nav_target == "operator_chat":
@@ -1014,9 +1066,13 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
 
         action = ctx_data.get("action", "emergency_broadcast")
         title = ctx_data.get("title", "Emergency Broadcast")
-        location = ctx_data.get("location_selected", "Uttar Pradesh")
+        location = ctx_data.get("location_selected") or ctx_data.get("location") or "All Locations"
         recipients = ctx_data.get("recipients_selected", "All Citizens")
         desc = ctx_data.get("description") or ctx_data.get("body") or f"Emergency advisory for {location}."
+        subj = ctx_data.get("subject") or f"[{location}] {title}"
+        cat = ctx_data.get("category") or ("emergency_alert" if action == "emergency_broadcast" else "awareness_drive")
+        locs = ctx_data.get("locations_list") or [location, "All Locations"]
+        recs = ctx_data.get("recipients_list") or [recipients, "All Citizens"]
 
         return {
             "action": action,
@@ -1024,8 +1080,12 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
             "user_confirmed": True,
             "spoken_response": f"Confirmed {display_name}! Executing {title} for {location} targeting {recipients}.",
             "title": title,
+            "subject": subj,
+            "category": cat,
             "location_selected": location,
+            "locations_list": locs,
             "recipients_selected": recipients,
+            "recipients_list": recs,
             "requires_confirmation": False,
             "auto_trigger": True,
             "description": desc,
@@ -1065,14 +1125,18 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "CRITICAL RULES:\n"
         "1. Extract locations (states, cities, districts like 'Assam', 'Uttar Pradesh', 'Delhi', 'Varanasi', 'Mumbai') accurately if mentioned.\n"
         "2. If user requests to open chat, RAG chat, citizen conversations, or talk to citizens, set action to 'navigate' and navigation_target to 'citizen_conversations'.\n"
-        "3. If user requests staff chat, operator chat, or private chat with a manager (e.g. 'Yashvi', 'Mahesh Sharma'), set action to 'navigate', navigation_target to 'operator_chat', target_manager to person's name, message_text to dictated message text if present, set requires_confirmation to true, and set spoken_response to ask: 'I have opened chat with [Name] and typed your message: [Message]. Should I send it now, or would you like to edit?'\n"
-        "4. If user explicitly asks to create a campaign, launch campaign, send broadcast, set action to 'create_campaign' (or 'emergency_broadcast' if urgent/alert) and navigation_target to 'campaigns'.\n"
-        "5. IMPORTANT: If user mentions 'sentiment map' along with alert/emergency/broadcast keywords, set action to 'emergency_broadcast' and navigation_target to 'sentiment_map' (NOT campaigns). The user wants to create an emergency alert FROM the sentiment map page.\n"
-        "6. IMPORTANT: If user says 'send this to [person name]' or 'send to [person name]' and the context is about a campaign, alert, or broadcast (NOT about opening a chat), treat this as adding a recipient. Set action to 'send_alert', set recipients_selected to the person's name, and keep the navigation_target as the current page (e.g. 'sentiment_map' or 'campaigns'). Do NOT open operator_chat for 'send this to [name]' commands.\n"
-        "7. Address the user respectfully as 'Manager' or 'Admin' in spoken_response.\n"
-        "8. Output spoken_response in clear, concise natural language suitable for browser SpeechSynthesis.\n"
-        "9. DEFAULT CHANNELS RULE: By default, set 'channels' to ONLY ['email', 'push'] (representing Email and Website Push/Bulletin). ONLY include extra channels like 'sms', 'whatsapp', 'telegram', or 'voice' if the user explicitly specifies them in their spoken command (e.g., 'via whatsapp', 'on sms', 'phone call').\n"
-        "10. DETAILED DESCRIPTION RULE: NEVER set 'description' or 'body' to just the title or short user command prompt. Always compose a detailed, professional, 3-4 sentence public advisory message body in 'description' and 'body' with emergency safety instructions, evacuation guidance, action steps, website update links, and {{phone_number}} / {{first_name}} placeholders.\n"
+        "3. If active_context indicates active_tab is 'operator_chat' (or user is in private DM / operator chat) AND user does NOT explicitly ask to 'create campaign' or 'emergency broadcast', treat the spoken input as a staff message. Set action to 'navigate', navigation_target to 'operator_chat', target_manager to active manager name, message_text to prompt text, set requires_confirmation to true, and set spoken_response to ask: 'I have typed your message: \"[Message]\". Should I send it now, or would you like to edit?'\n"
+        "4. If user requests staff chat, operator chat, or private chat with a manager (e.g. 'Yashvi', 'Mahesh Sharma', 'Ramesh Sharma'), set action to 'navigate', navigation_target to 'operator_chat', target_manager to person's name, message_text to dictated message text if present, set requires_confirmation to true, and set spoken_response to ask: 'I have opened chat with [Name] and typed your message: \"[Message]\". Should I send it now, or would you like to edit?'\n"
+        "5. DO NOT set action to 'create_campaign' or 'emergency_broadcast' when user is in operator chat or dictating a message, unless user explicitly says 'create campaign', 'launch campaign', or 'emergency broadcast'.\n"
+        "6. If user explicitly asks to create a campaign, launch campaign, send broadcast, set action to 'create_campaign' (or 'emergency_broadcast' if urgent/alert) and navigation_target to 'campaigns'.\n"
+        "7. IMPORTANT: If user mentions 'sentiment map' along with alert/emergency/broadcast keywords, set action to 'emergency_broadcast' and navigation_target to 'sentiment_map' (NOT campaigns). The user wants to create an emergency alert FROM the sentiment map page.\n"
+        "8. IMPORTANT: If user says 'send this to [person name]' or 'send to [person name]' and the context is about a campaign, alert, or broadcast (NOT about opening a chat), treat this as adding a recipient. Set action to 'send_alert', set recipients_selected to the person's name, and keep the navigation_target as the current page (e.g. 'sentiment_map' or 'campaigns'). Do NOT open operator_chat for 'send this to [name]' commands.\n"
+        "9. Address the user respectfully as 'Manager' or 'Admin' in spoken_response.\n"
+        "10. Output spoken_response in clear, concise natural language suitable for browser SpeechSynthesis.\n"
+        "11. DEFAULT CHANNELS RULE: By default, set 'channels' to ONLY ['email', 'push'] (representing Email and Website Push/Bulletin). ONLY include extra channels like 'sms', 'whatsapp', 'telegram', or 'voice' if the user explicitly specifies them in their spoken command (e.g., 'via whatsapp', 'on sms', 'phone call').\n"
+        "12. DETAILED DESCRIPTION RULE: NEVER set 'description' or 'body' to just the title or short user command prompt. Always compose a detailed, professional, 3-4 sentence public advisory message body in 'description' and 'body' with emergency safety instructions, action steps, website update links, and {{phone_number}} / {{first_name}} placeholders.\n"
+        "13. LOCATION PROMPTING RULE: If the user requests a campaign or emergency alert but does NOT specify a target state or location in their spoken command or context, set 'location_selected' to 'Unspecified' and make 'spoken_response' explicitly ask: 'Which state or location would you like to target for this alert?'\n"
+        "14. FOLLOW-UP PROMPT RULE: For campaign creation and emergency broadcast actions, set 'spoken_response' to EXACTLY: 'Do you want to edit, or should I proceed?'. Keep spoken responses concise with zero conversational filler or markdown.\n"
     )
 
     user_content = f"Manager Name/Role: {display_name} ({user_role})\nActive Context: {json.dumps(active_context) if active_context else 'None'}\nSpoken Command: \"{prompt}\""
@@ -1088,8 +1152,9 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_content}
                     ],
-                    "temperature": 0.2,
-                    "max_tokens": 1200
+                    "temperature": 0.0,
+                    "max_tokens": 1200,
+                    "response_format": {"type": "json_object"}
                 },
                 headers={
                     "Authorization": f"Bearer {settings.GROQ_API_KEY}",
@@ -1101,15 +1166,21 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 raw_text = resp.json()["choices"][0]["message"]["content"].strip()
                 raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.MULTILINE)
                 raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
-                result_json = json.loads(raw_text)
+                parsed_val = json.loads(raw_text)
+                # Strict validation check
+                validated_obj = VoiceCommandResponse.model_validate(parsed_val)
+                result_json = validated_obj.model_dump()
         except Exception as e:
-            logger.warning(f"[Voice AI] Groq voice command parsing failed: {e}")
+            logger.warning(f"[Voice AI] Groq voice command parsing or validation failed: {e}")
 
     # Fallback heuristic parser if AI API fails or is offline
     if not result_json:
         prompt_lower = prompt.lower()
+        active_tab = (active_context or {}).get("active_tab") or (active_context or {}).get("navigation_target")
+        is_on_operator_chat = (active_tab == "operator_chat")
         
-        # Detect emergency
+        # Detect explicit campaign / emergency request
+        is_explicit_campaign = "create campaign" in prompt_lower or "new campaign" in prompt_lower or "launch campaign" in prompt_lower
         is_emergency = "emergency" in prompt_lower or "flood" in prompt_lower or "alert" in prompt_lower or "warning" in prompt_lower
         
         # Detect if user wants sentiment map
@@ -1117,36 +1188,23 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         
         # Detect "send this to [person]" / "send to [person]" — means add recipient, NOT open chat
         send_to_person_match = re.search(r'send\s+(?:this|it|that|the alert|the campaign)?\s*to\s+([a-zA-Z][a-zA-Z\s]+)', prompt, re.IGNORECASE)
-        is_send_to_person = send_to_person_match and not ("operator" in prompt_lower or "staff chat" in prompt_lower or "private chat" in prompt_lower)
+        person_name = None
+        if send_to_person_match:
+            raw_p = send_to_person_match.group(1).strip()
+            raw_p = re.sub(r'\s+(via|on|by|using)\s+(email|sms|whatsapp|telegram|push|voice).*$', '', raw_p, flags=re.IGNORECASE).strip().title()
+            if raw_p and raw_p.lower() not in ["the", "a", "an", "all", "our", "staff", "this", "it"]:
+                person_name = raw_p
+
+        is_send_to_person = bool(person_name) and not ("operator" in prompt_lower or "staff chat" in prompt_lower or "private chat" in prompt_lower or "message" in prompt_lower or is_on_operator_chat or is_explicit_campaign or is_emergency or "create" in prompt_lower)
         
         # Detect location
-        location = "All Locations"
-        if "assam" in prompt_lower:
-            location = "Assam"
-        elif "uttar pradesh" in prompt_lower or "up" in prompt_lower:
-            location = "Uttar Pradesh"
-        elif "varanasi" in prompt_lower:
-            location = "Varanasi"
-        elif "delhi" in prompt_lower:
-            location = "Delhi"
-        elif "maharashtra" in prompt_lower or "mumbai" in prompt_lower:
-            location = "Maharashtra"
-        elif "gujarat" in prompt_lower:
-            location = "Gujarat"
-        elif "bihar" in prompt_lower:
-            location = "Bihar"
-        elif "punjab" in prompt_lower:
-            location = "Punjab"
+        location = "Uttar Pradesh" if ("uttar pradesh" in prompt_lower or "up" in prompt_lower) else ("Assam" if "assam" in prompt_lower else "All Locations")
+        has_location = ("uttar pradesh" in prompt_lower or "up" in prompt_lower or "assam" in prompt_lower or "delhi" in prompt_lower or "mumbai" in prompt_lower or "varanasi" in prompt_lower)
 
         # Detect recipients
-        recipients = "All Citizens"
-        if "farmer" in prompt_lower:
-            recipients = "Farmers"
-        elif "student" in prompt_lower or "education" in prompt_lower:
-            recipients = "Students"
-        elif "health" in prompt_lower or "doctor" in prompt_lower:
-            recipients = "Healthcare Workers"
-        # Detect channels (default to ONLY email & push/website unless explicitly requested)
+        recipients = person_name if person_name else ("Farmers" if "farmer" in prompt_lower else ("Students" if "student" in prompt_lower else "All Citizens"))
+        
+        # Detect channels (default strictly to ONLY email & push/website unless explicitly requested)
         detected_channels = []
         if "sms" in prompt_lower or "text message" in prompt_lower or "text" in prompt_lower:
             detected_channels.append("sms")
@@ -1164,27 +1222,43 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         if not detected_channels:
             detected_channels = ["email", "push"]
 
-        user_spoken_text = prompt.strip()
-        if user_spoken_text and len(user_spoken_text) > 15:
-            detailed_description = (
-                f"🚨 EMERGENCY ADVISORY ({location}): {user_spoken_text}. "
-                f"Please stay safe, monitor official announcements, and contact {{phone_number}} for urgent help."
-            )
-        else:
-            detailed_description = (
-                f"🚨 EMERGENCY ADVISORY: A critical alert has been issued for citizens in {location}. "
-                f"Move to higher ground NOW. Avoid traveling to low-lying areas, rivers, and streams. "
-                f"Keep phone charged and follow evacuation routes instructed by local authorities. "
-                f"Contact {{phone_number}} for emergency assistance. This is an official public notice."
-            )
+        clean_topic = prompt.strip()
+        clean_topic = re.sub(r'^(?:create|launch|send)\s+(?:an?|the)?\s*(?:emergency|urgent)?\s*(?:alert|broadcast|notice|campaign)?\s*(?:for|on|about)?\s*', '', clean_topic, flags=re.IGNORECASE).strip()
+        clean_topic = re.sub(r'\s+and\s+send\s+.*$', '', clean_topic, flags=re.IGNORECASE).strip()
 
+        detailed_description = (
+            f"Dear {{first_name}},\n\n"
+            f"This is an urgent public advisory regarding {clean_topic or 'emergency situation'} in {location}. "
+            f"Please take immediate protective precautions, monitor official updates, and contact {{phone_number}} for assistance.\n\n"
+            f"Best regards,\nCommAI Emergency Services"
+        )
+
+        # Priority 0: Active in Operator Chat and user dictates message (without explicitly launching a campaign)
+        is_explicit_broadcast = "broadcast alert" in prompt_lower or "send emergency broadcast" in prompt_lower or "launch emergency alert" in prompt_lower
+        if is_on_operator_chat and not is_explicit_campaign and not is_explicit_broadcast:
+            target_mgr = (active_context or {}).get("target_manager")
+            target_chan = (active_context or {}).get("target_channel", "general")
+            mgr_str = target_mgr if target_mgr else "staff"
+            spoken = f"I have typed your message for {mgr_str}: '{prompt.strip()}'. Should I send it now, or would you like to edit?"
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "operator_chat",
+                "target_channel": target_chan,
+                "target_manager": target_mgr,
+                "message_text": prompt.strip(),
+                "requires_confirmation": True,
+                "spoken_response": spoken,
+                "title": "Operator Staff Chat",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
         # Priority 1: "send this/it to [person name]" — add person as recipient, stay on current page
-        if is_send_to_person:
-            person_name = send_to_person_match.group(1).strip().title()
+        elif is_send_to_person:
             result_json = {
                 "action": "send_alert",
                 "navigation_target": "campaigns",
-                "spoken_response": f"Yes {display_name}! I am sending this to {person_name}. Adding {person_name} as a recipient. Should I proceed?",
+                "spoken_response": f"Do you want to edit, or should I proceed?",
                 "title": f"Send to {person_name}",
                 "location_selected": location,
                 "recipients_selected": person_name,
@@ -1199,12 +1273,13 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
             }
         # Priority 2: Sentiment Map + Emergency = open sentiment_map page
         elif is_sentiment_map and is_emergency:
+            spoken_text = "Do you want to edit, or should I proceed?"
             result_json = {
                 "action": "emergency_broadcast",
                 "navigation_target": "sentiment_map",
-                "spoken_response": f"Yes {display_name}! Opening Sentiment Map with an emergency alert for {location}. Target audience is {recipients}. Please review the alert on the map and confirm to send.",
-                "title": f"Emergency Alert: {prompt[:40]}",
-                "location_selected": location,
+                "spoken_response": spoken_text,
+                "title": f"Emergency Alert: {clean_topic.title()}",
+                "location_selected": location if has_location else "Unspecified",
                 "locations_list": [location, "All Locations"],
                 "recipients_selected": recipients,
                 "recipients_list": [recipients, "All Citizens", "Farmers", "Healthcare Workers", "Students", "Local Authorities"],
@@ -1228,13 +1303,15 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
             }
         # Priority 4: Emergency broadcast (without sentiment map) → campaigns page
         elif is_emergency:
+            spoken_text = "Do you want to edit, or should I proceed?"
             result_json = {
                 "action": "emergency_broadcast",
                 "navigation_target": "campaigns",
-                "spoken_response": f"Yes {display_name}! I have set up the emergency alert broadcast for {location}. Target location is pre-selected as {location} and recipients as {recipients}. Please review and confirm to send.",
-                "title": f"Emergency Alert: {prompt[:40]}",
-                "location_selected": location,
-                "locations_list": [location, "Guwahati", "Dibrugarh", "Silchar", "All Locations"] if location == "Assam" else [location, "All Locations"],
+                "spoken_response": spoken_text,
+                "title": f"Emergency Alert: {clean_topic.title()}",
+                "subject": f"🚨 EMERGENCY ALERT ({location}): {clean_topic.title()}",
+                "location_selected": location if has_location else "Unspecified",
+                "locations_list": [location, "All Locations"],
                 "recipients_selected": recipients,
                 "recipients_list": [recipients, "All Citizens", "Farmers", "Healthcare Workers", "Students", "Local Authorities"],
                 "category": "emergency_alert",
@@ -1244,13 +1321,19 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "channels": detected_channels,
                 "auto_trigger": True
             }
-        elif "operator chat" in prompt_lower or "staff chat" in prompt_lower or "private chat" in prompt_lower or ("message" in prompt_lower and "send" not in prompt_lower):
+        elif "operator chat" in prompt_lower or "staff chat" in prompt_lower or "private chat" in prompt_lower or ("message" in prompt_lower and "send to" not in prompt_lower) or re.search(r'\b(message|tell|dm)\s+[a-zA-Z]', prompt_lower):
             target_mgr = None
             if known_recipients:
                 for rec in known_recipients:
-                    if rec.lower() in prompt_lower and rec not in ["All Citizens", "Educational Institutions", "Farmers", "Healthcare Workers", "Local Authorities"]:
+                    rec_first = rec.split()[0].lower()
+                    if (rec.lower() in prompt_lower or (len(rec_first) > 2 and rec_first in prompt_lower)) and rec not in ["All Citizens", "Educational Institutions", "Farmers", "Healthcare Workers", "Local Authorities"]:
                         target_mgr = rec
                         break
+
+            if not target_mgr:
+                mgr_match = re.search(r'(?:message|tell|dm|chat with|send message to)\s+([a-zA-Z]+)', prompt, re.IGNORECASE)
+                if mgr_match and mgr_match.group(1).lower() not in ["the", "a", "an", "all", "our", "staff", "this", "it"]:
+                    target_mgr = mgr_match.group(1).capitalize()
 
             target_chan = "general"
             if "emergency" in prompt_lower:
@@ -1260,7 +1343,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
 
             msg_text = None
             if "message" in prompt_lower or "say" in prompt_lower or "tell" in prompt_lower or "?" in prompt:
-                parts = re.split(r'message\s+\w+[\.\,\:]?\s*|message\s*|saying\s*|say\s*', prompt, flags=re.IGNORECASE)
+                parts = re.split(r'message\s+\w+[\.\,\:]?\s*|message\s*|saying\s*|say\s*|tell\s+', prompt, flags=re.IGNORECASE)
                 if len(parts) > 1 and parts[-1].strip():
                     msg_text = parts[-1].strip().strip('"\'')
 
@@ -1295,16 +1378,6 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "operator chat" in prompt_lower or "staff chat" in prompt_lower:
-            result_json = {
-                "action": "navigate",
-                "navigation_target": "operator_chat",
-                "spoken_response": f"Opening Operator Staff Chat for you, {display_name}.",
-                "title": "Operator Staff Chat",
-                "location_selected": location,
-                "recipients_selected": recipients,
-                "auto_trigger": False
-            }
         elif "approval" in prompt_lower or "approve" in prompt_lower:
             result_json = {
                 "action": "approve_campaign",
@@ -1315,7 +1388,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower:
+        elif ("audience" in prompt_lower or "segment" in prompt_lower or "find farmers" in prompt_lower or "search farmers" in prompt_lower) and not ("campaign" in prompt_lower or "drive" in prompt_lower or "alert" in prompt_lower or "create" in prompt_lower):
             result_json = {
                 "action": "search_audience",
                 "navigation_target": "audiences",
@@ -1325,36 +1398,61 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "campaign" in prompt_lower or "create" in prompt_lower or ("send" in prompt_lower and "send to" not in prompt_lower and "send this" not in prompt_lower and "send it" not in prompt_lower):
+        elif "campaign" in prompt_lower or "drive" in prompt_lower or "create campaign" in prompt_lower or "new campaign" in prompt_lower or "send alert" in prompt_lower or "broadcast alert" in prompt_lower:
+            # Extract specific person recipient if mentioned
+            for known in (known_recipients or []):
+                if known.lower() in prompt_lower and known not in ["All Citizens", "Educational Institutions", "Farmers", "Healthcare Workers", "Local Authorities"]:
+                    recipients = known
+                    break
+
+            topic_title = prompt.strip().title()
+            if len(topic_title) > 55:
+                topic_title = topic_title[:55] + "..."
+
+            draft_subj = f"🌾 Notice: {topic_title} for {{first_name}}"
+            draft_body = (
+                f"Dear {{first_name}},\n\n"
+                f"This is an official public advisory regarding {prompt.strip()} in {location}. "
+                f"Please review safety and resource guidelines, follow local authority instructions, "
+                f"and contact {{phone_number}} for support and assistance.\n\n"
+                f"Best regards,\nCommAI Public Services"
+            )
+
+            spoken_text = "Do you want to edit, or should I proceed?"
+            if not has_location:
+                spoken_text = "Which state or location would you like to target for this alert?"
+
             result_json = {
                 "action": "create_campaign",
                 "navigation_target": "campaigns",
-                "spoken_response": f"Yes {display_name}, creating your campaign for {location}. Target location set to {location}.",
-                "title": prompt[:50],
-                "location_selected": location,
-                "locations_list": [location, "All Locations"],
+                "spoken_response": spoken_text,
+                "title": topic_title,
+                "objective": f"Public awareness and resource drive for {prompt.strip()} targeting {recipients} in {location}",
+                "subject": draft_subj,
+                "body": draft_body,
+                "description": draft_body,
+                "location_selected": location if has_location else "Unspecified",
+                "locations_list": [location, "Uttar Pradesh", "Assam", "Delhi", "All Locations"],
                 "recipients_selected": recipients,
-                "recipients_list": [recipients, "All Citizens", "Farmers", "Local Authorities"],
+                "recipients_list": [recipients, "Farmers", "All Citizens", "Healthcare Workers", "Students"],
                 "category": "awareness_drive",
                 "urgency": "normal",
-                "description": prompt,
-                "channels": ["email", "whatsapp", "sms"],
+                "channels": detected_channels,
+                "requires_confirmation": True,
                 "auto_trigger": True
             }
         else:
             result_json = {
                 "action": "navigate",
-                "navigation_target": "citizen_conversations",
-                "spoken_response": f"Yes {display_name}, opening Citizen RAG Chat.",
-                "title": "Citizen RAG Chat",
+                "navigation_target": "dashboard",
+                "spoken_response": f"Yes {display_name}, how can I help you today?",
+                "title": "Voice Cockpit Standby",
                 "location_selected": location,
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
 
     return result_json
-
-
 
 
 

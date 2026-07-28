@@ -9,7 +9,7 @@ from typing import Dict, Any
 from app.config import settings
 from app.database import engine, Base, get_db, SessionLocal
 from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery
-from app.auth import get_password_hash, require_any_authenticated
+from app.auth import get_password_hash, require_any_authenticated, require_manager_or_higher
 from jose import JWTError, jwt
 from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router
 from app.routes import users as users_router
@@ -177,6 +177,38 @@ api_router.include_router(operator_chat.router)
 api_router.include_router(voice_router.router)
 
 app.mount("/static/audio_cache", StaticFiles(directory=CACHE_DIR), name="audio_cache")
+
+
+from typing import List
+
+@api_router.get("/dashboard/delivery-logs")
+def get_dashboard_delivery_logs(
+    status: str,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager_or_higher)
+):
+    logs = (
+        db.query(DeliveryLog)
+        .filter(DeliveryLog.status == status)
+        .order_by(DeliveryLog.sent_at.desc())
+        .limit(limit)
+        .all()
+    )
+    res = []
+    for log in logs:
+        campaign = db.query(Campaign).filter(Campaign.id == log.campaign_id).first()
+        audience = db.query(Audience).filter(Audience.id == log.audience_id).first()
+        res.append({
+            "id": log.id,
+            "campaign_title": campaign.title if campaign else f"Campaign #{log.campaign_id}",
+            "recipient_name": f"{audience.first_name} {audience.last_name}" if audience else log.recipient_info,
+            "channel": log.channel,
+            "status": log.status,
+            "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+            "error_details": log.error_message
+        })
+    return res
 
 
 # --- DASHBOARD METRICS ROUTE ---
@@ -1064,7 +1096,7 @@ async def lifespan(app: FastAPI):
                 "state": "Delhi",
                 "district": "New Delhi",
                 "city": "New Delhi",
-                "preferred_languages": ["Hindi", "English"],
+                "preferred_languages": ["English", "Hindi"],
                 "preferred_channels": ["email"]
             },
             {
@@ -1145,11 +1177,8 @@ async def lifespan(app: FastAPI):
                     db.add(new_aud)
                     db.commit()
                 else:
-                    existing_aud.first_name = u_data["full_name"].split()[0]
-                    existing_aud.last_name = u_data["full_name"].split()[1] if len(u_data["full_name"].split()) > 1 else ""
-                    existing_aud.age = u_data["age"]
-                    existing_aud.gender = u_data["gender"]
-                    existing_aud.occupation = u_data["occupation"]
+                    existing_aud.preferred_languages = json.dumps(u_data["preferred_languages"])
+                    existing_aud.preferred_channels = json.dumps(u_data["preferred_channels"])
                     existing_aud.state = u_data["state"]
                     existing_aud.district = u_data["district"]
                     existing_aud.city = u_data["city"]

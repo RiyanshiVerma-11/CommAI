@@ -468,6 +468,15 @@ def _dispatch_campaign_worker(campaign_id: str):
                 except Exception:
                     pref_langs = []
 
+            # Fallback to User table preferred_languages if audience record didn't have it
+            if not pref_langs and member.email:
+                usr = db.query(User).filter(User.email == member.email).first()
+                if usr and usr.preferred_languages:
+                    try:
+                        pref_langs = json.loads(usr.preferred_languages) if isinstance(usr.preferred_languages, str) else usr.preferred_languages
+                    except Exception:
+                        pref_langs = []
+
             # Determine target translation language
             target_lang = None
             if pref_langs and isinstance(pref_langs, list) and len(pref_langs) > 0:

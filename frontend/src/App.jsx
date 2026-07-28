@@ -1354,6 +1354,7 @@ function App() {
         user={user}
         backendUrl={BACKEND_URL}
         token={token}
+        activeTab={activeTab}
         onExecuteVoiceCommand={handleExecuteVoiceCommand}
       />
       

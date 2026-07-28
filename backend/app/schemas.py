@@ -14,8 +14,8 @@ class CustomBaseModel(BaseModel):
     def serialize_naive_datetime(cls, v):
         if isinstance(v, datetime):
             if v.tzinfo is None:
-                # Treat naive datetime input as Indian Standard Time (IST UTC+05:30)
-                v = v.replace(tzinfo=IST).astimezone(timezone.utc)
+                # Naive datetimes stored in DB (e.g. via datetime.utcnow()) are in UTC
+                v = v.replace(tzinfo=timezone.utc)
             else:
                 v = v.astimezone(timezone.utc)
         return v

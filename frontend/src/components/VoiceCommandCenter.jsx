@@ -256,7 +256,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
   // Speech Recognition Start/Stop
   const startListening = () => {
     // DO NOT start microphone while speech synthesis is actively speaking!
-    if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+    if (isTtsSpeakingRef.current) {
       console.log('[Jarvis Voice] Speech synthesis is active. Delaying mic listening.');
       return;
     }
@@ -286,7 +286,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       };
 
       recognition.onresult = (event) => {
-        if (isTtsSpeakingRef.current || (window.speechSynthesis && window.speechSynthesis.speaking)) {
+        if (isTtsSpeakingRef.current) {
           console.log('[Jarvis Voice] Speech recognition result discarded: TTS is actively speaking.');
           return;
         }
@@ -374,8 +374,15 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     const cleanCmd = cleanCmdRaw.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
     // Check if user is confirming or cancelling an active voice action
-    const isTargetedSend = cleanCmd.includes('send to') || cleanCmd.includes('send this to');
-    const activeCtx = pendingConfirmation;
+    const isTargetedSend = cleanCmd.includes('send to') || cleanCmd.includes('send this to') || cleanCmd.includes('send message to');
+    const isNewCommandIntent = ['create', 'launch', 'open', 'message', 'chat', 'navigate', 'search', 'show', 'find', 'go to'].some(w => cleanCmd.includes(w));
+
+    if (isNewCommandIntent && pendingConfirmation) {
+      setPendingConfirmation(null);
+      setActiveResult(null);
+    }
+
+    const activeCtx = isNewCommandIntent ? null : pendingConfirmation;
 
     if (activeCtx && !isTargetedSend) {
       const confirmWords = [

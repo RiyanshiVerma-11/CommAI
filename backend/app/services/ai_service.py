@@ -1031,10 +1031,15 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "broadcast", "send", "send it", "yes send", "yes send it", "do broadcast", "send message",
         "ha", "haan", "ha send kr de", "ha send kar de", "haan send kr de", "bhej do", "ha bhej do", "send kar do"
     ]
+    # Detect if the user is clearly initiating a new command rather than confirming
+    is_new_command = any(
+        w in prompt_clean for w in ["create", "launch", "open", "message", "chat", "navigate", "search", "show", "find", "go to"]
+    ) or ("send to" in prompt_clean) or ("send message to" in prompt_clean) or ("tell" in prompt_clean and "saying" in prompt_clean)
+
     is_affirmative = any(
         prompt_clean == w or prompt_clean.startswith(w + " ") or prompt_clean.endswith(" " + w) or re.search(r'\b(yes|confirm|proceed|ok|okay|send|bhej)\b', prompt_clean)
         for w in confirm_words
-    )
+    ) if not is_new_command else False
 
     has_pending_confirmation = False
     ctx_data = {}
@@ -1137,6 +1142,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "12. DETAILED DESCRIPTION RULE: NEVER set 'description' or 'body' to just the title or short user command prompt. Always compose a detailed, professional, 3-4 sentence public advisory message body in 'description' and 'body' with emergency safety instructions, action steps, website update links, and {{phone_number}} / {{first_name}} placeholders.\n"
         "13. LOCATION PROMPTING RULE: If the user requests a campaign or emergency alert but does NOT specify a target state or location in their spoken command or context, set 'location_selected' to 'Unspecified' and make 'spoken_response' explicitly ask: 'Which state or location would you like to target for this alert?'\n"
         "14. FOLLOW-UP PROMPT RULE: For campaign creation and emergency broadcast actions, set 'spoken_response' to EXACTLY: 'Do you want to edit, or should I proceed?'. Keep spoken responses concise with zero conversational filler or markdown.\n"
+        "15. NAVIGATION ONLY RULE: For navigation-only commands (e.g. 'show me approvals', 'open sentiment map', 'navigate to dashboard', 'find farmers in Gujarat') where the user is NOT composing a message/campaign or initiating a broadcast, ALWAYS set 'requires_confirmation' to false.\n"
     )
 
     user_content = f"Manager Name/Role: {display_name} ({user_role})\nActive Context: {json.dumps(active_context) if active_context else 'None'}\nSpoken Command: \"{prompt}\""
@@ -1197,9 +1203,20 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
 
         is_send_to_person = bool(person_name) and not ("operator" in prompt_lower or "staff chat" in prompt_lower or "private chat" in prompt_lower or "message" in prompt_lower or is_on_operator_chat or is_explicit_campaign or is_emergency or "create" in prompt_lower)
         
-        # Detect location
-        location = "Uttar Pradesh" if ("uttar pradesh" in prompt_lower or "up" in prompt_lower) else ("Assam" if "assam" in prompt_lower else "All Locations")
-        has_location = ("uttar pradesh" in prompt_lower or "up" in prompt_lower or "assam" in prompt_lower or "delhi" in prompt_lower or "mumbai" in prompt_lower or "varanasi" in prompt_lower)
+        # Detect location dynamically
+        location = "All Locations"
+        if "uttar pradesh" in prompt_lower or "up" in prompt_lower:
+            location = "Uttar Pradesh"
+        elif "assam" in prompt_lower:
+            location = "Assam"
+        elif "delhi" in prompt_lower:
+            location = "Delhi"
+        elif "mumbai" in prompt_lower:
+            location = "Mumbai"
+        elif "varanasi" in prompt_lower:
+            location = "Varanasi"
+            
+        has_location = location != "All Locations"
 
         # Detect recipients
         recipients = person_name if person_name else ("Farmers" if "farmer" in prompt_lower else ("Students" if "student" in prompt_lower else "All Citizens"))
@@ -1238,8 +1255,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         if is_on_operator_chat and not is_explicit_campaign and not is_explicit_broadcast:
             target_mgr = (active_context or {}).get("target_manager")
             target_chan = (active_context or {}).get("target_channel", "general")
-            mgr_str = target_mgr if target_mgr else "staff"
-            spoken = f"I have typed your message for {mgr_str}: '{prompt.strip()}'. Should I send it now, or would you like to edit?"
+            spoken = f"I have typed your message: \"{prompt.strip()}\". Should I send it now, or would you like to edit?"
             result_json = {
                 "action": "navigate",
                 "navigation_target": "operator_chat",
@@ -1255,9 +1271,10 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
             }
         # Priority 1: "send this/it to [person name]" — add person as recipient, stay on current page
         elif is_send_to_person:
+            current_page = (active_context or {}).get("active_tab") or "campaigns"
             result_json = {
                 "action": "send_alert",
-                "navigation_target": "campaigns",
+                "navigation_target": current_page,
                 "spoken_response": f"Do you want to edit, or should I proceed?",
                 "title": f"Send to {person_name}",
                 "location_selected": location,
@@ -1304,6 +1321,8 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         # Priority 4: Emergency broadcast (without sentiment map) → campaigns page
         elif is_emergency:
             spoken_text = "Do you want to edit, or should I proceed?"
+            if not has_location:
+                spoken_text = "Which state or location would you like to target for this alert?"
             result_json = {
                 "action": "emergency_broadcast",
                 "navigation_target": "campaigns",
@@ -1349,9 +1368,9 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
 
             spoken = f"Opening Operator Staff Chat for you, {display_name}."
             if target_mgr and msg_text:
-                spoken = f"I have opened Operator Staff Chat with {target_mgr} and typed your message: '{msg_text}'. Should I send it now, or would you like to edit?"
+                spoken = f"I have opened chat with {target_mgr} and typed your message: \"{msg_text}\". Should I send it now, or would you like to edit?"
             elif msg_text:
-                spoken = f"I have opened Operator Staff Chat and typed your message: '{msg_text}'. Should I send it now, or would you like to edit?"
+                spoken = f"I have opened Operator Staff Chat and typed your message: \"{msg_text}\". Should I send it now, or would you like to edit?"
             elif target_mgr:
                 spoken = f"Opening Operator Staff Chat DM with {target_mgr} for you, {display_name}."
 
@@ -1418,9 +1437,10 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 f"Best regards,\nCommAI Public Services"
             )
 
-            spoken_text = "Do you want to edit, or should I proceed?"
             if not has_location:
                 spoken_text = "Which state or location would you like to target for this alert?"
+            else:
+                spoken_text = f"I've drafted a campaign for {location}. Do you want to edit, or should I proceed?"
 
             result_json = {
                 "action": "create_campaign",

@@ -13,7 +13,7 @@ from pydantic import BaseModel, validator
 from typing import Optional, List
 from datetime import timezone
 
-from app.auth import require_any_authenticated
+from app.auth import require_any_authenticated, require_manager_or_higher
 from app.services.poster_service import (
     generate_poster_prompt,
     generate_poster_content,
@@ -78,7 +78,7 @@ class PosterSendRequest(BaseModel):
 @router.post("/generate", response_model=PosterResponse)
 def generate_poster(
     request: PosterRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """
     Generate a visual poster/flyer for a campaign.
@@ -159,7 +159,7 @@ def generate_poster(
 @router.post("/regenerate-content")
 def regenerate_poster_content(
     request: PosterRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """
     Regenerate ONLY the text content for a poster without regenerating the image.
@@ -378,7 +378,7 @@ def dispatch_poster_in_background(
 def send_poster(
     id: str,
     request: PosterSendRequest,
-    current_user = Depends(require_any_authenticated)
+    current_user = Depends(require_manager_or_higher)
 ):
     """
     Save the final composited image back to the database, and broadcast it

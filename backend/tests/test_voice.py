@@ -146,3 +146,29 @@ def test_process_voice_command_dm_dictation():
     assert "yashvi" in res["spoken_response"].lower()
 
 
+def test_process_voice_command_override_pending_confirmation_on_new_intent():
+    from app.services.ai_service import process_voice_command
+    
+    active_ctx = {
+        "data": {
+            "navigation_target": "campaigns",
+            "action": "emergency_broadcast",
+            "title": "Heatwave Advisory",
+            "requires_confirmation": True
+        }
+    }
+    
+    res = process_voice_command(
+        prompt="send message to Ramesh saying hello there",
+        user_role="admin",
+        user_name="Admin",
+        active_context=active_ctx
+    )
+    
+    assert res.get("user_confirmed") is not True
+    assert res["action"] == "navigate"
+    assert res["navigation_target"] == "operator_chat"
+    assert res["target_manager"] == "Ramesh"
+
+
+

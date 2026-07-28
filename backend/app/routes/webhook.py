@@ -158,7 +158,7 @@ def list_conversations(
 def get_conversation_thread(
     audience_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Get the full conversation thread for a specific audience member."""
     messages = (

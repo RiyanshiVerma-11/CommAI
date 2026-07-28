@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models import Audience
 from app.routes.audience import build_segment_filter_query
 from app.services.nl_segment import parse_natural_language_filter, generate_segment_explanation
-from app.auth import require_any_authenticated
+from app.auth import require_any_authenticated, require_manager_or_higher
 from app.services.ai_service import (
     generate_campaign_content,
     optimize_content,
@@ -130,7 +130,7 @@ class ComplianceResponse(BaseModel):
 @router.post("/generate", response_model=GenerateResponse)
 def ai_generate(
     request: GenerateRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Generate campaign subject + body from a text prompt."""
     result = generate_campaign_content(
@@ -145,7 +145,7 @@ def ai_generate(
 @router.post("/optimize", response_model=OptimizeResponse)
 def ai_optimize(
     request: OptimizeRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Rewrite text to match a target tone."""
     result = optimize_content(
@@ -158,7 +158,7 @@ def ai_optimize(
 @router.post("/translate", response_model=TranslateResponse)
 def ai_translate(
     request: TranslateRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Translate text into a target language."""
     result = translate_content(
@@ -172,7 +172,7 @@ def ai_translate(
 @router.post("/personalize", response_model=PersonalizeResponse)
 def ai_personalize(
     request: PersonalizeRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Personalize text for a specific audience profile."""
     result = personalize_content(
@@ -186,7 +186,7 @@ def ai_personalize(
 @router.post("/check-compliance", response_model=ComplianceResponse)
 def ai_check_compliance(
     request: ComplianceRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Run offline compliance and quality audit on message text."""
     result = check_compliance_and_quality(
@@ -223,7 +223,7 @@ class PlanRefineRequest(BaseModel):
 @router.post("/plan")
 def ai_plan_campaign(
     request: PlanRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Generate a complete structured campaign plan from a brief prompt."""
     result = plan_complete_campaign(
@@ -237,7 +237,7 @@ def ai_plan_campaign(
 @router.post("/plan/refine")
 def ai_refine_campaign(
     request: PlanRefineRequest,
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Refine an existing campaign plan JSON object based on prompt instructions."""
     import json
@@ -285,7 +285,7 @@ class NLSegmentRequest(BaseModel):
 def ai_nl_segment(
     request: NLSegmentRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Convert natural language query into filter criteria and return matching audience count."""
     filter_criteria = parse_natural_language_filter(request.query)
@@ -329,7 +329,7 @@ from app.models import Segment
 def ai_voice_command(
     request: VoiceCommandRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(require_any_authenticated),
+    current_user=Depends(require_manager_or_higher),
 ):
     """Process Admin/Manager Voice Command and return navigation target, pre-selected location/recipients, and spoken response."""
     user_name = getattr(current_user, "full_name", "Manager")

@@ -11,6 +11,7 @@ import os
 
 from app.database import get_db
 from app.models import Campaign, Poster
+from app.auth import require_any_authenticated
 from app.services.voice_service import (
     get_supported_languages,
     synthesize_voice_bulletin,
@@ -42,7 +43,10 @@ def list_supported_voice_languages():
 
 
 @router.post("/synthesize", response_model=VoiceSynthesizeResponse)
-def synthesize_speech(req: VoiceSynthesizeRequest):
+def synthesize_speech(
+    req: VoiceSynthesizeRequest,
+    current_user = Depends(require_any_authenticated)
+):
     """Synthesize input text into spoken audio bulletin in any of the 23 supported Indic languages."""
     try:
         filename, translated_text, lang_code = synthesize_voice_bulletin(
@@ -109,7 +113,9 @@ def get_campaign_voice_bulletin(
 @router.get("/stream/{filename}")
 def stream_audio_file(filename: str):
     """Stream audio MP3 file directly from cache."""
-    filepath = os.path.join(CACHE_DIR, filename)
+    # Prevent directory traversal by sanitizing the filename
+    clean_filename = os.path.basename(filename)
+    filepath = os.path.join(CACHE_DIR, clean_filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found")
-    return FileResponse(filepath, media_type="audio/mpeg", filename=filename)
+    return FileResponse(filepath, media_type="audio/mpeg", filename=clean_filename)

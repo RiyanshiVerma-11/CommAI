@@ -1442,3 +1442,23 @@ class TestEmergencyContacts:
         assert "spoken_response" in data
         assert data["location_selected"] in ["Assam", "All Locations"]
 
+    def test_voice_stream_path_traversal_prevention(self):
+        response = client.get("/api/voice/stream/../../.env")
+        assert response.status_code == 404
+
+    def test_conversation_thread_bola_prevention(self):
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.get("/api/webhook/conversations/some-audience-id", headers=audience_headers)
+        assert response.status_code == 403
+
+    def test_poster_generation_privilege_escalation_prevention(self):
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.post("/api/poster/generate", json={"title": "Test Title", "description": "Test Desc", "category": "emergency", "tone": "formal", "language": "Hindi"}, headers=audience_headers)
+        assert response.status_code == 403
+
+    def test_ai_voice_command_privilege_escalation_prevention(self):
+        audience_headers = get_auth_headers(settings.AUDIENCE_EMAIL, settings.AUDIENCE_PASSWORD)
+        response = client.post("/api/ai/voice-command", json={"command": "Navigate to dashboard"}, headers=audience_headers)
+        assert response.status_code == 403
+
+

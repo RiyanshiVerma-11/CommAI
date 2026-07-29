@@ -3251,13 +3251,15 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
   }
 
   .landing-nav-ctas {
-    gap: 4px !important;
+    gap: 8px !important;
   }
 
-  .landing-nav-ctas button {
-    padding: 6px 10px !important;
-    font-size: 0.78rem !important;
-    white-space: nowrap !important;
+  .landing-nav-mobile-toggle {
+    display: flex !important;
+  }
+
+  .landing-nav-ctas button:not(.theme-toggle-btn):not(.landing-nav-mobile-toggle) {
+    display: none !important;
   }
 
   .landing-hero-section {

@@ -250,6 +250,7 @@ function smoothScrollTo(id) {
 export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme = 'dark', toggleTheme }) {
   const [activeResource, setActiveResource] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -468,6 +469,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           {/* Theme toggle icon button */}
           <button 
             onClick={toggleTheme}
+            className="theme-toggle-btn"
             style={{ 
               background: 'none', 
               cursor: 'pointer', 
@@ -542,8 +544,140 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none'; }}>
             Get Started →
           </button>
+
+          {/* Hamburger toggle button for mobile */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+            className="landing-nav-mobile-toggle" 
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              color: T.text,
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '10px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: `1px solid ${T.border}`,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            {mobileMenuOpen ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            )}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 64,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: theme === 'dark' ? 'rgba(5, 7, 15, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(20px)',
+          zIndex: 998,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 24,
+          padding: 40,
+          animation: 'fadeIn 0.2s ease-in-out',
+        }}>
+          {/* Nav links */}
+          {NAV_LINKS.map(({ id, label }) => (
+            <button key={id} onClick={() => { smoothScrollTo(id); setMobileMenuOpen(false); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: T.text,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}>
+              {label}
+            </button>
+          ))}
+          
+          <div style={{ width: '80%', height: '1px', background: T.border, margin: '8px 0' }} />
+
+          {/* Action buttons */}
+          <button onClick={() => { handleInstallClick(); setMobileMenuOpen(false); }}
+            style={{ 
+              width: '100%', 
+              maxWidth: 260, 
+              padding: '12px 24px', 
+              borderRadius: 12, 
+              border: `1px solid ${T.blue}`, 
+              background: T.blueLight, 
+              color: T.blue, 
+              fontWeight: 700, 
+              fontSize: '1rem', 
+              cursor: 'pointer', 
+              fontFamily: 'inherit', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: 8 
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Install App
+          </button>
+
+          <button onClick={() => { onNavigateToLogin(); setMobileMenuOpen(false); }}
+            style={{ 
+              width: '100%', 
+              maxWidth: 260, 
+              padding: '12px 24px', 
+              borderRadius: 12, 
+              border: `1px solid ${T.border}`, 
+              background: T.white, 
+              color: T.text, 
+              fontWeight: 600, 
+              fontSize: '1rem', 
+              cursor: 'pointer', 
+              fontFamily: 'inherit' 
+            }}>
+            Sign In
+          </button>
+
+          <button onClick={() => { onNavigateToRegister(); setMobileMenuOpen(false); }}
+            style={{ 
+              width: '100%', 
+              maxWidth: 260, 
+              padding: '12px 24px', 
+              borderRadius: 12, 
+              border: 'none', 
+              background: `linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, 
+              color: '#fff', 
+              fontWeight: 700, 
+              fontSize: '1rem', 
+              cursor: 'pointer', 
+              fontFamily: 'inherit', 
+              boxShadow: `0 4px 14px rgba(37,99,235,.3)` 
+            }}>
+            Get Started →
+          </button>
+        </div>
+      )}
 
       {/* ══════════════════════ HERO ══════════════════════ */}
       <section id="hero" className="landing-hero-section" style={{ maxWidth:1140, margin:'0 auto', padding:'110px 32px 80px', position:'relative' }}>

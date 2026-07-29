@@ -3389,6 +3389,43 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     display: none !important;
   }
 
+  .header-divider {
+    display: none !important;
+  }
+
+  .header-right {
+    gap: 8px !important;
+  }
+
+  .theme-switch-pill {
+    width: 64px !important;
+    height: 28px !important;
+  }
+
+  .theme-switch-slider {
+    width: 22px !important;
+    height: 22px !important;
+    top: 2px !important;
+    left: 2px !important;
+  }
+
+  .theme-switch-pill.light .theme-switch-slider {
+    transform: translateX(36px) !important;
+  }
+
+  .theme-switch-icon {
+    width: 22px !important;
+    height: 22px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .theme-switch-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
   .header-breadcrumb-category,
   .header-breadcrumb-arrow {
     display: none !important;

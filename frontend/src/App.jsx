@@ -1098,7 +1098,7 @@ function App() {
             </h2>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', color: 'hsl(var(--text-secondary))' }}>
+          <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', color: 'hsl(var(--text-secondary))' }}>
             <span className="header-date" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'hsl(var(--primary))', width: '1.1rem', height: '1.1rem' }}>
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -1137,7 +1137,7 @@ function App() {
               </div>
             </div>
             
-            <span style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
+            <span className="header-divider" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
             
             {/* Notification Bell Symbol & Drawer (Placed after theme symbols) */}
             <div className="notification-container" style={{ position: 'relative' }}>
@@ -1308,7 +1308,7 @@ function App() {
               )}
             </div>
             
-            <span style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
+            <span className="header-divider" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
             
             {/* Profile settings dropdown */}
             <div className="profile-dropdown-container">

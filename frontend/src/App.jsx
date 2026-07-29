@@ -76,6 +76,39 @@ function App() {
     }
   }, [theme]);
 
+  // Browser History Navigation Synchronization (popstate listener)
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (event.state) {
+        const { view: targetView, activeTab: targetTab } = event.state;
+        if (targetView) setView(targetView);
+        if (targetTab) setActiveTab(targetTab);
+      } else {
+        setView('landing');
+        setActiveTab('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Replace initial state so the first page load has a history entry
+    window.history.replaceState({ view: 'landing', activeTab: 'dashboard' }, '', '');
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Push state to browser history when view or activeTab changes
+  useEffect(() => {
+    const currentHistoryState = window.history.state;
+    if (currentHistoryState) {
+      if (currentHistoryState.view !== view || currentHistoryState.activeTab !== activeTab) {
+        window.history.pushState({ view, activeTab }, '', '');
+      }
+    }
+  }, [view, activeTab]);
+
 
   // Compile auth headers
   const authHeaders = {

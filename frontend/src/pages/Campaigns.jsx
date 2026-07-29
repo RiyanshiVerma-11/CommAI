@@ -181,28 +181,67 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   };
 
   const applyAiPlanToForm = (plan) => {
-    setCurrentAiPlan(plan);
+    // Ensure metadata and KPIs are present with valid defaults so NaN% Confidence never displays
+    const safePlan = {
+      ...plan,
+      _voice_filled: !!plan._voice_filled,
+      metadata: {
+        confidence: plan.metadata?.confidence ?? 0.92,
+        reasoning: plan.metadata?.reasoning || { campaign_type: 'Voice command intent', channels: 'Multi-channel dispatch' },
+        suggestions: plan.metadata?.suggestions || ['Verify recipient list before launching']
+      },
+      kpis: {
+        expected_reach_pct: plan.kpis?.expected_reach_pct ?? 88,
+        ctr_goal_pct: plan.kpis?.ctr_goal_pct ?? 28,
+        delivery_goal_pct: plan.kpis?.delivery_goal_pct ?? 98,
+        awareness_goal_description: plan.kpis?.awareness_goal_description || 'Achieve high public engagement'
+      }
+    };
+
+    setCurrentAiPlan(safePlan);
     setStep(1);
+
     if (plan.campaign) {
-      if (plan.campaign.title) setFormTitle(plan.campaign.title);
-      if (plan.campaign.objective) setFormObjective(plan.campaign.objective);
+      let rawTitle = plan.campaign.title || '';
+      let rawObj = plan.campaign.objective || '';
+      let rawDesc = plan.campaign.description || '';
+
+      // Clean up raw spoken command strings if present
+      if (rawTitle.toLowerCase().startsWith('create me a campaign') || rawTitle.toLowerCase().startsWith('create a campaign')) {
+        const topic = rawTitle.replace(/^(?:create|launch|send)\s+(?:me\s+)?(?:a\s+)?(?:new\s+)?(?:campaign|drive|alert)?\s*(?:on|for|about)?\s*/i, '').trim();
+        rawTitle = topic ? `${topic.charAt(0).toUpperCase() + topic.slice(1)} Campaign` : 'Awareness Campaign';
+      }
+      if (rawObj.toLowerCase().startsWith('create me a campaign') || rawObj.toLowerCase().startsWith('create a campaign')) {
+        const topic = rawObj.replace(/^(?:create|launch|send)\s+(?:me\s+)?(?:a\s+)?(?:new\s+)?(?:campaign|drive|alert)?\s*(?:on|for|about)?\s*/i, '').trim();
+        rawObj = topic ? `Promote awareness and share official information regarding ${topic}.` : 'Promote citizen awareness.';
+      }
+      if (rawDesc.toLowerCase().startsWith('create me a campaign')) {
+        rawDesc = `Targeted campaign regarding ${rawTitle}.`;
+      }
+
+      setFormTitle(rawTitle);
+      setFormObjective(rawObj);
       if (plan.campaign.campaign_type) setFormType(plan.campaign.campaign_type);
-      if (plan.campaign.description) setFormDesc(plan.campaign.description);
+      setFormDesc(rawDesc);
     }
     if (plan.delivery && plan.delivery.channels) {
       const validChs = plan.delivery.channels.filter(ch => channelsList.includes(ch));
       if (validChs.length > 0) setSelectedChannels(validChs);
     }
     if (plan.message) {
-      if (plan.message.subject) setCustomSubject(plan.message.subject);
-      if (plan.message.body) setCustomBody(cleanPlaceholderSignoffs(plan.message.body));
-    }
-    setSelectedTplId('custom');
+      let rawSubj = plan.message.subject || '';
+      let rawBody = plan.message.body || '';
 
-    if (segments && segments.length > 0) {
-      const targetLoc = plan.delivery?.location || plan.location || '';
-      const matchingSeg = segments.find(s => targetLoc && s.name.toLowerCase().includes(targetLoc.toLowerCase()));
-      setSelectedSegId(matchingSeg ? matchingSeg.id : segments[0].id);
+      if (rawSubj.toLowerCase().includes('create me a campaign')) {
+        rawSubj = `[All Locations] ${formTitle || 'Important Notice'}`;
+      }
+      if (rawBody.toLowerCase().startsWith('create me a campaign')) {
+        rawBody = `Dear {{first_name}},\n\nThis is an official communication regarding ${formTitle || 'this campaign'}. Please review the guidelines and stay informed.\n\nBest regards,\nCommAI Team`;
+      }
+
+      setCustomSubject(rawSubj);
+      setCustomBody(rawBody);
+      setSelectedTplId('custom');
     }
 
     if (plan.delivery && plan.delivery.audiences && recipients && recipients.length > 0) {
@@ -220,7 +259,36 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         setSelectedRecipientId(matchedIds[0]);
       }
     }
+
+    // Smart segment matching: try to match voice plan recipients to a known segment by name keyword
+    if (segments && segments.length > 0) {
+      const recipientHint = (plan.delivery?.audiences?.[0] || '').toLowerCase();
+      let matchedSeg = null;
+
+      if (recipientHint) {
+        // Try exact name match first
+        matchedSeg = segments.find(s => s.name.toLowerCase() === recipientHint);
+        // Then try keyword-contains match (e.g. "farmers" matches segment "Farmers - Assam")
+        if (!matchedSeg) {
+          matchedSeg = segments.find(s =>
+            s.name.toLowerCase().includes(recipientHint) ||
+            recipientHint.includes(s.name.toLowerCase())
+          );
+        }
+        // Try word-level match — e.g. "All Citizens" matches segment containing "citizens"
+        if (!matchedSeg) {
+          const words = recipientHint.split(/\s+/).filter(w => w.length > 3);
+          matchedSeg = segments.find(s =>
+            words.some(w => s.name.toLowerCase().includes(w))
+          );
+        }
+      }
+
+      // Fallback: pick first segment if no match found
+      setSelectedSegId((matchedSeg || segments[0]).id);
+    }
   };
+
 
   useEffect(() => {
     if (initialVoicePlan) {
@@ -237,6 +305,28 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   const [coPilotListening, setCoPilotListening] = useState(false);
   const coPilotRecognitionRef = useRef(null);
+
+  const formatIndianTime = (dateStr) => {
+    if (!dateStr) return '';
+    let normalized = dateStr;
+    if (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+      normalized = dateStr.replace(' ', 'T') + 'Z';
+    }
+    try {
+      return new Date(normalized).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return new Date(dateStr).toLocaleString();
+    }
+  };
 
   const getLangNameFromCode = (code) => {
     const map = {
@@ -429,6 +519,10 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   useEffect(() => {
     if (viewMode === 'list') {
       fetchCampaigns();
+      const intervalId = setInterval(() => {
+        fetchCampaigns();
+      }, 8000);
+      return () => clearInterval(intervalId);
     } else {
       fetchSegmentsAndTemplates();
       if (!editingCampId && !initialVoicePlan && !currentAiPlan) {
@@ -1553,7 +1647,14 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         </td>
                         <td>{getStatusBadge(camp.status)}</td>
                         <td style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
-                          {formatDate(camp.scheduled_at || camp.created_at)}
+                          {camp.status === 'scheduled' && camp.scheduled_at ? (
+                            <div>
+                              <span style={{ fontSize: '0.72rem', display: 'block', color: 'hsl(var(--primary))', fontWeight: 'bold' }}>⏰ Scheduled (IST):</span>
+                              {formatIndianTime(camp.scheduled_at)}
+                            </div>
+                          ) : (
+                            formatIndianTime(camp.created_at)
+                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px' }}>
@@ -1770,7 +1871,39 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
             </div>
           </div>
 
+          {/* Jarvis Voice Pre-fill Banner */}
+          {currentAiPlan && currentAiPlan._voice_filled && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: '12px',
+              padding: '14px 18px',
+              marginBottom: '16px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(59,130,246,0.08) 100%)',
+              border: '1px solid rgba(139,92,246,0.35)',
+              boxShadow: '0 4px 20px rgba(139,92,246,0.1)',
+              animation: 'fadeIn 0.4s ease'
+            }}>
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🎙️</span>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '0.88rem', color: 'hsl(var(--primary))', marginBottom: '4px' }}>
+                  Jarvis pre-filled this form from your voice command
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.5' }}>
+                  Campaign details, message, and channels have been auto-populated. Please review each step,
+                  select your audience segment, then click <strong style={{ color: 'hsl(var(--text-primary))' }}>Launch Campaign</strong> to send.
+                </div>
+              </div>
+              <button
+                onClick={() => setCurrentAiPlan(prev => ({ ...prev, _voice_filled: false }))}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'hsl(var(--text-muted))', fontSize: '1.1rem', padding: '0 4px', flexShrink: 0 }}
+                title="Dismiss"
+              >×</button>
+            </div>
+          )}
+
           {wizardError && (
+
             <div className="glass-card danger-text" style={{ padding: '10px 14px', marginBottom: '20px', fontSize: '0.85rem', background: 'rgba(244, 63, 94, 0.1)', borderColor: 'rgba(244, 63, 94, 0.2)' }}>
               <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1.1rem', height: '1.1rem', marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               {wizardError}

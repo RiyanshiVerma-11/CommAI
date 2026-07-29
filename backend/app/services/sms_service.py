@@ -69,15 +69,21 @@ def send_sms(
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             to_phone = f"+{clean_phone}"
             
-            # Twilio international routes require clean GSM-compatible SMS body text
-            import unicodedata
-            clean_body = unicodedata.normalize('NFKD', message).encode('ascii', 'ignore').decode('ascii').strip()
-            if not clean_body or len(clean_body) < 5:
-                # If message was pure non-ASCII (e.g. Hindi Devanagari script), format clean English summary
-                clean_subj = unicodedata.normalize('NFKD', subject or 'CommAI Public Announcement').encode('ascii', 'ignore').decode('ascii').strip() or "CommAI Public Announcement"
-                send_body = f"[{clean_subj}] Important public update. Please check your CommAI portal for full details."
-            else:
-                send_body = clean_body
+            # Format SMS body with clean GSM-compatible header to ensure Indian carrier DLT delivery
+            send_body = message.strip() if message else ""
+            
+            # Check if text contains Dravidian regional scripts (Telugu, Tamil, Kannada, Malayalam)
+            has_regional = any(
+                (0x0B80 <= ord(c) <= 0x0BFF) or (0x0C00 <= ord(c) <= 0x0C7F) or 
+                (0x0C80 <= ord(c) <= 0x0CFF) or (0x0D00 <= ord(c) <= 0x0D7F)
+                for c in send_body
+            )
+            
+            if has_regional:
+                header_title = subject.strip() if (subject and subject.strip()) else "CommAI Public Update"
+                send_body = f"[CommAI: {header_title}]\n{send_body}"
+            elif subject and subject.strip() and not send_body.startswith(subject.strip()):
+                send_body = f"[{subject.strip()}]\n{send_body}"
 
             payload = {
                 "From": twilio_from,

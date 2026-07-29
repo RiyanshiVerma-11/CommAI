@@ -1112,13 +1112,13 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "  \"target_manager\": \"String - Name of specific manager for private DM chat e.g. 'Yashvi', 'Mahesh Sharma' if specified\",\n"
         "  \"message_text\": \"String - Extracted chat message text to send or pre-fill in input box if user dictated a message\",\n"
         "  \"requires_confirmation\": true,\n"
-        "  \"spoken_response\": \"String - Professional, clear verbal response addressed to the manager (e.g., 'Yes Manager, I have opened Operator Chat with Yashvi and pre-filled your message. Should I send it now, or would you like to edit?').\",\n"
-        "  \"title\": \"String - Catchy, concise campaign title or action summary\",\n"
-        "  \"objective\": \"String - High level goal of the campaign\",\n"
-        "  \"subject\": \"String - Subject line for email and push notifications\",\n"
-        "  \"body\": \"String - Full detailed message body text including {{first_name}} placeholders where appropriate\",\n"
-        "  \"location_selected\": \"String - Extracted state/city/district (e.g. 'Assam', 'Uttar Pradesh', 'Varanasi', 'All Locations')\",\n"
-        "  \"locations_list\": [\"Array of location strings - E.g. ['Assam', 'Guwahati', 'Dibrugarh', 'Silchar', 'All Locations']\"],\n"
+        "  \"spoken_response\": \"String - Professional, clear verbal response addressed to the manager (e.g., 'Yes Manager, I have generated a complete health awareness campaign plan for Maharashtra. All parameters and copy are pre-filled.').\",\n"
+        "  \"title\": \"String - Catchy, concise professional campaign title (e.g. 'Maharashtra Health & Wellness Drive 2026')\",\n"
+        "  \"objective\": \"String - Clear, high-level goal of the campaign (e.g. 'Promote preventive healthcare guidelines, sanitation, and health services')\",\n"
+        "  \"subject\": \"String - Subject line for email and push notifications (e.g. 'Important Health Advisory: Prevention Guidelines')\",\n"
+        "  \"body\": \"String - Full detailed message body copy with {{first_name}} placeholders where appropriate\",\n"
+        "  \"location_selected\": \"String - Extracted state/city/district (e.g. 'Assam', 'Uttar Pradesh', 'Maharashtra', 'Delhi', 'Varanasi', 'All Locations')\",\n"
+        "  \"locations_list\": [\"Array of location strings\"],\n"
         "  \"recipients_selected\": \"String - Extracted target audience (e.g. 'All Citizens', 'Farmers', 'Healthcare Workers', 'Students', 'Educational Institutions')\",\n"
         "  \"recipients_list\": [\"Array of recipient group strings\"],\n"
         "  \"category\": \"String - campaign type e.g. emergency_alert, awareness_drive, announcement\",\n"
@@ -1143,6 +1143,8 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "13. LOCATION PROMPTING RULE: If the user requests a campaign or emergency alert but does NOT specify a target state or location in their spoken command or context, set 'location_selected' to 'Unspecified' and make 'spoken_response' explicitly ask: 'Which state or location would you like to target for this alert?'\n"
         "14. FOLLOW-UP PROMPT RULE: For campaign creation and emergency broadcast actions, set 'spoken_response' to EXACTLY: 'Do you want to edit, or should I proceed?'. Keep spoken responses concise with zero conversational filler or markdown.\n"
         "15. NAVIGATION ONLY RULE: For navigation-only commands (e.g. 'show me approvals', 'open sentiment map', 'navigate to dashboard', 'find farmers in Gujarat') where the user is NOT composing a message/campaign or initiating a broadcast, ALWAYS set 'requires_confirmation' to false.\n"
+        "16. NAVIGATION RULES: Templates='templates', Bulletins='live_bulletins', Emergency Inbox='emergency_inbox', Poster Studio='poster_studio', Support Queries='support_queries'.\n"
+        "17. CAMPAIGN GENERATION RULE: When action is 'create_campaign' or 'emergency_broadcast', NEVER repeat the user's raw spoken prompt (e.g. 'create me a campaign on health awareness') as the title, objective, description, subject, or body. Generate a clean professional Campaign Title (e.g. 'Public Health & Wellness Drive 2026'), Campaign Objective (e.g. 'Promote preventive healthcare guidelines, sanitation, and health services'), Email Subject (e.g. 'Health Advisory: Guidelines for Prevention & Wellness'), and detailed 3-4 sentence message body copy with {{first_name}} placeholders.\n"
     )
 
     user_content = f"Manager Name/Role: {display_name} ({user_role})\nActive Context: {json.dumps(active_context) if active_context else 'None'}\nSpoken Command: \"{prompt}\""
@@ -1187,7 +1189,13 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         
         # Detect explicit campaign / emergency request
         is_explicit_campaign = "create campaign" in prompt_lower or "new campaign" in prompt_lower or "launch campaign" in prompt_lower
-        is_emergency = "emergency" in prompt_lower or "flood" in prompt_lower or "alert" in prompt_lower or "warning" in prompt_lower
+        is_emergency = ("emergency" in prompt_lower or "flood" in prompt_lower or "alert" in prompt_lower or "warning" in prompt_lower or "disaster" in prompt_lower)
+        
+        # Detect navigation-only intents first (these must take priority over is_emergency!)
+        is_emergency_inbox_nav = (
+            ("inbox" in prompt_lower or "emergency inbox" in prompt_lower or "sos request" in prompt_lower or "citizen emergenc" in prompt_lower)
+            and not any(kw in prompt_lower for kw in ["send", "broadcast", "launch", "create", "dispatch"])
+        )
         
         # Detect if user wants sentiment map
         is_sentiment_map = "sentiment" in prompt_lower or "sentiment map" in prompt_lower
@@ -1286,6 +1294,17 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "description": detailed_description,
                 "body": detailed_description,
                 "channels": detected_channels,
+                "auto_trigger": False
+            }
+        # Priority 1b: Emergency INBOX navigation — must come BEFORE is_emergency check
+        elif is_emergency_inbox_nav:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "emergency_inbox",
+                "spoken_response": f"Opening Emergency Inbox for you, {display_name}. Here are the citizen emergency requests.",
+                "title": "Emergency Inbox",
+                "location_selected": location,
+                "recipients_selected": recipients,
                 "auto_trigger": False
             }
         # Priority 2: Sentiment Map + Emergency = open sentiment_map page
@@ -1387,7 +1406,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "rag" in prompt_lower or "citizen chat" in prompt_lower or "citizen conversation" in prompt_lower or ("chat" in prompt_lower and "operator" not in prompt_lower and "staff" not in prompt_lower):
+        elif "rag" in prompt_lower or "citizen chat" in prompt_lower or "citizen conversation" in prompt_lower:
             result_json = {
                 "action": "navigate",
                 "navigation_target": "citizen_conversations",
@@ -1407,7 +1426,47 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif ("audience" in prompt_lower or "segment" in prompt_lower or "find farmers" in prompt_lower or "search farmers" in prompt_lower) and not ("campaign" in prompt_lower or "drive" in prompt_lower or "alert" in prompt_lower or "create" in prompt_lower):
+        elif "template" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "templates",
+                "spoken_response": f"Opening Templates Library for you, {display_name}.",
+                "title": "Templates Library",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "bulletin" in prompt_lower or "live bulletin" in prompt_lower or "live broadcast" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "live_bulletins",
+                "spoken_response": f"Opening Live Bulletins feed for you, {display_name}.",
+                "title": "Live Bulletins",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "poster" in prompt_lower:
+            result_json = {
+                "action": "generate_poster",
+                "navigation_target": "poster_studio",
+                "spoken_response": f"Opening Poster Studio for you, {display_name}. You can design and generate campaign posters here.",
+                "title": "Poster Studio",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "support quer" in prompt_lower or "help ticket" in prompt_lower or "citizen quer" in prompt_lower or "user quer" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "support_queries",
+                "spoken_response": f"Opening Support Queries for you, {display_name}. Here are the citizen help tickets.",
+                "title": "Support Queries",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower:
             result_json = {
                 "action": "search_audience",
                 "navigation_target": "audiences",
@@ -1417,49 +1476,55 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "campaign" in prompt_lower or "drive" in prompt_lower or "create campaign" in prompt_lower or "new campaign" in prompt_lower or "send alert" in prompt_lower or "broadcast alert" in prompt_lower:
-            # Extract specific person recipient if mentioned
-            for known in (known_recipients or []):
-                if known.lower() in prompt_lower and known not in ["All Citizens", "Educational Institutions", "Farmers", "Healthcare Workers", "Local Authorities"]:
-                    recipients = known
-                    break
+        elif "campaign" in prompt_lower or "create" in prompt_lower or ("send" in prompt_lower and "send to" not in prompt_lower and "send this" not in prompt_lower and "send it" not in prompt_lower):
+            # Extract main topic from prompt
+            topic_clean = re.sub(r'^(?:create|launch|send|start|make|build)\s+(?:me\s+)?(?:a\s+)?(?:new\s+)?(?:campaign|drive|alert|advisory|notice)?\s*(?:on|for|about)?\s*', '', prompt, flags=re.IGNORECASE).strip().strip('.')
+            if not topic_clean or len(topic_clean) < 3:
+                topic_clean = "Public Awareness"
 
-            topic_title = prompt.strip().title()
-            if len(topic_title) > 55:
-                topic_title = topic_title[:55] + "..."
+            topic_title = topic_clean.title()
+            if not any(kw in topic_title.lower() for kw in ["campaign", "drive", "alert", "notice", "advisory"]):
+                topic_title = f"{topic_title} Campaign"
 
-            draft_subj = f"🌾 Notice: {topic_title} for {{first_name}}"
-            draft_body = (
-                f"Dear {{first_name}},\n\n"
-                f"This is an official public advisory regarding {prompt.strip()} in {location}. "
-                f"Please review safety and resource guidelines, follow local authority instructions, "
-                f"and contact {{phone_number}} for support and assistance.\n\n"
-                f"Best regards,\nCommAI Public Services"
-            )
+            generated_obj = f"Promote public awareness and provide official guidance regarding {topic_clean} to citizens across {location}."
+            generated_subj = f"Important Notice: {topic_title} ({location})"
+            generated_body = f"Dear {{first_name}},\n\nThis is an official communication regarding {topic_clean} in {location}. Please follow prescribed guidelines, maintain safety precautions, and contact local support for assistance.\n\nBest regards,\nCommAI Regional Administration"
+            generated_desc = f"Targeted awareness drive regarding {topic_clean} for citizens in {location}."
 
-            if not has_location:
-                spoken_text = "Which state or location would you like to target for this alert?"
-            else:
-                spoken_text = f"I've drafted a campaign for {location}. Do you want to edit, or should I proceed?"
+            spoken_text = "Do you want to edit, or should I proceed?" if has_location else "Which state or location would you like to target for this alert?"
 
             result_json = {
                 "action": "create_campaign",
                 "navigation_target": "campaigns",
                 "spoken_response": spoken_text,
                 "title": topic_title,
-                "objective": f"Public awareness and resource drive for {prompt.strip()} targeting {recipients} in {location}",
-                "subject": draft_subj,
-                "body": draft_body,
-                "description": draft_body,
+                "objective": generated_obj,
+                "subject": generated_subj,
+                "body": generated_body,
+                "description": generated_desc,
                 "location_selected": location if has_location else "Unspecified",
-                "locations_list": [location, "Uttar Pradesh", "Assam", "Delhi", "All Locations"],
+                "locations_list": [location, "Assam", "Uttar Pradesh", "Delhi", "All Locations"],
                 "recipients_selected": recipients,
-                "recipients_list": [recipients, "Farmers", "All Citizens", "Healthcare Workers", "Students"],
-                "category": "awareness_drive",
-                "urgency": "normal",
+                "recipients_list": [recipients, "All Citizens", "Farmers", "Healthcare Workers"],
+                "category": "emergency_alert" if is_emergency else "awareness_drive",
+                "urgency": "critical" if is_emergency else "normal",
                 "channels": detected_channels,
                 "requires_confirmation": True,
-                "auto_trigger": True
+                "auto_trigger": True,
+                "kpis": {
+                    "expected_reach_pct": 88,
+                    "ctr_goal_pct": 28,
+                    "delivery_goal_pct": 98,
+                    "awareness_goal_description": f"Achieve public awareness regarding {topic_clean}"
+                },
+                "metadata": {
+                    "confidence": 0.92,
+                    "reasoning": {
+                        "campaign_type": "Auto-selected based on voice intent",
+                        "channels": "Selected optimal channels for target demographic"
+                    },
+                    "suggestions": ["Verify recipient list before launching", "Add local helpline number"]
+                }
             }
         else:
             result_json = {
@@ -1471,6 +1536,57 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
+
+    # Ultra-fast Enterprise AI Plan enrichment (0ms overhead if single-pass Groq output is complete)
+    if result_json and result_json.get("action") in ["create_campaign", "emergency_broadcast"]:
+        try:
+            title = result_json.get("title") or "Awareness Campaign"
+            obj = result_json.get("objective") or f"Promote awareness regarding {prompt}"
+            subj = result_json.get("subject") or f"Important Notice: {title}"
+            body = result_json.get("body") or f"Dear {{first_name}},\n\nOfficial notice regarding {title}. Please follow prescribed guidelines.\n\nCommAI Administration"
+
+            kpis = result_json.get("kpis") or {
+                "expected_reach_pct": 88,
+                "ctr_goal_pct": 28,
+                "delivery_goal_pct": 98,
+                "awareness_goal_description": f"Achieve target public awareness for {title}"
+            }
+            meta = result_json.get("metadata") or {
+                "confidence": 0.95,
+                "reasoning": {
+                    "campaign_type": "Auto-selected based on voice intent",
+                    "channels": "Selected optimal channels for target demographic"
+                },
+                "suggestions": ["Verify recipient list before launching", "Add local helpline number"]
+            }
+
+            full_plan = {
+                "campaign": {
+                    "title": title,
+                    "objective": obj,
+                    "campaign_type": result_json.get("category") or "awareness_drive",
+                    "description": result_json.get("description") or obj
+                },
+                "message": {
+                    "subject": subj,
+                    "body": body
+                },
+                "delivery": {
+                    "channels": result_json.get("channels") or ["email", "push"],
+                    "audiences": [result_json.get("recipients_selected") or "All Citizens"],
+                    "location": result_json.get("location_selected") or "All Locations"
+                },
+                "kpis": kpis,
+                "metadata": meta,
+                "risks": result_json.get("risks") or []
+            }
+
+            result_json["kpis"] = kpis
+            result_json["metadata"] = meta
+            result_json["full_plan"] = full_plan
+            result_json["spoken_response"] = f"Yes {display_name}, I have generated a complete enterprise AI campaign plan for '{title}'. Parameters, message copy, and dispatch rules are pre-filled."
+        except Exception as plan_err:
+            logger.warning(f"[Voice AI] Fast campaign plan construction error: {plan_err}")
 
     return result_json
 

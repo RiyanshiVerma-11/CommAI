@@ -272,6 +272,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     }
 
     try {
+      setTranscript('');
       const recognition = new SpeechRecognition();
       const speechLang = localStorage.getItem('comm_speech_lang') || 'en-IN';
       recognition.lang = speechLang;
@@ -282,6 +283,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
       recognition.onstart = () => {
         setIsListening(true);
+        setTranscript('');
         setStatusMessage('🎙️ Listening to your voice command...');
       };
 
@@ -292,7 +294,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         }
 
         let currentTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
 
@@ -326,14 +328,14 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           clearTimeout(silenceTimerRef.current);
         }
 
-        // Wait for 2.8 seconds of natural silence after speaking before processing command
+        // Wait for 1.8 seconds of natural silence after speaking before processing command
         silenceTimerRef.current = setTimeout(() => {
           const trimmedText = lastCapturedTranscript.trim();
           if (trimmedText && (trimmedText.length >= 3 || pendingConfirmation)) {
             stopListening();
             handleProcessVoiceCommand(trimmedText);
           }
-        }, 2800);
+        }, 1800);
       };
 
       recognition.onerror = (e) => {
@@ -443,6 +445,10 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     }
 
     // Otherwise, process as a new command with backend AI Intent Engine
+    // IMPORTANT: Clear pending state BEFORE sending. Do NOT pass stale activeCtx to backend
+    // — that would cause the AI to treat new commands as confirmations and route to wrong pages.
+    setPendingConfirmation(null);
+    setActiveResult(null);
     setLoading(true);
     setStatusMessage('🧠 AI Intent Engine analyzing command...');
 
@@ -460,7 +466,6 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          command: commandText,
           active_context: requestContext
         })
       });

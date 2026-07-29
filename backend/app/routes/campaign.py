@@ -159,6 +159,12 @@ def list_campaigns(
     db: Session = Depends(get_db),
     current_user = Depends(require_manager_or_higher)
 ):
+    try:
+        from app.services.dispatcher import check_and_dispatch_scheduled_campaigns
+        check_and_dispatch_scheduled_campaigns()
+    except Exception as ex:
+        logger.error(f"[CAMPAIGN-LIST] Auto-scheduler check exception: {ex}")
+
     campaigns = db.query(Campaign).filter(Campaign.is_deleted == False).order_by(Campaign.created_at.desc()).all()
     return [format_campaign_response(c) for c in campaigns]
 

@@ -14,7 +14,7 @@ class CustomBaseModel(BaseModel):
     def serialize_naive_datetime(cls, v):
         if isinstance(v, datetime):
             if v.tzinfo is None:
-                # Naive datetimes stored in DB (e.g. via datetime.utcnow()) are in UTC
+                # Database stores naive UTC datetimes
                 v = v.replace(tzinfo=timezone.utc)
             else:
                 v = v.astimezone(timezone.utc)
@@ -23,7 +23,7 @@ class CustomBaseModel(BaseModel):
 # --- AUTH SCHEMAS ---
 
 class UserBase(CustomBaseModel):
-    email: EmailStr
+    email: str
     full_name: str
     role: str
     organization: Optional[str] = None

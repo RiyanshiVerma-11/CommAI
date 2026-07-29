@@ -100,6 +100,13 @@ def on_startup():
     except Exception as ex:
         print(f"[STARTUP] Telegram polling start exception: {ex}")
 
+    try:
+        from app.services.dispatcher import start_campaign_scheduler
+        start_campaign_scheduler(interval_seconds=15)
+    except Exception as ex:
+        print(f"[STARTUP] Campaign scheduler start exception: {ex}")
+
+
 # WebSocket bulletins endpoint
 @app.websocket("/ws/bulletins")
 async def websocket_bulletins(websocket: WebSocket):

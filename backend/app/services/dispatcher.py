@@ -285,11 +285,12 @@ def _dispatch_campaign_worker(campaign_id: str):
                 logger.error(f"[WS] Failed to broadcast campaign alert: {e}")
 
 
-        # 2. Load template
-        template = db.query(Template).filter(Template.id == campaign.template_id).first()
-        if not template:
-            logger.error(f"[DISPATCHER] Template not found for campaign {campaign_id}")
-            return
+        # 2. Load template (or fallback to custom subject/body)
+        template = db.query(Template).filter(Template.id == campaign.template_id).first() if campaign.template_id else None
+        
+        raw_subject = (template.subject_template if template else None) or getattr(campaign, 'custom_subject', None) or campaign.title
+        raw_body = (template.body_template if template else None) or getattr(campaign, 'custom_body', None) or campaign.description or campaign.title
+        default_lang = (template.default_language if template else None) or "English"
 
         # 3. Resolve audience
         print(f"[DISPATCHER-DEBUG] Campaign ID: {campaign_id}")
@@ -397,12 +398,12 @@ def _dispatch_campaign_worker(campaign_id: str):
                     pref_langs = []
             if pref_langs and isinstance(pref_langs, list) and len(pref_langs) > 0:
                 primary_lang = pref_langs[0].strip()
-                if primary_lang and primary_lang.lower() != template.default_language.strip().lower():
+                if primary_lang and primary_lang.lower() != default_lang.strip().lower():
                     unique_target_langs.add(primary_lang)
 
         # Read template's existing pre-translations from DB
         translations_dict = {}
-        if template.translations:
+        if template and template.translations:
             try:
                 translations_dict = json.loads(template.translations) if isinstance(template.translations, str) else template.translations
             except Exception:
@@ -413,14 +414,14 @@ def _dispatch_campaign_worker(campaign_id: str):
         for target_lang in unique_target_langs:
             if target_lang not in translations_dict and settings.GROQ_API_KEY:
                 try:
-                    logger.info(f"[DISPATCHER] Pre-translating campaign template for target language '{target_lang}' to prevent loop rate-limiting...")
+                    logger.info(f"[DISPATCHER] Pre-translating campaign text for target language '{target_lang}' to prevent loop rate-limiting...")
                     from app.services.translation_service import translate_text
                     t_subject = ""
-                    if template.subject_template:
-                        t_subject = translate_text(template.subject_template, target_lang, template.default_language)
-                    t_body = translate_text(template.body_template, target_lang, template.default_language)
+                    if raw_subject:
+                        t_subject = translate_text(raw_subject, target_lang, default_lang)
+                    t_body = translate_text(raw_body, target_lang, default_lang)
                     
-                    if t_body and t_body.strip() != template.body_template.strip():
+                    if t_body and t_body.strip() != raw_body.strip():
                         dynamic_translations[target_lang] = {
                             "subject": t_subject,
                             "body": t_body
@@ -457,8 +458,8 @@ def _dispatch_campaign_worker(campaign_id: str):
                 continue
 
             # Interpolate template for this member
-            subject = interpolate_template(template.subject_template, member)
-            body = interpolate_template(template.body_template, member)
+            subject = interpolate_template(raw_subject, member)
+            body = interpolate_template(raw_body, member)
 
             # Resolve recipient preferred languages
             pref_langs = []
@@ -481,7 +482,7 @@ def _dispatch_campaign_worker(campaign_id: str):
             target_lang = None
             if pref_langs and isinstance(pref_langs, list) and len(pref_langs) > 0:
                 primary_lang = pref_langs[0]
-                if primary_lang and primary_lang.strip().lower() != template.default_language.strip().lower():
+                if primary_lang and primary_lang.strip().lower() != default_lang.strip().lower():
                     target_lang = primary_lang.strip()
 
             subject_to_send = subject
@@ -499,25 +500,18 @@ def _dispatch_campaign_worker(campaign_id: str):
                     translated_subject_raw = dynamic_translations[target_lang].get("subject", "")
                     translated_body_raw = dynamic_translations[target_lang].get("body", "")
 
-                # Guarantee translation by fallback on-the-fly translation if missing
+                # Fallback translation if missing
                 if not translated_body_raw and settings.GROQ_API_KEY:
                     try:
                         from app.services.translation_service import translate_text
-                        logger.info(f"[DISPATCHER] Translating on-the-fly for {member.first_name} {member.last_name} to '{target_lang}'")
-                        t_subject = ""
-                        if template.subject_template:
-                            t_subject = translate_text(template.subject_template, target_lang, template.default_language)
-                        t_body = translate_text(template.body_template, target_lang, template.default_language)
-                        if t_body:
-                            translated_subject_raw = t_subject
-                            translated_body_raw = t_body
-                            # Cache it so other members with same language reuse it
-                            dynamic_translations[target_lang] = {
-                                "subject": t_subject,
-                                "body": t_body
-                            }
+                        t_subj = translate_text(raw_subject, target_lang, default_lang) if raw_subject else ""
+                        t_b = translate_text(raw_body, target_lang, default_lang)
+                        if t_b and "429" not in str(t_b):
+                            translated_subject_raw = t_subj
+                            translated_body_raw = t_b
+                            dynamic_translations[target_lang] = {"subject": t_subj, "body": t_b}
                     except Exception as ex:
-                        logger.error(f"[DISPATCHER] Failed dynamic inline translation for '{target_lang}': {ex}")
+                        logger.warning(f"[DISPATCHER] Translation fallback skipped for '{target_lang}': {ex}")
 
             if translated_body_raw:
                 subject_to_send = interpolate_template(translated_subject_raw, member)
@@ -712,4 +706,82 @@ def _retry_failed_deliveries_worker(campaign_id: str):
         logger.error(f"[DISPATCHER-RETRY] Error retrying campaign {campaign_id}: {e}", exc_info=True)
     finally:
         db.close()
+
+
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+
+def to_utc_datetime(dt):
+    """Normalize a string or datetime object (naive or aware) to UTC datetime."""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        try:
+            dt = datetime.datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except Exception:
+            return None
+    if isinstance(dt, datetime.datetime):
+        if dt.tzinfo is None:
+            # Database stores naive UTC datetimes
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(datetime.timezone.utc)
+    return None
+
+
+def check_and_dispatch_scheduled_campaigns():
+    """
+    Background checker that queries campaigns scheduled to run at or before current UTC time
+    and triggers dispatch_campaign for each due campaign.
+    """
+    db = SessionLocal()
+    try:
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+
+        scheduled_campaigns = db.query(Campaign).filter(
+            Campaign.status == "scheduled",
+            Campaign.is_deleted == False
+        ).all()
+
+        due_campaigns = []
+        for camp in scheduled_campaigns:
+            if not camp.scheduled_at:
+                due_campaigns.append(camp)
+                continue
+
+            sched_utc = to_utc_datetime(camp.scheduled_at)
+            if sched_utc and sched_utc <= now_utc:
+                due_campaigns.append(camp)
+
+        for camp in due_campaigns:
+            logger.info(f"[SCHEDULER] Scheduled time reached for campaign '{camp.title}' (ID: {camp.id}). Auto-dispatching...")
+            camp.status = "active"
+            camp.dispatched_at = datetime.datetime.utcnow()
+            db.commit()
+
+            from app.services.dispatcher import dispatch_campaign
+            dispatch_campaign(camp.id)
+
+    except Exception as e:
+        logger.error(f"[SCHEDULER] Error checking scheduled campaigns: {e}")
+    finally:
+        db.close()
+
+
+def start_campaign_scheduler(interval_seconds: int = 15):
+    """
+    Start background daemon scheduler thread that runs every interval_seconds.
+    """
+    import time
+    def _loop():
+        logger.info(f"[SCHEDULER] Background campaign scheduler loop started (checking every {interval_seconds}s)")
+        while True:
+            try:
+                check_and_dispatch_scheduled_campaigns()
+            except Exception as e:
+                logger.error(f"[SCHEDULER] Exception in scheduler loop: {e}")
+            time.sleep(interval_seconds)
+
+    thread = threading.Thread(target=_loop, daemon=True, name="campaign-scheduler-worker")
+    thread.start()
+
 

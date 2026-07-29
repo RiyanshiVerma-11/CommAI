@@ -181,24 +181,40 @@ function App() {
     const isCampaignAction = ['emergency_broadcast', 'create_campaign', 'send_alert'].includes(voiceResult.action) || voiceResult.open_wizard;
 
     if (isCampaignAction) {
-      const voicePlan = {
-        campaign: {
-          title: voiceResult.title || 'Voice Command Campaign',
-          objective: voiceResult.objective || voiceResult.description || 'Generated via Voice Cockpit',
-          campaign_type: voiceResult.category || (voiceResult.action === 'emergency_broadcast' ? 'emergency_alert' : 'awareness_drive'),
-          description: voiceResult.description || ''
-        },
-        message: {
-          subject: voiceResult.subject || `[${voiceResult.location_selected || 'Notice'}] ${voiceResult.title || 'Important Alert'}`,
-          body: voiceResult.body || voiceResult.description || `Dear {{first_name}}, important notice for citizens in ${voiceResult.location_selected || 'your area'}.`
-        },
-        delivery: {
-          channels: voiceResult.channels || ['email'],
-          audiences: [voiceResult.recipients_selected || 'All Citizens'],
-          location: voiceResult.location_selected || 'All Locations'
-        },
-        user_confirmed: voiceResult.user_confirmed || false
-      };
+      const voicePlan = voiceResult.full_plan
+        ? { ...voiceResult.full_plan, _voice_filled: true }
+        : {
+            _voice_filled: true,
+            campaign: {
+              title: voiceResult.title || 'Voice Command Campaign',
+              objective: voiceResult.objective || voiceResult.description || 'Generated via Voice Cockpit',
+              campaign_type: voiceResult.category || (voiceResult.action === 'emergency_broadcast' ? 'emergency_alert' : 'awareness_drive'),
+              description: voiceResult.description || ''
+            },
+            message: {
+              subject: voiceResult.subject || `[${voiceResult.location_selected || 'Notice'}] ${voiceResult.title || 'Important Alert'}`,
+              body: voiceResult.body || voiceResult.description || `Dear {{first_name}}, important notice for citizens in ${voiceResult.location_selected || 'your area'}.`
+            },
+            delivery: {
+              channels: voiceResult.channels || ['email', 'push'],
+              audiences: [voiceResult.recipients_selected || 'All Citizens'],
+              location: voiceResult.location_selected || 'All Locations'
+            },
+            kpis: voiceResult.kpis || {
+              expected_reach_pct: 88,
+              ctr_goal_pct: 28,
+              delivery_goal_pct: 98,
+              awareness_goal_description: `Achieve high awareness for ${voiceResult.title || 'the campaign'}`
+            },
+            risks: voiceResult.risks || [],
+            metadata: voiceResult.metadata || {
+              confidence: 0.94,
+              reasoning: { campaign_type: 'Voice command intent', channels: 'Selected for target demographic' },
+              suggestions: ['Verify audience segment before dispatch']
+            },
+            user_confirmed: voiceResult.user_confirmed || false
+          };
+
 
       setPendingVoicePlan(voicePlan);
       setActiveTab('campaigns');

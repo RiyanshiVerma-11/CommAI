@@ -14,7 +14,10 @@ import logging
 import requests
 import xml.etree.ElementTree as ET
 from typing import Tuple, Dict, Any, List
-from gtts import gTTS
+try:
+    from gtts import gTTS
+except ImportError:
+    gTTS = None
 from dotenv import load_dotenv, find_dotenv
 
 from app.services.translation_service import translate_text

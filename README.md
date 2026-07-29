@@ -4,6 +4,9 @@
 
 ### *Empowering Organizations with AI-Driven Multilingual Outreach, Omnichannel Dispatch & Four-Eye Emergency Governance*
 
+### 🌐 Deployed Live Web Portal: [https://comm-ai-nine.vercel.app/](https://comm-ai-nine.vercel.app/)
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-CommAI-brightgreen?style=for-the-badge&logo=vercel)](https://comm-ai-nine.vercel.app/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)

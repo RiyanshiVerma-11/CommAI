@@ -21,12 +21,23 @@ import CitizenConversations from './pages/CitizenConversations';
 import LiveBulletins from './pages/LiveBulletins';
 import OperatorChat from './pages/OperatorChat';
 import VoiceCommandCenter from './components/VoiceCommandCenter';
+import BottomNavBar from './components/BottomNavBar';
 
 
 
 
-// Connect dynamically to the backend API services
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
+// Connect dynamically to the backend API services (auto-resolves mobile phone LAN/hotspot hostname)
+const getDynamicBackendUrl = () => {
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `http://${window.location.hostname}:8001`;
+  }
+  return 'http://localhost:8001';
+};
+
+const BACKEND_URL = getDynamicBackendUrl();
 
 function App() {
   const [token, setToken] = useState(sessionStorage.getItem('token') || '');
@@ -1075,10 +1086,10 @@ function App() {
               )}
             </button>
 
-            <h2 style={{ fontSize: '1.35rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, letterSpacing: '-0.01em' }}>
-              <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>{getHeaderBreadcrumb().category}</span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'hsl(var(--text-secondary))', opacity: 0.6 }}><polyline points="9 18 15 12 9 6"></polyline></svg>
-              <span>{getHeaderBreadcrumb().item}</span>
+            <h2 className="header-title" style={{ fontSize: '1.35rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, letterSpacing: '-0.01em' }}>
+              <span className="header-breadcrumb-category" style={{ color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>{getHeaderBreadcrumb().category}</span>
+              <svg className="header-breadcrumb-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'hsl(var(--text-secondary))', opacity: 0.6 }}><polyline points="9 18 15 12 9 6"></polyline></svg>
+              <span className="header-breadcrumb-item">{getHeaderBreadcrumb().item}</span>
             </h2>
           </div>
 
@@ -1366,12 +1377,19 @@ function App() {
         token={token} 
         onAutoCreateCampaign={handleAutoCreateCampaign} 
       />
-      <VoiceCommandCenter
+      {/* VoiceCommandCenter excluded from push as requested */}
+      {/* <VoiceCommandCenter
         user={user}
         backendUrl={BACKEND_URL}
         token={token}
         activeTab={activeTab}
         onExecuteVoiceCommand={handleExecuteVoiceCommand}
+      /> */}
+      <BottomNavBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        unreadNotifCount={totalUnreadNotifications}
       />
       
       {liveAlert && (

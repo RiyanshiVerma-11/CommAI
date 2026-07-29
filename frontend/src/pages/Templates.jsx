@@ -486,9 +486,9 @@ const Templates = ({ user, backendUrl, headers }) => {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div className="templates-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <p style={{ color: 'hsl(var(--text-secondary))' }}>
+          <p style={{ color: 'hsl(var(--text-secondary))', margin: 0 }}>
             Design and organize reusable multilingual message blocks.
           </p>
         </div>
@@ -501,7 +501,7 @@ const Templates = ({ user, backendUrl, headers }) => {
       </div>
 
       <GlassCard style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '16px' }}>
+        <div className="templates-filter-bar" style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flexGrow: 1 }}>
             <label className="form-label">Filter Channel</label>
             <select className="form-control" style={{ width: '100%' }} value={filterChan} onChange={(e) => setFilterChan(e.target.value)}>

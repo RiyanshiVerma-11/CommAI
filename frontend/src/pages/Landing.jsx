@@ -381,15 +381,15 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
     <div style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #05070f 0%, #0c0f1d 50%, #05070f 100%)' : '#f4f6fb', color: T.text, fontFamily: "'Outfit','Inter',system-ui,sans-serif", minHeight: '100vh', transition: 'background 0.3s, color 0.3s' }}>
 
       {/* ══════════════════════ NAVBAR ══════════════════════ */}
-      <nav style={{
+      <nav className="landing-nav" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
         background: theme === 'dark'
           ? (scrolled ? 'rgba(5, 7, 15, 0.92)' : 'rgba(5, 7, 15, 0.7)')
           : (scrolled ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.75)'),
         backdropFilter: 'blur(20px)',
         borderBottom: `1px solid ${scrolled ? T.border : 'transparent'}`,
-        padding: '0 40px',
-        height: 70,
+        padding: '0 24px',
+        minHeight: 64,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         transition: 'all .25s ease',
         boxShadow: scrolled ? '0 8px 30px rgba(0, 0, 0, 0.12)' : 'none',
@@ -405,7 +405,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
         </button>
 
         {/* Nav links — smooth scroll */}
-        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+        <div className="landing-nav-links" style={{ display:'flex', alignItems:'center', gap:4 }}>
           {NAV_LINKS.map(({ id, label }) => {
             const isActive = activeSection === id;
             return (
@@ -419,7 +419,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   fontWeight: isActive ? 700 : 500,
                   color: isActive ? T.blue : (theme === 'dark' ? '#ffffff' : '#0f172a'),
                   cursor: 'pointer',
-                  transition: 'all .2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transition: 'all .25s cubic-bezier(0.4, 0, 0.2, 1)',
                   fontFamily: 'inherit',
                 }}
                 onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'; e.currentTarget.style.color = T.text; }}}
@@ -432,7 +432,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
         </div>
 
         {/* CTAs */}
-        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+        <div className="landing-nav-ctas" style={{ display:'flex', gap:8, alignItems:'center' }}>
           {/* Theme toggle icon button */}
           <button 
             onClick={toggleTheme}
@@ -440,12 +440,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
               background: 'none', 
               cursor: 'pointer', 
               color: T.text, 
-              padding: '10px', 
+              padding: '8px', 
               borderRadius: '10px', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
-              marginRight: '4px',
+              marginRight: '2px',
               transition: 'background 0.2s',
               border: `1px solid ${T.border}`
             }}
@@ -473,13 +473,13 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           </button>
           
           <button onClick={onNavigateToLogin}
-            style={{ padding:'10px 20px', borderRadius:T.radiusSm, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'0.9rem', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s ease' }}
+            style={{ padding:'8px 16px', borderRadius:T.radiusSm, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'0.85rem', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s ease' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHov; e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = 'none'; }}>
             Sign In
           </button>
           <button onClick={onNavigateToRegister}
-            style={{ padding:'10px 22px', borderRadius:T.radiusSm, border:'none', background:`linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, color:'#fff', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s ease', boxShadow:`0 4px 14px rgba(37,99,235,.3)` }}
+            style={{ padding:'8px 18px', borderRadius:T.radiusSm, border:'none', background:`linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, color:'#fff', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s ease', boxShadow:`0 4px 14px rgba(37,99,235,.3)` }}
             onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none'; }}>
             Get Started →
@@ -488,39 +488,39 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
       </nav>
 
       {/* ══════════════════════ HERO ══════════════════════ */}
-      <section id="hero" style={{ maxWidth:1140, margin:'0 auto', padding:'120px 40px 90px', position:'relative' }}>
+      <section id="hero" className="landing-hero-section" style={{ maxWidth:1140, margin:'0 auto', padding:'110px 32px 80px', position:'relative' }}>
         {/* Hero background blobs */}
         <div style={{ position:'absolute', top:-60, left:-80, width:550, height:550, borderRadius:'50%', background:'radial-gradient(circle, rgba(76,78,243,0.14) 0%, transparent 70%)', pointerEvents:'none', zIndex:0 }}></div>
         <div style={{ position:'absolute', top:80, right:-100, width:450, height:450, borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)', pointerEvents:'none', zIndex:0 }}></div>
         <div style={{ position:'absolute', bottom:0, left:'40%', width:350, height:350, borderRadius:'50%', background:'radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)', pointerEvents:'none', zIndex:0 }}></div>
-        <div style={{ display:'grid', gridTemplateColumns:'1.05fr 1fr', gap:64, alignItems:'center', position:'relative', zIndex:1 }}>
+        <div className="landing-hero-grid" style={{ display:'grid', gridTemplateColumns:'1.05fr 1fr', gap:48, alignItems:'center', position:'relative', zIndex:1 }}>
 
           {/* Left copy */}
           <div>
             {/* Status pill */}
-            <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:T.greenLight, border:`1px solid ${T.green}30`, borderRadius:20, padding:'6px 16px', marginBottom:28 }}>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:T.greenLight, border:`1px solid ${T.green}30`, borderRadius:20, padding:'6px 16px', marginBottom:24 }}>
               <span style={{ width:8, height:8, borderRadius:'50%', background:T.green, display:'inline-block', boxShadow:`0 0 0 2px ${T.green}20`, animation: 'pulse 2s infinite' }}></span>
-              <span style={{ fontSize:'0.8rem', fontWeight:700, color:T.green, letterSpacing:'0.04em', textTransform: 'uppercase' }}>System Active — {new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
+              <span style={{ fontSize:'0.78rem', fontWeight:700, color:T.green, letterSpacing:'0.04em', textTransform: 'uppercase' }}>System Active — {new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
             </div>
 
-            <h1 style={{ fontSize:'3.4rem', fontWeight:800, lineHeight:1.05, letterSpacing:'-0.035em', color:T.text, marginBottom:22 }}>
+            <h1 className="landing-hero-title" style={{ fontSize:'clamp(2.1rem, 5vw, 3.4rem)', fontWeight:800, lineHeight:1.1, letterSpacing:'-0.035em', color:T.text, marginBottom:22, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
               Public communication<br/>
               <span style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 48%, #ef4444 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>that moves at the speed of need.</span>
             </h1>
 
-            <p style={{ fontSize:'1.15rem', color:T.textSec, lineHeight:1.68, marginBottom:40, maxWidth:520 }}>
+            <p className="landing-hero-sub" style={{ fontSize:'1.1rem', color:T.textSec, lineHeight:1.65, marginBottom:36, maxWidth:520 }}>
               CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, WhatsApp, SMS, and Push in 23 languages (22 Scheduled Indic + English).
             </p>
 
-            <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:56 }}>
+            <div className="landing-hero-ctas" style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:48 }}>
               <button onClick={onNavigateToRegister}
-                style={{ padding:'14px 32px', borderRadius:12, border:'none', background:`linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, color:'#fff', fontWeight:700, fontSize:'1.05rem', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 20px rgba(37,99,235,.3)`, transition:'all .2s ease' }}
+                style={{ padding:'14px 28px', borderRadius:12, border:'none', background:`linear-gradient(135deg, ${T.blue} 0%, #7c3aed 100%)`, color:'#fff', fontWeight:700, fontSize:'1rem', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 6px 20px rgba(37,99,235,.3)`, transition:'all .2s ease' }}
                 onMouseEnter={e => { e.currentTarget.style.filter='brightness(1.12)'; e.currentTarget.style.transform='translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.filter='none'; e.currentTarget.style.transform='none'; }}>
                 Launch your workspace
               </button>
               <button onClick={() => smoothScrollTo('simulator')}
-                style={{ padding:'14px 28px', borderRadius:12, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'1.05rem', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:10, transition:'all 0.2s ease' }}
+                style={{ padding:'14px 24px', borderRadius:12, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'1rem', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:10, transition:'all 0.2s ease' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHov; e.currentTarget.style.transform='translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform='none'; }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -529,16 +529,16 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             </div>
 
             {/* Stats row */}
-            <div style={{ display:'flex', gap:0, borderTop:`1px solid ${T.border}`, paddingTop:32 }}>
+            <div className="landing-hero-stats" style={{ display:'flex', gap:0, borderTop:`1px solid ${T.border}`, paddingTop:28 }}>
               {[
                 { value: sentCount.toLocaleString(), label: 'Sent', color: T.blue },
                 { value: '98.9%',  label: 'Success',  color: T.green },
                 { value: '23',     label: 'Languages',      color: T.amber },
                 { value: '5',      label: 'Channels',       color: '#7c3aed' },
               ].map((s, i) => (
-                <div key={s.label} style={{ flex:1, paddingRight:24, borderRight: i < 3 ? `1px solid ${T.border}` : 'none', marginRight:24 }}>
-                  <div style={{ fontSize:'1.7rem', fontWeight:800, color:s.color, letterSpacing:'-0.02em', fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{s.value}</div>
-                  <div style={{ fontSize:'0.75rem', color:T.textMuted, fontWeight:700, marginTop:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
+                <div key={s.label} className="landing-stat-item" style={{ flex:1, paddingRight:16, borderRight: i < 3 ? `1px solid ${T.border}` : 'none', marginRight:16 }}>
+                  <div style={{ fontSize:'1.5rem', fontWeight:800, color:s.color, letterSpacing:'-0.02em', fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{s.value}</div>
+                  <div style={{ fontSize:'0.72rem', color:T.textMuted, fontWeight:700, marginTop:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -685,7 +685,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             <p style={{ color:T.textSec, fontSize:'1.08rem', lineHeight:1.6 }}>Built for scale and simplicity — manage citizen registers, structure localized templates, and schedule deliveries under complete operator audit tracking.</p>
           </div>
           {/* ════ Jarvis AI Killer Feature Banner ════ */}
-          <div style={{
+          <div className="jarvis-banner" style={{
             background: theme === 'dark'
               ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.22) 0%, rgba(59, 130, 246, 0.15) 50%, rgba(15, 23, 42, 0.95) 100%)'
               : 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 50%, #ffffff 100%)',
@@ -750,7 +750,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             </div>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
+          <div className="features-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
             {FEATURES.map(f => (
               <div key={f.title}
                 style={{ 
@@ -796,7 +796,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             <h2 style={{ fontSize: '2.55rem', fontWeight: 850, letterSpacing: '-0.04em', color: T.text, lineHeight: 1.1, margin: '18px 0 16px' }}>From state signal to citizen action—instantly.</h2>
             <p style={{ margin: 0, color: T.textSec, fontSize: '1.08rem', lineHeight: 1.65 }}>A controlled, direct-response workflow for verified emergencies. Campaign Managers and Administrators can target one state from the Sentiment Map, select delivery channels, and reach the right citizens without waiting in the normal campaign approval queue.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               { n: '01', title: 'Detect & target', text: 'Open the Geographic Sentiment Map and select an affected state—or choose it directly from the state selector.', color: T.red },
               { n: '02', title: 'Compose & deliver', text: 'Set urgency, generate an AI-backed emergency flyer, and dispatch through Email, WhatsApp, SMS, and Push.', color: T.amber },
@@ -824,7 +824,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
         margin: '0 auto', 
         borderBottom: `1px solid ${T.border}` 
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+        <div className="ai-engine-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
           {/* Copy Column */}
           <div>
             <span style={{ fontSize: '0.78rem', fontWeight: 800, color: T.blue, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
@@ -929,7 +929,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           <p style={{ color:T.textSec, fontSize:'1.08rem', lineHeight:1.6 }}>Select target parameters and run the wizard pipeline. Check live content rendering in the preview window.</p>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1.05fr 1fr', gap:32, alignItems:'start' }}>
+        <div className="simulator-grid" style={{ display:'grid', gridTemplateColumns:'1.05fr 1fr', gap:32, alignItems:'start' }}>
 
           {/* Controls panel */}
           <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:20, padding:32, boxShadow:T.shadow }}>
@@ -1113,7 +1113,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           </div>
 
           {/* Sector Display Content */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48, alignItems: 'center' }}>
+          <div className="sector-display-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48, alignItems: 'center' }}>
             {/* Info Block */}
             <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 20, padding: 40, boxShadow: T.shadow }}>
               {activeUseSector === 'agri' && (
@@ -1233,7 +1233,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             <p style={{ color:'#94a3b8', fontSize:'1.08rem', lineHeight:1.6 }}>Drag the audience load to see how different active communication channels impact total citizen coverage.</p>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1.1fr 1fr', gap:40, alignItems:'start' }}>
+          <div className="estimator-grid" style={{ display:'grid', gridTemplateColumns:'1.1fr 1fr', gap:40, alignItems:'start' }}>
 
             {/* Inputs */}
             <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:20, padding:32, backdropFilter:'blur(12px)' }}>
@@ -1299,7 +1299,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           <p style={{ color:T.textSec, fontSize:'1.08rem', lineHeight:1.6 }}>Fine-grained role configurations enforce strict boundaries between authors, managers, and system auditors.</p>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
+        <div className="roles-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
           {ROLES.map(role => (
             <div key={role.title}
               style={{ background:T.white, border:`1.5px solid ${role.highlighted ? T.blue : T.border}`, borderRadius:20, padding:30, position:'relative', boxShadow:role.highlighted ? `0 0 0 3px ${T.blue}15, ${T.shadowLg}` : T.shadow }}>
@@ -1363,7 +1363,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
         borderBottom: `1px solid ${T.border}`,
         padding: '100px 40px'
       }}>
-        <div style={{ maxWidth: 1140, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 64, alignItems: 'center' }}>
+        <div className="security-grid" style={{ maxWidth: 1140, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 64, alignItems: 'center' }}>
           {/* Badge & Seal Column */}
           <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ 
@@ -1479,7 +1479,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
       <footer style={{ background: '#04060c', borderTop: `1px solid ${T.border}`, padding: '70px 40px 40px' }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           {/* Main columns grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: 40, marginBottom: 50, textAlign: 'left' }}>
+          <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: 40, marginBottom: 50, textAlign: 'left' }}>
             {/* Column 1: Info */}
             <div>
               <button onClick={() => smoothScrollTo('hero')}

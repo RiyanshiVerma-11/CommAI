@@ -523,11 +523,11 @@ const Audiences = ({ user, backendUrl, headers }) => {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div className="audiences-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <p style={{ color: 'hsl(var(--text-secondary))' }}>Manage target citizen demographics and dynamic filter criteria.</p>
+          <p style={{ color: 'hsl(var(--text-secondary))', margin: 0 }}>Manage target citizen demographics and dynamic filter criteria.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="audiences-subtabs" style={{ display: 'flex', gap: '10px' }}>
           <button className={`btn ${subTab === 'list' ? 'btn-primary' : 'btn-dark'}`} onClick={() => setSubTab('list')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '0.95rem', height: '0.95rem' }}>
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -562,7 +562,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
       {/* --- SUBTAB: LIST --- */}
       {subTab === 'list' && (
         <GlassCard>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px', alignItems: 'center' }}>
+          <div className="audiences-filter-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px', alignItems: 'center' }}>
             <input
               type="text"
               className="form-control"

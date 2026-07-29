@@ -1529,9 +1529,9 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div className="campaigns-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <p style={{ color: 'hsl(var(--text-secondary))' }}>Create, target, and monitor public awareness and emergency announcements.</p>
+          <p style={{ color: 'hsl(var(--text-secondary))', margin: 0 }}>Create, target, and monitor public awareness and emergency announcements.</p>
         </div>
         <div>
           {viewMode === 'list' ? (
@@ -1550,7 +1550,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       {viewMode === 'list' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Tabs Filter Header */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px', flexWrap: 'wrap' }}>
+          <div className="campaigns-filter-tabs" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '8px', flexWrap: 'wrap' }}>
             <button 
               className={`btn ${listTab === 'all' ? 'btn-primary' : 'btn-dark'}`}
               style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}

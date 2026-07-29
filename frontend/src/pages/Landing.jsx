@@ -249,10 +249,42 @@ function smoothScrollTo(id) {
 
 export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme = 'dark', toggleTheme }) {
   const [activeResource, setActiveResource] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+    } else {
+      alert(
+        "To install CommAI on your device:\n\n" +
+        "• Desktop (Chrome/Edge): Click the Install icon in the address bar.\n" +
+        "• Mobile (iOS Safari): Tap 'Share' icon and select 'Add to Home Screen'.\n" +
+        "• Mobile (Android Chrome): Tap the menu (3 dots) and select 'Install app'."
+      );
+    }
+  };
   /* ── enable page scroll ── */
   useEffect(() => {
     document.documentElement.classList.add('landing-active');
-    return () => document.documentElement.classList.remove('landing-active');
+    document.body.classList.add('landing-active');
+    return () => {
+      document.documentElement.classList.remove('landing-active');
+      document.body.classList.remove('landing-active');
+    };
   }, []);
 
   /* ── nav active section tracking ── */
@@ -472,6 +504,32 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             )}
           </button>
           
+          <button onClick={handleInstallClick}
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: T.radiusSm, 
+              border: `1px solid ${T.blue}`, 
+              background: T.blueLight, 
+              color: T.blue, 
+              fontWeight: 700, 
+              fontSize: '0.85rem', 
+              cursor: 'pointer', 
+              fontFamily: 'inherit', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              transition: 'all 0.2s ease' 
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = T.blue; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = T.blueLight; e.currentTarget.style.color = T.blue; e.currentTarget.style.transform = 'none'; }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Install App
+          </button>
+          
           <button onClick={onNavigateToLogin}
             style={{ padding:'8px 16px', borderRadius:T.radiusSm, border:`1px solid ${T.border}`, background:T.white, color:T.text, fontWeight:600, fontSize:'0.85rem', cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s ease' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = T.borderHov; e.currentTarget.style.transform = 'translateY(-1px)'; }}
@@ -525,6 +583,31 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform='none'; }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Explore the platform
+              </button>
+              <button onClick={handleInstallClick}
+                style={{ 
+                  padding:'14px 24px', 
+                  borderRadius:12, 
+                  border:`1.5px solid ${T.blue}`, 
+                  background:T.blueLight, 
+                  color:T.blue, 
+                  fontWeight:700, 
+                  fontSize:'1rem', 
+                  cursor:'pointer', 
+                  fontFamily:'inherit', 
+                  display:'inline-flex', 
+                  alignItems:'center', 
+                  gap:10, 
+                  transition:'all 0.2s ease' 
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = T.blue; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform='translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = T.blueLight; e.currentTarget.style.color = T.blue; e.currentTarget.style.transform='none'; }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Download App
               </button>
             </div>
 

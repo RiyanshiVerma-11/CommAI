@@ -4,6 +4,10 @@ Unit tests for Hands-Free Voice-to-Campaign AI Assistant feature.
 
 import pytest
 from unittest.mock import patch, MagicMock
+from app.config import settings
+settings.GROQ_API_KEY = ""
+settings.GROQ_API_KEY_SECONDARY = ""
+
 from app.services.ai_service import plan_complete_campaign
 
 

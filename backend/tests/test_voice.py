@@ -4,6 +4,10 @@ Unit tests for Twilio Voice Call service module.
 
 import pytest
 from unittest.mock import patch, MagicMock
+from app.config import settings
+settings.GROQ_API_KEY = ""
+settings.GROQ_API_KEY_SECONDARY = ""
+
 from app.services.voice_service import (
     clean_phone_number,
     get_voice_language_config,

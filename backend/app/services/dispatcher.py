@@ -21,7 +21,7 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import Campaign, Segment, Audience, Template, DeliveryLog
+from app.models import Campaign, Segment, Audience, Template, DeliveryLog, User
 from app.services.email_service import send_email
 from app.services.sms_service import send_sms
 from app.services.whatsapp_service import send_whatsapp

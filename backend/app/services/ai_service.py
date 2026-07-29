@@ -1466,16 +1466,6 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                 "recipients_selected": recipients,
                 "auto_trigger": False
             }
-        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower:
-            result_json = {
-                "action": "search_audience",
-                "navigation_target": "audiences",
-                "spoken_response": f"Opening Audience & Segments for {location}, {display_name}.",
-                "title": "Audience Search",
-                "location_selected": location,
-                "recipients_selected": recipients,
-                "auto_trigger": False
-            }
         elif "campaign" in prompt_lower or "create" in prompt_lower or ("send" in prompt_lower and "send to" not in prompt_lower and "send this" not in prompt_lower and "send it" not in prompt_lower):
             # Extract main topic from prompt
             topic_clean = re.sub(r'^(?:create|launch|send|start|make|build)\s+(?:me\s+)?(?:a\s+)?(?:new\s+)?(?:campaign|drive|alert|advisory|notice)?\s*(?:on|for|about)?\s*', '', prompt, flags=re.IGNORECASE).strip().strip('.')
@@ -1525,6 +1515,16 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                     },
                     "suggestions": ["Verify recipient list before launching", "Add local helpline number"]
                 }
+            }
+        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower:
+            result_json = {
+                "action": "search_audience",
+                "navigation_target": "audiences",
+                "spoken_response": f"Opening Audience & Segments for {location}, {display_name}.",
+                "title": "Audience Search",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
             }
         else:
             result_json = {
@@ -1584,7 +1584,8 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
             result_json["kpis"] = kpis
             result_json["metadata"] = meta
             result_json["full_plan"] = full_plan
-            result_json["spoken_response"] = f"Yes {display_name}, I have generated a complete enterprise AI campaign plan for '{title}'. Parameters, message copy, and dispatch rules are pre-filled."
+            if result_json.get("location_selected") != "Unspecified":
+                result_json["spoken_response"] = f"Yes {display_name}, I have generated a complete enterprise AI campaign plan for '{title}'. Parameters, message copy, and dispatch rules are pre-filled."
         except Exception as plan_err:
             logger.warning(f"[Voice AI] Fast campaign plan construction error: {plan_err}")
 

@@ -138,10 +138,13 @@ body,
 /* Override for landing page — allows full-page vertical scroll */
 html.landing-active,
 html.landing-active body,
-html.landing-active #root {
+html.landing-active #root,
+body.landing-active,
+body.landing-active #root {
   overflow: auto !important;
+  overflow-y: auto !important;
   height: auto !important;
-  min-height: 100vh;
+  min-height: 100vh !important;
   background-color: hsl(var(--bg-deep)) !important;
 }
 

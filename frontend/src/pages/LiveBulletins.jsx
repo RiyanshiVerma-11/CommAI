@@ -165,16 +165,20 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
       wsUrl += `?token=${encodeURIComponent(token)}`;
     }
 
+    let active = true;
+
     const connectWebSocket = () => {
+      if (!active) return;
       setStatus('connecting');
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setStatus('connected');
+        if (active) setStatus('connected');
       };
 
       ws.onmessage = (event) => {
+        if (!active) return;
         try {
           const data = JSON.parse(event.data);
           
@@ -201,20 +205,25 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
       };
 
       ws.onclose = () => {
-        setStatus('disconnected');
-        // Auto-reconnect after 4 seconds
-        setTimeout(connectWebSocket, 4000);
+        if (active) {
+          setStatus('disconnected');
+          // Auto-reconnect after 4 seconds
+          setTimeout(connectWebSocket, 4000);
+        }
       };
 
       ws.onerror = () => {
-        setStatus('error');
-        ws.close();
+        if (active) {
+          setStatus('error');
+          ws.close();
+        }
       };
     };
 
     connectWebSocket();
 
     return () => {
+      active = false;
       if (wsRef.current) {
         wsRef.current.close();
       }

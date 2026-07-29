@@ -553,11 +553,14 @@ function App() {
 
     let ws;
     let reconnectTimeout;
+    let active = true;
 
     const connect = () => {
+      if (!active) return;
       ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
+        if (!active) return;
         try {
           const data = JSON.parse(event.data);
           
@@ -629,13 +632,16 @@ function App() {
       };
 
       ws.onclose = () => {
-        reconnectTimeout = setTimeout(connect, 4000);
+        if (active) {
+          reconnectTimeout = setTimeout(connect, 4000);
+        }
       };
     };
 
     connect();
 
     return () => {
+      active = false;
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };

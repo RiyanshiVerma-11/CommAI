@@ -45,6 +45,18 @@ class CitizenMessageResponse(BaseModel):
     created_at: str
 
 
+class ManualReplyRequest(BaseModel):
+    audience_id: str
+    content: str
+    channel: str = "whatsapp"
+
+    @validator("content")
+    def content_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Message content cannot be empty")
+        return v.strip()
+
+
 @router.post("/citizen-reply", response_model=CitizenMessageResponse)
 def receive_citizen_message(
     request: CitizenMessageRequest,
@@ -113,6 +125,61 @@ def receive_citizen_message(
         content=request.content,
         auto_reply=auto_reply,
         created_at=inbound.created_at.isoformat(),
+    )
+
+
+@router.post("/manual-reply", response_model=CitizenMessageResponse)
+def send_manual_reply(
+    request: ManualReplyRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_manager_or_higher)
+):
+    """
+    Dispatch a manual operator override message to the citizen,
+    attempting real delivery if configured and logging it.
+    """
+    audience = db.query(Audience).filter(
+        Audience.id == request.audience_id,
+        Audience.is_deleted == False
+    ).first()
+
+    if not audience:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audience member not found."
+        )
+
+    # Attempt actual dispatch to the target channel
+    from app.services.dispatcher import dispatch_to_channel
+    
+    subject = "Urgent Advisory Update"
+    success, error, actual_channel = dispatch_to_channel(
+        channel=request.channel,
+        audience=audience,
+        subject=subject,
+        body=request.content
+    )
+
+    # Store the outbound operator message in CitizenMessage
+    outbound = CitizenMessage(
+        audience_id=audience.id,
+        direction="outbound",
+        channel=actual_channel,
+        content=request.content
+    )
+    db.add(outbound)
+    db.commit()
+    db.refresh(outbound)
+
+    return CitizenMessageResponse(
+        id=outbound.id,
+        audience_id=audience.id,
+        audience_name=f"{audience.first_name} {audience.last_name}",
+        direction="outbound",
+        channel=actual_channel,
+        content=request.content,
+        auto_reply=None,
+        created_at=outbound.created_at.isoformat()
     )
 
 

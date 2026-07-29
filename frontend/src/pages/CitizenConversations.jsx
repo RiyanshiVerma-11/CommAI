@@ -13,6 +13,7 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
   const [error, setError] = useState('');
   const [allAudiences, setAllAudiences] = useState([]);
   const [selectedAudienceIdForNewChat, setSelectedAudienceIdForNewChat] = useState('');
+  const [simulateCitizen, setSimulateCitizen] = useState(false);
 
   const threadEndRef = useRef(null);
 
@@ -116,9 +117,15 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
     setReplyText('');
 
     try {
-      // Determine request format. If operator, send a webhook mockup as citizen input
-      // RAG replies automatically
-      const res = await fetch(`${backendUrl}/api/webhook/citizen-reply`, {
+      // Determine request format.
+      // If operator and simulateCitizen is unchecked, send operator manual-reply.
+      // Otherwise, send a simulated citizen message.
+      const useManualReply = isOperator && !simulateCitizen;
+      const endpoint = useManualReply 
+        ? `${backendUrl}/api/webhook/manual-reply`
+        : `${backendUrl}/api/webhook/citizen-reply`;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           ...headers,
@@ -131,7 +138,10 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
         })
       });
 
-      if (!res.ok) throw new Error('API communication error');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'API communication error');
+      }
       
       // Reload thread
       await fetchThread(activeConvoId);
@@ -318,12 +328,35 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
               </div>
 
               {/* Send Form */}
+              {isOperator && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <input
+                    type="checkbox"
+                    id="simulate-citizen-toggle"
+                    checked={simulateCitizen}
+                    onChange={(e) => setSimulateCitizen(e.target.checked)}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <label 
+                    htmlFor="simulate-citizen-toggle" 
+                    style={{ 
+                      fontSize: '0.8rem', 
+                      color: 'hsl(var(--text-secondary))', 
+                      cursor: 'pointer', 
+                      userSelect: 'none',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Simulate Citizen Inbound (triggers RAG Auto-reply)
+                  </label>
+                </div>
+              )}
               <form onSubmit={handleSendReply} style={{ display: 'flex', gap: '10px' }}>
                 <input
                   type="text"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={isOperator ? "Type a citizen message simulation..." : "Ask the RAG assistant..."}
+                  placeholder={isOperator ? (simulateCitizen ? "Type a citizen message simulation..." : "Type operator override reply...") : "Ask the RAG assistant..."}
                   disabled={submittingReply}
                   required
                   style={{

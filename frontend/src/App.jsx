@@ -14,6 +14,7 @@ import Feedback from './pages/Feedback';
 import Managers from './pages/Managers';
 import EmergencyInbox from './pages/EmergencyInbox';
 import SupportQueries from './pages/SupportQueries';
+import FactShield from './pages/FactShield';
 import ChatbotWidget from './components/ChatbotWidget';
 import PosterStudio from './pages/PosterStudio';
 import SentimentMap from './pages/SentimentMap';
@@ -971,6 +972,18 @@ function App() {
             setUnreadRepliesCount={setUnreadRepliesCount}
           />
         );
+      case 'fact_shield':
+        if (user.role !== 'admin' && user.role !== 'campaign_manager') {
+          return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Fact Shield restricted to operators.</div>;
+        }
+        return (
+          <FactShield
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+            setActiveTab={setActiveTab}
+          />
+        );
       case 'support_queries':
         if (user.role !== 'admin' && user.role !== 'campaign_manager') {
           return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Restricted to operators.</div>;
@@ -1060,6 +1073,7 @@ function App() {
       case 'feedback': return { category: 'Outreach & Insights', item: 'Campaign Feedback' };
       
       case 'emergency_inbox': return { category: 'Emergency & Chat', item: 'Emergency Inbox' };
+      case 'fact_shield': return { category: 'Emergency & Chat', item: 'AI Fact Shield' };
       case 'operator_chat': return { category: 'Emergency & Chat', item: 'Operator Staff Chat' };
       case 'support_queries': return { category: 'Emergency & Chat', item: 'Support Queries Desk' };
       case 'citizen_conversations': return { category: 'Emergency & Chat', item: 'Citizen Chat' };

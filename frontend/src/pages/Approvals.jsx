@@ -279,7 +279,14 @@ const Approvals = ({ user, backendUrl, headers }) => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: '8px 4px' }}>
+    <div className="animate-fade-in" style={{ padding: '8px 4px', paddingBottom: '32px' }}>
+      {/* Page Header Description */}
+      <div style={{ marginBottom: '24px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '4px 0 0', lineHeight: 1.5 }}>
+          <strong>Maker-Checker Compliance Desk:</strong> Under standard government communications protocol, high-severity outreach and emergency alerts require dual-authorization. A campaign manager (Maker) drafts the campaign, and a system administrator (Checker) must audit target size, estimated costs, template diffs, and compliance history here before approving broadcast.
+        </p>
+      </div>
+
       <div style={{ display: 'flex', gap: '24px' }}>
         
         {/* Left Side: Pending Campaigns Queue */}
@@ -440,11 +447,62 @@ const Approvals = ({ user, backendUrl, headers }) => {
 
             </div>
           ) : (
-            <GlassCard style={{ padding: '40px', textAlign: 'center', minHeight: '600px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--text-muted))' }}>
+            <GlassCard style={{ padding: '32px', minHeight: '600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
-                <span style={{ fontSize: '3rem' }}>📋</span>
-                <h3 style={{ margin: '12px 0 6px 0', fontWeight: 700 }}>No Campaign Selected</h3>
-                <p style={{ margin: 0, fontSize: '0.9rem' }}>Choose a campaign from the pending inbox queue to perform review.</p>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🔒 Maker-Checker Compliance Protocol
+                </h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                  CommAI enforces dual-authorization (Maker-Checker mechanism) for high-impact communication. This dashboard ensures that all outgoing alerts are verified, cross-checked, and compliant with safety guidelines.
+                </p>
+              </div>
+
+              {/* Protocol elements grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>✍️</div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>1. The Maker (Creator)</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    An operator or campaign manager sets target segments, chooses dispatch templates, and writes custom override messages. They submit it for approval.
+                  </p>
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>🔎</div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>2. The Checker (Auditor)</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    The system administrator audits the proposed modifications, checks estimated transmission costs, examines diff maps, and looks for compliance risks.
+                  </p>
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>⚖️</div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>3. Approval or Rejection</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    If safe, click <strong>Approve for Broadcast</strong> to queue delivery. If details are incorrect, enter review comments and click <strong>Reject Campaign</strong> to return it to draft.
+                  </p>
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>📝</div>
+                  <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>4. Audit Trails</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    Every approval action, rejection reason, and campaign status transition is immutable and stored in database logs for full accountability.
+                  </p>
+                </div>
+              </div>
+
+              {/* Tips for demo */}
+              <div style={{ 
+                padding: '16px', 
+                borderRadius: '10px', 
+                background: 'rgba(16, 185, 129, 0.05)', 
+                border: '1px solid rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                fontSize: '0.85rem',
+                lineHeight: '1.5'
+              }}>
+                <strong>💡 Quick Start:</strong> Select a pending campaign from the <strong>Pending Inbox</strong> panel on the left. The auditor tools, diff checker, cost estimator, and log history will immediately render.
               </div>
             </GlassCard>
           )}

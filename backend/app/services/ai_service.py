@@ -1592,4 +1592,70 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
     return result_json
 
 
+def analyze_message_for_rumor(content: str) -> dict:
+    """
+    Scan message content using Groq LLM to check if it contains a rumor or emergency claim.
+    Returns a dict with rumor indicators and extracted geo coordinates.
+    """
+    system_prompt = (
+        "You are an AI rumor detection system for a municipal/government emergency warning platform. "
+        "Your task is to analyze an incoming citizen message and determine if it contains an unverified rumor, "
+        "panic statement, or emergency-related claim (e.g. 'water is poisoned', 'bridge collapsed', 'epidemic spreading').\n\n"
+        "Return a JSON object with the following fields:\n"
+        "1. is_rumor: boolean (true if it represents an unverified alarm, fake news claim, or panic-inducing report; false for simple help queries, platform navigation questions, greetings, or casual talk).\n"
+        "2. claim_summary: string (short, concise description of the claim, e.g., 'Contaminated water supply in Sector 5', or null if not a rumor).\n"
+        "3. category: string ('water', 'medical', 'disaster', 'security', 'infrastructure', 'general', or null if not a rumor).\n"
+        "4. state: string (extracted Indian state name mentioned, e.g. 'Maharashtra', or null if not found).\n"
+        "5. district: string (extracted district name, e.g. 'Pune', or null if not found).\n"
+        "6. city: string (extracted city or area name, e.g. 'Pimpri-Chinchwad', or null if not found).\n"
+        "7. pincode: string (extracted 6-digit postal code, or null if not found).\n\n"
+        "Rules:\n"
+        "- Respond ONLY with the JSON object. Do not wrap in markdown fences or include any conversational filler.\n"
+        "- Be conservative: flag true only if the citizen is reporting a crisis/rumor/danger claim."
+    )
+
+    response = _call_groq(system_prompt, f"Citizen message to scan: {content}", temperature=0.1, max_tokens=300)
+    if not response:
+        return {"is_rumor": False, "claim_summary": None, "category": "general", "state": None, "district": None, "city": None, "pincode": None}
+
+    try:
+        # Clean response if markdown blocks exist
+        cleaned = response.strip()
+        match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(0)
+        import json
+        parsed = json.loads(cleaned)
+        return parsed
+    except Exception as err:
+        logger.warning(f"[Rumor Scan AI] Failed to parse JSON response: {err}. Raw: {response}")
+        return {"is_rumor": False, "claim_summary": None, "category": "general", "state": None, "district": None, "city": None, "pincode": None}
+
+
+def generate_fact_check_draft(claim: str, refuted_context: str) -> str:
+    """
+    Generate an official fact-check warning using Groq based on RAG knowledge base.
+    """
+    system_prompt = (
+        "You are an official spokesperson for the municipal and emergency communications bureau.\n"
+        "Your task is to write a brief, authoritative public alert refuting a rumor. "
+        "You must base your response strictly on the verified facts provided below.\n\n"
+        "Verified Facts / Official Context:\n"
+        f"{refuted_context}\n\n"
+        "Instructions:\n"
+        "1. Write a direct, clear message (2-4 sentences max).\n"
+        "2. State clearly that the rumor is false and provide the official correct info.\n"
+        "3. Keep the tone calm, professional, and reassuring. Urge citizens to avoid forwarding unverified alerts.\n"
+        "4. Output ONLY the draft text. Do not add salutations, greetings, bracketed placeholder signatures, or explanations."
+    )
+
+    user_query = f"Rumor Claim to neutralize: {claim}"
+    response = _call_groq(system_prompt, user_query, temperature=0.3, max_tokens=400)
+    if response and response.strip():
+        return response.strip()
+
+    return f"This rumor regarding '{claim}' is unverified. Please rely only on official government channels for safety and public service updates."
+
+
+
 

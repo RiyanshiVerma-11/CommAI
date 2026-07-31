@@ -479,3 +479,44 @@ class OperatorMessageResponse(CustomBaseModel):
         from_attributes = True
 
 
+# --- RUMOR FLAG / FACT SHIELD SCHEMAS ---
+
+class RumorFlagBase(CustomBaseModel):
+    claim_summary: str
+    category: str
+    suspected_rumor_text: str
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+    status: str = "pending"
+    virality_score: int = 1
+    official_fact_check: Optional[str] = None
+    campaign_id: Optional[str] = None
+
+class RumorFlagCreate(RumorFlagBase):
+    pass
+
+class RumorFlagUpdate(CustomBaseModel):
+    claim_summary: Optional[str] = None
+    category: Optional[str] = None
+    suspected_rumor_text: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+    status: Optional[str] = None
+    virality_score: Optional[int] = None
+    official_fact_check: Optional[str] = None
+    campaign_id: Optional[str] = None
+
+class RumorFlagResponse(RumorFlagBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+

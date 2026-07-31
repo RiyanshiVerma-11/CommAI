@@ -4,7 +4,7 @@ Handles inbound citizen messages and generates contextual responses.
 """
 import datetime
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import Response, RedirectResponse
 from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
@@ -60,6 +60,7 @@ class ManualReplyRequest(BaseModel):
 @router.post("/citizen-reply", response_model=CitizenMessageResponse)
 def receive_citizen_message(
     request: CitizenMessageRequest,
+    bg_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -115,6 +116,9 @@ def receive_citizen_message(
     db.add(outbound)
     db.commit()
     db.refresh(inbound)
+
+    # Queue background task to scan for rumors
+    bg_tasks.add_task(process_inbound_rumor_check, request.content, audience.id)
 
     return CitizenMessageResponse(
         id=inbound.id,
@@ -366,4 +370,91 @@ def link_click_tracking(
         logger.info(f"[TRACKING-CLICK] Link clicked for log {delivery_id}")
 
     return RedirectResponse(url=target_url)
+
+
+def process_inbound_rumor_check(content: str, audience_id: str):
+    """
+    Background task to scan inbound message content for rumors,
+    query the RAG knowledge base for context, and update/create RumorFlag records.
+    """
+    from app.database import SessionLocal
+    from app.models import RumorFlag, Audience
+    from app.services.ai_service import analyze_message_for_rumor, generate_fact_check_draft
+    from app.services.rag_service import get_knowledge_base
+    import datetime
+
+    db = SessionLocal()
+    try:
+        # 1. Analyze message for rumor
+        analysis = analyze_message_for_rumor(content)
+        if not analysis.get("is_rumor"):
+            return
+
+        claim = analysis.get("claim_summary")
+        category = analysis.get("category") or "general"
+        state = analysis.get("state")
+        district = analysis.get("district")
+        city = analysis.get("city")
+        pincode = analysis.get("pincode")
+
+        # Fallback to audience location if not parsed in message
+        audience = db.query(Audience).filter(Audience.id == audience_id).first()
+        if audience:
+            if not state: state = audience.state
+            if not district: district = audience.district
+            if not city: city = audience.city
+
+        # 2. Check for similar existing active rumors to cluster/increment virality
+        # Check rumors created in the last 48 hours with matching category and district
+        forty_eight_hours_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=48)
+        existing_rumor = db.query(RumorFlag).filter(
+            RumorFlag.category == category,
+            RumorFlag.district == district,
+            RumorFlag.status == "pending",
+            RumorFlag.created_at >= forty_eight_hours_ago
+        ).first()
+
+        if existing_rumor:
+            existing_rumor.virality_score += 1
+            existing_rumor.updated_at = datetime.datetime.utcnow()
+            db.commit()
+            logger.info(f"[Rumor Webhook] Incremented virality for existing rumor: {existing_rumor.id}")
+            return
+
+        # 3. Fetch context from RAG knowledge base to verify
+        kb = get_knowledge_base()
+        # Retrieve the top 5 documents
+        rag_results = kb.retrieve(claim, top_k=5)
+        context_list = []
+        for doc, meta, score in rag_results:
+            if score > 0.05:  # filter low confidence matches
+                context_list.append(f"Source ({meta.get('type')}): {doc}")
+        
+        refuted_context = "\n".join(context_list) if context_list else "No official bulletins or guidelines confirm or deny this claim."
+
+        # 4. Draft official fact check correction
+        fact_check_msg = generate_fact_check_draft(claim, refuted_context)
+
+        # 5. Create new RumorFlag record
+        new_rumor = RumorFlag(
+            claim_summary=claim,
+            category=category,
+            suspected_rumor_text=content,
+            state=state,
+            district=district,
+            city=city,
+            pincode=pincode,
+            status="pending",
+            virality_score=1,
+            official_fact_check=fact_check_msg
+        )
+        db.add(new_rumor)
+        db.commit()
+        logger.info(f"[Rumor Webhook] Flagged new rumor: {new_rumor.id} - {claim}")
+
+    except Exception as e:
+        logger.error(f"[Rumor Webhook] Error processing rumor check: {e}", exc_info=True)
+    finally:
+        db.close()
+
 

@@ -281,6 +281,35 @@ class OperatorMessage(Base):
     sender = relationship("User")
 
 
+class RumorFlag(Base):
+    """Tracks active and suspected rumors flagged from citizen messages."""
+    __tablename__ = "rumor_flags"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    claim_summary = Column(String(255), nullable=False)  # Short AI summary of the rumor
+    category = Column(String(50), nullable=False)        # water, medical, disaster, general, etc.
+    suspected_rumor_text = Column(Text, nullable=False) # Representative message body
+    
+    # Geolocation fields
+    state = Column(String(100), nullable=True)
+    district = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    pincode = Column(String(20), nullable=True)
+    
+    status = Column(String(50), default="pending", nullable=False)      # pending, verified_fake, verified_true, ignored
+    virality_score = Column(Integer, default=1, nullable=False)          # Count of matching citizen reports
+    
+    official_fact_check = Column(Text, nullable=True)   # Official refuted response template
+    campaign_id = Column(String(36), ForeignKey("campaigns.id"), nullable=True) # Linked neutralization campaign
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+    # Relationships
+    campaign = relationship("Campaign")
+
+
+
 
 
 

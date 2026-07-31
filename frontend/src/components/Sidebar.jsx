@@ -113,6 +113,16 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
       roles: ['admin', 'campaign_manager']
     },
     {
+      id: 'fact_shield',
+      label: 'AI Fact Shield',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager']
+    },
+    {
       id: 'support_queries',
       label: 'Support Queries',
       icon: (
@@ -226,7 +236,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     {
       id: 'support',
       label: 'Emergency & Chat',
-      items: ['emergency_inbox', 'operator_chat', 'support_queries', 'citizen_conversations']
+      items: ['emergency_inbox', 'fact_shield', 'operator_chat', 'support_queries', 'citizen_conversations']
     },
     {
       id: 'governance',

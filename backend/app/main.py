@@ -8,10 +8,10 @@ from typing import Dict, Any
 
 from app.config import settings
 from app.database import engine, Base, get_db, SessionLocal
-from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery
+from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery, RumorFlag
 from app.auth import get_password_hash, require_any_authenticated, require_manager_or_higher
 from jose import JWTError, jwt
-from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router
+from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router, fact_shield
 from app.routes import users as users_router
 from app.routes import ai as ai_router
 from app.routes import feedback as feedback_router
@@ -177,6 +177,7 @@ api_router.include_router(ai_router.router)
 api_router.include_router(feedback_router.router)
 api_router.include_router(feedback_router.emergency_router)
 api_router.include_router(queries_router.router)
+api_router.include_router(fact_shield.router)
 api_router.include_router(poster_router.router)
 api_router.include_router(sentiment_map_router.router)
 api_router.include_router(webhook_router.router)

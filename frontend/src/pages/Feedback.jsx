@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GlassCard from '../components/GlassCard';
 
-export default function Feedback({ user, backendUrl, headers, unreadRepliesCount = 0, setUnreadRepliesCount }) {
+export default function Feedback({ user, backendUrl, headers, _unreadRepliesCount = 0, setUnreadRepliesCount }) {
   const [activeSubTab, setActiveSubTab] = useState('received'); // 'received', 'submitted', 'emergency', 'dashboard' (mgr/admin)
   const [campaigns, setCampaigns] = useState([]);
   const [submittedFeedback, setSubmittedFeedback] = useState([]);
@@ -38,7 +38,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     } else {
       setActiveSubTab('received');
     }
-  }, [user]);
+  }, [user, isAudience]);
 
   // Auto-dismiss success and error messages after 6 seconds
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
   }, [emergencyError]);
 
   // Load campaigns available for feedback
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -76,10 +76,10 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     } finally {
       setLoading(false);
     }
-  };
+  }, [backendUrl, headers]);
 
   // Load user's submitted feedback
-  const loadSubmittedFeedback = async () => {
+  const loadSubmittedFeedback = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -92,10 +92,10 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     } finally {
       setLoading(false);
     }
-  };
+  }, [backendUrl, headers]);
 
   // Load emergency contacts (own for audience, all for manager)
-  const loadEmergencyContacts = async () => {
+  const loadEmergencyContacts = useCallback(async () => {
     setLoading(true);
     setEmergencyError('');
     try {
@@ -151,7 +151,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     } finally {
       setLoading(false);
     }
-  };
+  }, [backendUrl, headers, isAudience, activeSubTab, setUnreadRepliesCount]);
 
   // Load dashboard stats for a campaign
   const loadDashboardData = async (campaignId) => {
@@ -185,7 +185,7 @@ export default function Feedback({ user, backendUrl, headers, unreadRepliesCount
     } else if (activeSubTab === 'dashboard' && !isAudience) {
       loadCampaigns(); // Load all active/completed campaigns to let managers select one
     }
-  }, [activeSubTab]);
+  }, [activeSubTab, isAudience, loadCampaigns, loadSubmittedFeedback, loadEmergencyContacts]);
 
   // Submit feedback handler
   const handleFeedbackSubmit = async (e) => {

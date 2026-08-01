@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const SupportQueries = ({ user, backendUrl, headers }) => {
+const SupportQueries = ({ _user, backendUrl, headers }) => {
   const [queries, setQueries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');

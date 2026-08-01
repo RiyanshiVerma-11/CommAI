@@ -53,7 +53,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
     setSoundEnabled(!soundEnabled);
   };
 
-  const fetchHistoricalBulletins = async () => {
+  const fetchHistoricalBulletins = useCallback(async () => {
     setLoading(true);
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
@@ -103,14 +103,14 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [backendUrl, token]);
 
   useEffect(() => {
     fetchHistoricalBulletins();
-  }, [backendUrl, token]);
+  }, [fetchHistoricalBulletins]);
 
   // Play a synthesized chime using Web Audio API (extremely reliable, zero assets needed!)
-  const playChime = (urgency) => {
+  const playChime = useCallback((urgency) => {
     if (!soundEnabled || !audioCtxRef.current) return;
     try {
       const ctx = audioCtxRef.current;
@@ -155,7 +155,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
     } catch (e) {
       console.warn("Web Audio chime failed to execute:", e);
     }
-  };
+  }, [soundEnabled]);
 
   useEffect(() => {
     // Resolve ws/wss protocol from backendUrl
@@ -228,7 +228,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
         wsRef.current.close();
       }
     };
-  }, [backendUrl, token]);
+  }, [backendUrl, token, playChime]);
 
   const filteredBulletins = bulletins.filter(b => {
     if (filterUrgency === 'all') return true;

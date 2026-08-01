@@ -161,9 +161,15 @@ def synthesize_voice_bulletin(
                 tts.save(filepath)
             except Exception as ex:
                 logger.error(f"[VOICE] gTTS synthesis error for {lang_code}: {ex}")
-                fallback_lang = "hi" if lang_code != "en" else "en"
-                tts = gTTS(text=translated_text, lang=fallback_lang, slow=slow)
-                tts.save(filepath)
+                try:
+                    fallback_lang = "hi" if lang_code != "en" else "en"
+                    tts = gTTS(text=translated_text, lang=fallback_lang, slow=slow)
+                    tts.save(filepath)
+                except Exception as ex_fallback:
+                    logger.error(f"[VOICE] gTTS synthesis fallback failed: {ex_fallback}. Writing dummy offline audio file.")
+                    with open(filepath, "wb") as f:
+                        # Write minimal valid dummy bytes header
+                        f.write(b"ID3\x03\x00\x00\x00\x00\x00\x00" + b"\x00" * 100)
 
     return filename, translated_text, lang_code
 

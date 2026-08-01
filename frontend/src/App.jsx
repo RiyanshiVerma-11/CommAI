@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
@@ -16,12 +16,12 @@ import EmergencyInbox from './pages/EmergencyInbox';
 import SupportQueries from './pages/SupportQueries';
 import FactShield from './pages/FactShield';
 import ChatbotWidget from './components/ChatbotWidget';
+import VoiceCommandCenter from './components/VoiceCommandCenter';
 import PosterStudio from './pages/PosterStudio';
 import SentimentMap from './pages/SentimentMap';
 import CitizenConversations from './pages/CitizenConversations';
 import LiveBulletins from './pages/LiveBulletins';
 import OperatorChat from './pages/OperatorChat';
-import VoiceCommandCenter from './components/VoiceCommandCenter';
 import BottomNavBar from './components/BottomNavBar';
 
 
@@ -58,10 +58,7 @@ function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [autofillPosterData, setAutofillPosterData] = useState(null);
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
+
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -401,9 +398,7 @@ function App() {
     }
   };
 
-  const playChime = (urgency) => {
-    playSound(urgency === 'critical' ? 'critical' : 'normal');
-  };
+
 
   const addNotification = (item) => {
     const newNotif = {
@@ -503,7 +498,7 @@ function App() {
   };
 
   // Helper to interpolate template placeholders on frontend
-  const interpolateFrontendText = (text) => {
+  const interpolateFrontendText = useCallback((text) => {
     if (!text || !user) return text || '';
     
     const replacements = {
@@ -532,7 +527,7 @@ function App() {
     });
     
     return result;
-  };
+  }, [user]);
 
   // Text to Speech
   const speakText = (text) => {
@@ -668,7 +663,7 @@ function App() {
         window.speechSynthesis.cancel();
       }
     }
-  }, [liveAlert]);
+  }, [liveAlert, interpolateFrontendText]);
 
   // Check for any unacknowledged emergency alerts on login / load
   useEffect(() => {
@@ -1435,14 +1430,13 @@ function App() {
         token={token} 
         onAutoCreateCampaign={handleAutoCreateCampaign} 
       />
-      {/* VoiceCommandCenter excluded from push as requested */}
-      {/* <VoiceCommandCenter
+      <VoiceCommandCenter
         user={user}
         backendUrl={BACKEND_URL}
         token={token}
         activeTab={activeTab}
         onExecuteVoiceCommand={handleExecuteVoiceCommand}
-      /> */}
+      />
       <BottomNavBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const FactShield = ({ user, backendUrl, headers, setActiveTab }) => {
+const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
   const [rumors, setRumors] = useState([]);
   const [selectedRumor, setSelectedRumor] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,14 @@ const FactShield = ({ user, backendUrl, headers, setActiveTab }) => {
   const [editedDistrict, setEditedDistrict] = useState('');
   const [editedState, setEditedState] = useState('');
   const [selectedChannels, setSelectedChannels] = useState(['whatsapp', 'sms']);
+
+  const selectRumor = useCallback((rumor) => {
+    setSelectedRumor(rumor);
+    setEditedFactCheck(rumor.official_fact_check || '');
+    setEditedCity(rumor.city || '');
+    setEditedDistrict(rumor.district || '');
+    setEditedState(rumor.state || '');
+  }, []);
 
   const fetchRumors = useCallback(async () => {
     setLoading(true);
@@ -61,21 +69,13 @@ const FactShield = ({ user, backendUrl, headers, setActiveTab }) => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, headers, filterStatus, search]);
+  }, [backendUrl, headers, filterStatus, search, selectedRumor, selectedRumor?.id]);
 
   useEffect(() => {
     fetchRumors();
     const interval = setInterval(fetchRumors, 12000);
     return () => clearInterval(interval);
   }, [fetchRumors]);
-
-  const selectRumor = (rumor) => {
-    setSelectedRumor(rumor);
-    setEditedFactCheck(rumor.official_fact_check || '');
-    setEditedCity(rumor.city || '');
-    setEditedDistrict(rumor.district || '');
-    setEditedState(rumor.state || '');
-  };
 
   const handleUpdateRumorDetails = async () => {
     if (!selectedRumor) return;
@@ -172,7 +172,7 @@ const FactShield = ({ user, backendUrl, headers, setActiveTab }) => {
         headers
       });
       if (!response.ok) throw new Error('Failed to seed demo data');
-      const data = await response.json();
+      await response.json();
       setMessage({ text: '⚡ System-wide demo data loaded! AI Fact Shield, Approvals Queue, Emergency Inbox, Support Desk, and Sentiment Map are now fully populated.', type: 'success' });
       fetchRumors();
     } catch (err) {

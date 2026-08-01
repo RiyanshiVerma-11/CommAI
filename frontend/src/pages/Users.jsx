@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
-const Users = ({ user: currentUser, backendUrl, headers }) => {
+const Users = ({ user: _currentUser, backendUrl, headers }) => {
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' or 'past'
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);

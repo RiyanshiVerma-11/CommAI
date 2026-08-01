@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlassCard from '../components/GlassCard';
 
 const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofillPosterData }) => {
@@ -28,7 +28,6 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
 
   const [campaignsList, setCampaignsList] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   const [posterId, setPosterId] = useState(null);
   const [audienceProfiles, setAudienceProfiles] = useState([]);
@@ -222,11 +221,34 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
     announcement: '📋',
   };
 
+  /** Helper: wrap text to fit within maxWidth, returns array of lines */
+  const wrapText = useCallback((ctx, text, maxWidth) => {
+    if (!text) return [''];
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+    
+    for (let i = 0; i < words.length; i++) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + words[i];
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = words[i];
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    
+    return lines.length > 0 ? lines : [''];
+  }, []);
+
   /**
    * CORE: Composite translated text onto the AI-generated text-free background
    * using Canvas with proper Noto Sans font rendering for all Indian scripts.
    */
-  const compositeTextOnPoster = (imageUrl, content, lang, cat, theme = 'dark') => {
+  const compositeTextOnPoster = useCallback((imageUrl, content, lang, cat, theme = 'dark') => {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -385,13 +407,14 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
         else { ctx.rect(ctaX, currentY, ctaW, ctaH); }
         ctx.fill();
         
+        // 11. HELPLINE + FOOTER
         ctx.font = `700 20px ${fontFamily}`;
         ctx.fillStyle = '#FFFFFF';
         ctx.textAlign = 'center';
         ctx.fillText(content.call_to_action || '', ctaX + ctaW / 2, currentY + 30);
         currentY += ctaH + 20;
         
-        // 11. HELPLINE + FOOTER
+        // 12. Bottom accent border
         ctx.textAlign = textAlign;
         if (content.helpline) {
           ctx.font = `600 18px ${fontFamily}`;
@@ -407,7 +430,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
         }
 
         
-        // 12. Bottom accent border
+        // 13. Bottom accent border
         ctx.fillStyle = colors.primary;
         ctx.fillRect(0, H - 4, W, 4);
         
@@ -424,30 +447,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
         resolve(imageUrl);
       };
     });
-  };
-
-  /** Helper: wrap text to fit within maxWidth, returns array of lines */
-  const wrapText = (ctx, text, maxWidth) => {
-    if (!text) return [''];
-    const words = text.split(' ');
-    const lines = [];
-    let currentLine = '';
-    
-    for (let i = 0; i < words.length; i++) {
-      const testLine = currentLine + (currentLine ? ' ' : '') + words[i];
-      const metrics = ctx.measureText(testLine);
-      
-      if (metrics.width > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = words[i];
-      } else {
-        currentLine = testLine;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-    
-    return lines.length > 0 ? lines : [''];
-  };
+  }, [wrapText, categoryIcons, categoryColors]);
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -695,10 +695,10 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
       ).then(compiledDataUrl => {
         setPosterUrl(compiledDataUrl);
       }).catch(err => {
-        console.error("Failed to re-composite poster on theme change:", err);
+        console.error("Failed to re-composite poster:", err);
       });
     }
-  }, [posterTheme]);
+  }, [rawImageUrl, posterContent, language, category, posterTheme, compositeTextOnPoster]);
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>

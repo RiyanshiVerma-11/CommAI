@@ -694,41 +694,41 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       <button
         onClick={toggleCockpit}
         style={{
-          height: '56px',
-          padding: '0 20px',
-          borderRadius: '28px',
+          height: '42px',
+          padding: '0 14px',
+          borderRadius: '21px',
           background: isOpen 
             ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
             : 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
           border: 'none',
           cursor: 'pointer',
           boxShadow: isListening 
-            ? '0 0 25px rgba(239, 68, 68, 0.8)' 
-            : '0 8px 32px rgba(139, 92, 246, 0.4)',
+            ? '0 0 20px rgba(239, 68, 68, 0.7)' 
+            : '0 4px 20px rgba(139, 92, 246, 0.35)',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '7px',
           color: 'white',
           fontWeight: 700,
-          fontSize: '0.9rem',
+          fontSize: '0.82rem',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           transform: isOpen ? 'scale(1.02)' : 'scale(1)',
           animation: isListening ? 'pulseGlowing 1.5s infinite ease-in-out' : 'none'
         }}
         title="Open AI Voice Command Cockpit (Admin / Manager)"
       >
-        <span style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}>
+        <span style={{ fontSize: '1rem', display: 'flex', alignItems: 'center' }}>
           {isListening ? '🎙️' : '⚡'}
         </span>
-        <span>{isOpen ? 'Close Cockpit' : 'Voice Cockpit'}</span>
+        <span>{isOpen ? 'Close' : 'Voice Cockpit'}</span>
         <span 
           style={{ 
-            background: 'rgba(255, 255, 255, 0.25)', 
-            padding: '2px 8px', 
-            borderRadius: '10px', 
-            fontSize: '0.68rem', 
+            background: 'rgba(255, 255, 255, 0.22)', 
+            padding: '2px 6px', 
+            borderRadius: '8px', 
+            fontSize: '0.62rem', 
             textTransform: 'uppercase', 
-            letterSpacing: '0.05em' 
+            letterSpacing: '0.04em' 
           }}
         >
           Jarvis AI

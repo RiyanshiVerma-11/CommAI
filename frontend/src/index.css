@@ -3749,12 +3749,20 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     display: block !important;
     margin-bottom: 16px !important;
     padding: 16px !important;
-    background: rgba(15, 23, 42, 0.8) !important;
+    background: rgba(15, 23, 42, 0.85) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 18px !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
     box-sizing: border-box !important;
     width: 100% !important;
+  }
+
+  .light-theme .table-to-cards table tbody tr,
+  .light-theme table.custom-table tbody tr,
+  .light-theme .custom-table tbody tr {
+    background: #ffffff !important;
+    border: 1px solid rgba(79, 70, 229, 0.15) !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
   }
 
   .table-to-cards table tbody td,
@@ -3768,6 +3776,19 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     box-sizing: border-box !important;
     white-space: normal !important;
     word-break: normal !important;
+  }
+
+  .light-theme .table-to-cards table tbody td,
+  .light-theme table.custom-table tbody td,
+  .light-theme .custom-table tbody td {
+    border-bottom: 1px solid rgba(79, 70, 229, 0.08) !important;
+    color: #0f172a !important;
+  }
+
+  .light-theme table.custom-table tbody td strong,
+  .light-theme table.custom-table tbody td span,
+  .light-theme table.custom-table tbody td div {
+    color: #0f172a !important;
   }
 
   table.custom-table tbody td:last-child,

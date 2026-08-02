@@ -2214,31 +2214,35 @@ input[type=range]::-webkit-slider-runnable-track {
 .sidebar-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  z-index: 998;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9998;
   animation: fadeIn 0.28s ease;
 }
 
 /* Mobile & Tablet CSS adjustments */
-@media (max-width: 767px) {
+@media (max-width: 991px) {
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
     z-index: 9999;
-    transform: translateX(-270px);
-    /* GPU-accelerated hidden offscreen */
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
     box-shadow: none;
     height: 100%;
     height: 100dvh;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar-mobile-open .sidebar {
     transform: translateX(0);
-    box-shadow: var(--glass-shadow), 20px 0 50px rgba(0, 0, 0, 0.6);
+    visibility: visible;
+    pointer-events: auto;
+    box-shadow: var(--glass-shadow), 20px 0 50px rgba(0, 0, 0, 0.75);
   }
 
   .header {

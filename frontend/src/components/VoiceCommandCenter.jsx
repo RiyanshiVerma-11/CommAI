@@ -28,6 +28,16 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       return;
     }
 
+    // Mobile browsers (Android Chrome / iOS Safari) play a hardware OS mic chime/beep on every speechRecognition.start().
+    // Disable continuous background wake-word polling on mobile to prevent repeating mic notification sounds.
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 992;
+    if (isMobile) {
+      if (wakeWordRecognitionRef.current) {
+        try { wakeWordRecognitionRef.current.stop(); } catch (e) {}
+      }
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -187,9 +197,12 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           setIsSpeaking(false);
           lastSpokeTimestampRef.current = Date.now();
           if (autoListenAfter && isOpenRef.current) {
-            setTimeout(() => {
-              startListening();
-            }, 2500);
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 992;
+            if (!isMobile) {
+              setTimeout(() => {
+                startListening();
+              }, 2500);
+            }
           }
         }
       };

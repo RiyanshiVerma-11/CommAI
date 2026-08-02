@@ -1136,7 +1136,11 @@ function App() {
             {/* Mobile Toggle Button */}
             <button 
               className="icon-btn mobile-menu-btn" 
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              onClick={() => {
+                const willOpen = !mobileSidebarOpen;
+                setMobileSidebarOpen(willOpen);
+                if (willOpen) setSidebarCollapsed(false);
+              }}
               title="Toggle Navigation Menu"
             >
               {mobileSidebarOpen ? (

@@ -177,6 +177,10 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         try {
           data = JSON.parse(text);
         } catch (e) {
+          // Server returned non-JSON (likely a Vercel/CDN 404 page or proxy error)
+          if (text.includes('NOT_FOUND') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+            throw new Error('Backend server is unreachable. Please ensure the API server is running.');
+          }
           throw new Error(`Invalid server response format: ${text.substring(0, 100)}`);
         }
       } else {

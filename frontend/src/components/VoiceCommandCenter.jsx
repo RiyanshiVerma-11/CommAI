@@ -689,7 +689,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         </div>
       )}
 
-      <div style={{ position: 'fixed', bottom: '24px', right: '92px', zIndex: 1000, fontFamily: 'var(--font-body)' }}>
+      <div className="floating-voice-cockpit" style={{ position: 'fixed', bottom: '24px', right: '92px', zIndex: 1000, fontFamily: 'var(--font-body)' }}>
       {/* Dedicated Floating Voice Launcher Button */}
       <button
         onClick={toggleCockpit}

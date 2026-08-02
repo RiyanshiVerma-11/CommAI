@@ -265,13 +265,10 @@ const VoiceBulletinPlayer = ({
 
   const renderPlayerContent = () => {
     return (
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.88) 100%)',
+      <div className="voice-bulletin-card" style={{
         backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.16)',
         borderRadius: '14px',
         padding: '14px 18px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
         position: 'relative',
         zIndex: dropdownOpen ? 99999 : 1
       }}>
@@ -404,6 +401,7 @@ const VoiceBulletinPlayer = ({
 
             {dropdownOpen && (
               <div 
+                className="voice-bulletin-dropdown"
                 style={{
                   position: 'absolute',
                   top: '100%',

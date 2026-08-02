@@ -311,19 +311,19 @@ const Approvals = ({ user, backendUrl, headers }) => {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '24px' }}>
+      <div className="approvals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
         
         {/* Left Side: Pending Campaigns Queue */}
-        <div style={{ flex: '1', maxWidth: '320px', minWidth: '280px' }}>
-          <GlassCard style={{ padding: '16px', height: '100%', minHeight: '600px' }}>
-            <h3 style={{ fontSize: '1.1rem', margin: '0 0 16px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', fontWeight: 700 }}>
+        <div>
+          <GlassCard style={{ padding: '16px', height: '100%', minHeight: '400px' }}>
+            <h3 style={{ fontSize: '1.1rem', margin: '0 0 16px 0', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '10px', fontWeight: 700 }}>
               Approvals Inbox ({pendingCampaigns.length})
             </h3>
             {isAdmin && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 <button
-                  className={`btn ${activeReviewTab === 'maker_checker' ? 'btn-primary' : 'btn-dark'}`}
-                  style={{ flex: 1, fontSize: '0.74rem', padding: '6px 4px', fontWeight: 'bold' }}
+                  className={`btn ${activeReviewTab === 'maker_checker' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
                   onClick={() => {
                     setActiveReviewTab('maker_checker');
                     setSelectedCamp(null);
@@ -332,8 +332,8 @@ const Approvals = ({ user, backendUrl, headers }) => {
                   Maker-Checker
                 </button>
                 <button
-                  className={`btn ${activeReviewTab === 'citizen_proposals' ? 'btn-primary' : 'btn-dark'}`}
-                  style={{ flex: 1, fontSize: '0.74rem', padding: '6px 4px', fontWeight: 'bold' }}
+                  className={`btn ${activeReviewTab === 'citizen_proposals' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
                   onClick={() => {
                     setActiveReviewTab('citizen_proposals');
                     setSelectedCamp(null);

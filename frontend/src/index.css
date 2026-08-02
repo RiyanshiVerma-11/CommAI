@@ -532,11 +532,12 @@ a:hover {
 }
 
 .light-theme .glass-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 100%), rgba(255, 255, 255, 0.8);
+  background: #ffffff !important;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(79, 70, 229, 0.12) !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  color: #0f172a;
 }
 
 .glass-card-glow {
@@ -3794,7 +3795,7 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
   display: none; /* Hidden on Desktop */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -3812,6 +3813,31 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     justify-content: space-around;
     align-items: center;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .light-theme .mobile-bottom-nav {
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid rgba(79, 70, 229, 0.15);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .floating-voice-cockpit {
+    bottom: 74px !important;
+    right: 80px !important;
+    transform: scale(0.85);
+    transform-origin: bottom right;
+  }
+
+  .floating-chatbot-widget {
+    bottom: 74px !important;
+    right: 12px !important;
+    transform: scale(0.88);
+    transform-origin: bottom right;
+  }
+
+  .approvals-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
 
   .bottom-nav-label {

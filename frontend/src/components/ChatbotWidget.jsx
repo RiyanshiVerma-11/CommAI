@@ -321,7 +321,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000, fontFamily: 'var(--font-body)' }}>
+    <div className="floating-chatbot-widget" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000, fontFamily: 'var(--font-body)' }}>
       {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

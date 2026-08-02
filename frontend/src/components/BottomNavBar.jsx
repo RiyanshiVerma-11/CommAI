@@ -1,6 +1,6 @@
 import React from 'react';
 
-const BottomNavBar = ({ activeTab, setActiveTab, user, unreadNotifCount = 0, emergencyCount = 0 }) => {
+const BottomNavBar = ({ activeTab, setActiveTab, user, unreadNotifCount = 0, emergencyCount = 0, closeMobileSidebar }) => {
   const role = user?.role;
   const isAudience = role === 'audience';
   const isAdmin = role === 'admin';
@@ -101,7 +101,10 @@ const BottomNavBar = ({ activeTab, setActiveTab, user, unreadNotifCount = 0, eme
           <button
             key={item.id}
             className={`bottom-nav-item ${isActive ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => {
+              setActiveTab(item.id);
+              if (closeMobileSidebar) closeMobileSidebar();
+            }}
             aria-label={item.label}
           >
             <div className="bottom-nav-icon-container">

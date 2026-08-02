@@ -1479,6 +1479,7 @@ function App() {
         user={user}
         unreadNotifCount={totalUnreadNotifications}
         emergencyCount={user?.role === 'audience' ? unreadRepliesCount : emergencyCount}
+        closeMobileSidebar={() => setMobileSidebarOpen(false)}
       />
       
       {liveAlert && (

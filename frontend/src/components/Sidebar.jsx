@@ -302,11 +302,14 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
           <span style={{ fontSize: '1.3rem', fontWeight: 700 }}>CommAI</span>
         </div>
         
-        {/* Desktop Collapse Trigger */}
+        {/* Collapse / Close Trigger */}
         <button 
           className="icon-btn sidebar-collapse-btn" 
-          onClick={() => setSidebarCollapsed(true)} 
-          title="Collapse Navigation Sidebar"
+          onClick={() => {
+            setSidebarCollapsed(true);
+            if (closeMobileSidebar) closeMobileSidebar();
+          }} 
+          title="Close Navigation Sidebar"
           style={{ padding: '4px', borderRadius: '6px' }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>

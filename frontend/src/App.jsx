@@ -45,9 +45,9 @@ const getDynamicBackendUrl = () => {
           urlObj.hostname = currentHost;
           return urlObj.origin;
         }
-        return backendUrl;
+        return backendUrl.replace(/\/+$/, '');
       } catch (e) {
-        // Fallback
+        return backendUrl.replace(/\/+$/, '');
       }
     }
 

@@ -33,12 +33,10 @@ const getDynamicBackendUrl = () => {
   let backendUrl = import.meta.env.VITE_BACKEND_URL || '';
   
   if (typeof window !== 'undefined' && window.location.hostname) {
-    if (import.meta.env.PROD) {
-      return window.location.origin;
-    }
     const currentHost = window.location.hostname;
-    // If backendUrl is set but contains localhost/127.0.0.1, and the current browser hostname is different,
-    // dynamically swap it out so LAN/hotspot client devices can connect.
+    const currentProtocol = window.location.protocol;
+
+    // 1. If explicit env var is set, use it (and auto-adapt localhost IP if accessed over LAN)
     if (backendUrl) {
       try {
         const urlObj = new URL(backendUrl);
@@ -49,12 +47,18 @@ const getDynamicBackendUrl = () => {
         }
         return backendUrl;
       } catch (e) {
-        // Fallback if URL parsing fails
+        // Fallback
       }
     }
-    // If no backend URL configured or dynamic swap didn't apply, resolve dynamically based on host
+
+    // 2. If accessed over local network IP (e.g. 192.168.x.x, 10.x.x.x, 172.x.x.x) or localhost
+    // backend is running on port 8001
     if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-      return `http://${currentHost}:8001`;
+      // If hosted on a public domain like vercel.app without backend proxy:
+      if (currentHost.includes('vercel.app') || currentHost.includes('netlify.app')) {
+        return window.location.origin;
+      }
+      return `${currentProtocol}//${currentHost}:8001`;
     }
   }
   return backendUrl || 'http://localhost:8001';

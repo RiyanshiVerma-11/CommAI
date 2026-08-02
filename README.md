@@ -229,6 +229,11 @@ graph TD
 - **Broadcast Sound Chimes & Zero-Reload Feeds**: Real-time WebSocket listeners updating citizen portals and operator feeds instantly without manual page refreshes.
 - **System Gateway Diagnostics (`settings.py` & `Settings.jsx`)**: Live ping latency diagnostics and integration test triggers for Groq AI, SMTP Email, CallMeBot WhatsApp, FCM Push, and Telegram Bot gateways.
 
+### 9. 📱 Progressive Web App (PWA) Installability & Offline Resilience
+- **Standalone Mobile Installation**: Built with `vite-plugin-pwa`, enabling users to install CommAI directly onto their Android, iOS, or desktop devices as a standalone application.
+- **Service Worker Caching & Network Failover**: Registers a custom Workbox service worker that caches essential static assets (`.js`, `.css`, `.html`, logos) to allow the app shell to load instantly, providing offline UI feedback when there is no internet connection.
+- **Auto-Update Lifecycle**: Automatic service worker registry update flow, ensuring operators are always running the latest governance, compliance, and campaign tools.
+
 ---
 
 ## 🖼️ Interactive Visual Tour & Screenshots
@@ -592,6 +597,12 @@ npm install
 npm run dev
 ```
 > Access the application UI at `http://localhost:5173`.
+> 
+> 📱 **Progressive Web App (PWA) Local Testing**: Service worker registration and offline caching are configured to trigger only in **production builds** to prevent development server caching issues. To build and test installability locally:
+> ```powershell
+> npm run build
+> npm run preview
+> ```
 
 ---
 

@@ -1,13 +1,16 @@
 import datetime
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger("commai.campaign")
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any, Tuple
 
 from app.database import get_db
 from app.models import Campaign, Segment, Audience, Template, AuditLog, DeliveryLog
 from app.schemas import CampaignCreate, CampaignUpdate, CampaignResponse, AuditLogResponse, DeliveryLogResponse, CampaignDeliverySummary
-from app.auth import require_admin, require_manager_or_higher
+from app.auth import require_admin, require_manager_or_higher, require_any_authenticated
 from app.routes.audience import build_segment_filter_query
 
 
@@ -147,6 +150,8 @@ def format_campaign_response(camp: Campaign) -> CampaignResponse:
         sent_count=camp.sent_count or 0,
         failed_count=camp.failed_count or 0,
         dispatched_at=camp.dispatched_at,
+        reviewer_id=camp.reviewer_id,
+        review_remark=camp.review_remark,
         created_by=camp.created_by,
         updated_by=camp.updated_by,
         scheduled_at=camp.scheduled_at,
@@ -954,4 +959,158 @@ def export_audit_logs(
         'Content-Disposition': 'attachment; filename="system_audit_logs.csv"'
     }
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers=headers)
+
+
+from pydantic import BaseModel
+
+class CampaignReviewRequest(BaseModel):
+    action: str  # "approve" or "reject"
+    remark: Optional[str] = None
+
+@router.get("/mine", response_model=List[CampaignResponse])
+def get_my_submitted_campaigns(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_any_authenticated)
+):
+    """Retrieve proposed campaigns submitted by the currently logged-in citizen."""
+    camps = db.query(Campaign).filter(Campaign.created_by == current_user.id, Campaign.is_deleted == False).order_by(Campaign.created_at.desc()).all()
+    return [format_campaign_response(c) for c in camps]
+
+
+@router.post("/propose", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
+def propose_campaign(
+    camp_in: CampaignCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_any_authenticated)
+):
+    """Allows citizens or authenticated users to propose public awareness campaigns. Set status to 'pending_review'."""
+    # Verify segment and template if provided
+    if camp_in.segment_id:
+        seg = db.query(Segment).filter(Segment.id == camp_in.segment_id).first()
+        if not seg:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target segment not found")
+            
+    template_id = camp_in.template_id
+    if template_id:
+        tpl = db.query(Template).filter(Template.id == template_id, Template.is_deleted == False).first()
+        if not tpl:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+            
+    # Auto-generate shadow Template if custom body is provided
+    if not template_id and camp_in.custom_body:
+        pref_channel = camp_in.channel_preferences[0] if camp_in.channel_preferences else "sms"
+        adhoc_tpl = Template(
+            title=f"Adhoc Template: {camp_in.title}",
+            description=f"Auto-generated template for proposed campaign '{camp_in.title}'",
+            category="awareness",
+            channel=pref_channel,
+            default_language="English",
+            subject_template=camp_in.custom_subject,
+            body_template=camp_in.custom_body,
+            translations="{}",
+            is_ai_generated=False,
+            version=1,
+            created_by=current_user.id
+        )
+        db.add(adhoc_tpl)
+        db.commit()
+        db.refresh(adhoc_tpl)
+        template_id = adhoc_tpl.id
+
+    override_pref = bool(camp_in.override_channel_preferences)
+    
+    # Resolve calculate_reach from module level helpers
+    from app.routes.campaign import calculate_reach
+    target_count, reach_count = calculate_reach(db, camp_in.segment_id, camp_in.channel_preferences, override_pref)
+    
+    camp = Campaign(
+        title=camp_in.title,
+        description=camp_in.description,
+        objective=camp_in.objective,
+        campaign_type=camp_in.campaign_type,
+        status="pending_review",  # initial review status
+        segment_id=camp_in.segment_id,
+        template_id=template_id,
+        channel_preferences=serialize_list(camp_in.channel_preferences),
+        override_channel_preferences=override_pref,
+        target_audience_count=target_count,
+        estimated_reach=reach_count,
+        created_by=current_user.id,
+        scheduled_at=camp_in.scheduled_at
+    )
+    
+    db.add(camp)
+    db.commit()
+    db.refresh(camp)
+
+    # Write audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        campaign_id=camp.id,
+        action="CREATE",
+        new_status="pending_review",
+        changes=json.dumps({"title": camp.title, "note": "Campaign proposed by citizen"})
+    )
+    db.add(audit)
+    db.commit()
+
+    return format_campaign_response(camp)
+
+
+@router.post("/{id}/review", response_model=CampaignResponse)
+def review_proposed_campaign(
+    id: str,
+    req: CampaignReviewRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager_or_higher)
+):
+    """Allows administrators or campaign managers to review proposed campaigns."""
+    camp = db.query(Campaign).filter(Campaign.id == id, Campaign.is_deleted == False).first()
+    if not camp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposed campaign not found")
+        
+    if camp.status != "pending_review":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Campaign is not in pending_review status")
+
+    action = req.action.lower()
+    if action not in ["approve", "reject"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid action: choose 'approve' or 'reject'")
+
+    old_status = camp.status
+    if action == "approve":
+        # Move it to draft/scheduled status
+        new_status = "draft"
+        if camp.scheduled_at:
+            new_status = "scheduled"
+        camp.status = new_status
+        camp.reviewer_id = current_user.id
+        camp.review_remark = req.remark or "Approved by operator"
+    else:
+        # Reject
+        if not req.remark or not req.remark.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rejection remark notes are mandatory")
+        new_status = "rejected"
+        camp.status = new_status
+        camp.reviewer_id = current_user.id
+        camp.review_remark = req.remark
+
+    camp.updated_by = current_user.id
+    camp.updated_at = datetime.datetime.utcnow()
+    
+    audit = AuditLog(
+        user_id=current_user.id,
+        campaign_id=camp.id,
+        action="STATUS_CHANGE",
+        old_status=old_status,
+        new_status=new_status,
+        changes=json.dumps({
+            "status": {"old": old_status, "new": new_status},
+            "reviewer_id": current_user.id,
+            "remark": camp.review_remark
+        })
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(camp)
+    return format_campaign_response(camp)
 

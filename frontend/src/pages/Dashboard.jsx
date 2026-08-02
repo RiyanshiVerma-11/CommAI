@@ -714,11 +714,11 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
   // ----- Admin / Campaign Manager dashboard -----
   return (
     <div className="animate-fade-in">
-      <div style={{ marginBottom: '36px' }}>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: '800', marginBottom: '8px', letterSpacing: '-0.03em', color: 'hsl(var(--text-primary))' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '4px', letterSpacing: '-0.03em', color: 'hsl(var(--text-primary))' }}>
           Welcome back, {user.full_name}
         </h1>
-        <p style={{ color: 'hsl(var(--text-muted))', fontSize: '1.05rem', fontWeight: '500' }}>
+        <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.92rem', fontWeight: '500' }}>
           Platform role: <span style={{ color: 'hsl(var(--primary))', fontWeight: '600' }}>{getRoleLabel(user.role)}</span> at <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>{user.organization || 'General Public Services'}</span>
         </p>
       </div>
@@ -726,13 +726,14 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
       <div className="dashboard-grid">
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('audiences')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('audiences')}
+          title="Open Audience Directory"
+          style={{ cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="stat-title">Total Audiences</span>
-            <div style={{ background: 'hsl(var(--primary) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <span className="stat-title">Audience Directory</span>
+            <div style={{ background: 'hsl(var(--primary) / 8%)', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -742,8 +743,8 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number">{s.total_audiences}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
-              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--accent))' }}></span>
+            <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'hsl(var(--accent))' }}></span>
               {s.active_audiences} active recipients
             </span>
           </div>
@@ -751,13 +752,39 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
 
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('segments')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('managers')}
+          title="Open Campaign Managers"
+          style={{ cursor: 'pointer', transition: 'border-color 0.2s' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stat-title">Campaign Managers</span>
+            <div style={{ background: 'hsl(var(--secondary) / 8%)', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--secondary))', width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+                <polyline points="16 11 18 13 22 9" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <span className="stat-number">{s.total_managers ?? 0}</span>
+            <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'hsl(var(--secondary))' }}></span>
+              Active operators & admins
+            </span>
+          </div>
+        </GlassCard>
+
+        <GlassCard 
+          className="stat-card" 
+          onClick={() => setActiveTab('audiences')}
+          title="Open Audience Directory"
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Dynamic Segments</span>
-            <div style={{ background: 'hsl(var(--secondary) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--secondary))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'hsl(var(--secondary) / 8%)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--secondary))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="12" r="6" />
                 <circle cx="12" cy="12" r="2" />
@@ -766,7 +793,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number">{s.total_segments}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--secondary))' }}></span>
               Target queries synced
             </span>
@@ -775,13 +802,14 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
 
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('drafts')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('campaigns')}
+          title="Open Campaigns"
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Draft Campaigns</span>
-            <div style={{ background: 'hsl(var(--accent) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--accent))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'hsl(var(--accent) / 8%)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--accent))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2L11 13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
@@ -789,7 +817,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number">{s.draft_campaigns}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--primary))' }}></span>
               {s.total_campaigns} campaigns total
             </span>
@@ -798,20 +826,21 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
 
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('templates')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('templates')}
+          title="Open Templates Library"
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Templates Library</span>
-            <div style={{ background: 'hsl(var(--warning) / 8%)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--warning))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'hsl(var(--warning) / 8%)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--warning))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
               </svg>
             </div>
           </div>
           <div>
             <span className="stat-number">{s.total_templates}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--warning))' }}></span>
               Message blocks ready
             </span>
@@ -820,24 +849,25 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
 
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('delivered')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('campaigns')}
+          title="View Campaigns & Delivery Stats"
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Messages Delivered</span>
-            <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--accent))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--accent))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
           </div>
           <div>
             <span className="stat-number" style={{ color: 'hsl(var(--accent))' }}>{totalDelivered}</span>
-            <div style={{ marginTop: '8px' }}>
-              <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginBottom: '6px' }}>
+            <div style={{ marginTop: '4px' }}>
+              <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
                 <div style={{ width: `${successRate}%`, height: '100%', background: 'hsl(var(--accent))' }}></div>
               </div>
-              <span style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', fontWeight: '600' }}>
+              <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', fontWeight: '600' }}>
                 {totalMessages > 0 ? `${successRate}% Delivery Success Rate` : 'No dispatches recorded'}
               </span>
             </div>
@@ -846,13 +876,14 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
 
         <GlassCard 
           className="stat-card" 
-          onClick={() => fetchModalItems('failed')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+          onClick={() => setActiveTab('campaigns')}
+          title="View Failed Dispatches"
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title">Failed Dispatches</span>
-            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -860,7 +891,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number" style={{ color: 'hsl(var(--danger))' }}>{totalFailed}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--danger))' }}></span>
               Rejected or configuration errors
             </span>
@@ -870,12 +901,12 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
         <GlassCard 
           className="stat-card animate-fade-in" 
           onClick={() => setActiveTab('emergency_inbox')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', border: '1px dashed hsl(var(--danger) / 40%)', background: 'hsl(var(--danger) / 2%)', transition: 'border-color 0.2s' }}
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', border: '1px dashed hsl(var(--danger) / 40%)', background: 'hsl(var(--danger) / 2%)', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title" style={{ color: 'hsl(var(--danger))', fontWeight: 'bold' }}>Emergency Alerts</span>
-            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--danger))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -884,7 +915,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number" style={{ color: 'hsl(var(--danger))' }}>{s.open_emergencies_count || 0}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--danger))' }}></span>
               Open emergency inbox tickets
             </span>
@@ -894,12 +925,12 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
         <GlassCard 
           className="stat-card animate-fade-in" 
           onClick={() => setActiveTab('support_queries')}
-          style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', cursor: 'pointer', border: '1px dashed hsl(var(--primary) / 40%)', background: 'hsl(var(--primary) / 2%)', transition: 'border-color 0.2s' }}
+          style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', border: '1px dashed hsl(var(--primary) / 40%)', background: 'hsl(var(--primary) / 2%)', transition: 'border-color 0.2s' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-title" style={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}>Support Queries</span>
-            <div style={{ background: 'rgba(76, 140, 252, 0.08)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '22px', height: '22px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ background: 'rgba(76, 140, 252, 0.08)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg className="svg-icon" style={{ color: 'hsl(var(--primary))', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -908,7 +939,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
           <div>
             <span className="stat-number" style={{ color: 'hsl(var(--primary))' }}>{s.open_queries_count || 0}</span>
-            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontWeight: '500' }}>
+            <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontWeight: '500' }}>
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'hsl(var(--primary))' }}></span>
               Unresolved support requests
             </span>
@@ -917,53 +948,131 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
       </div>
 
       {/* Language-Wise Analytics Chart Widget */}
-      <GlassCard style={{ padding: '28px', marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px' }}>
+      <GlassCard style={{ padding: '20px 24px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
           <div>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: '700', color: 'hsl(var(--text-primary))', margin: 0, letterSpacing: '-0.02em' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'hsl(var(--text-primary))', margin: 0, letterSpacing: '-0.02em' }}>
               🌐 Language-Wise Reach & Delivery Analytics
             </h2>
-            <p style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '4px' }}>
+            <p style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', margin: 0, marginTop: '2px' }}>
               Audience target distribution and message deliveries broken down by preferred Indian language.
             </p>
           </div>
-          <span style={{ fontSize: '0.78rem', background: 'hsl(var(--primary) / 10%)', color: 'hsl(var(--primary))', padding: '4px 10px', borderRadius: '20px', fontWeight: '700' }}>
+          <span style={{ fontSize: '0.72rem', background: 'hsl(var(--primary) / 10%)', color: 'hsl(var(--primary))', padding: '3px 10px', borderRadius: '16px', fontWeight: '700' }}>
             {(s.language_analytics || []).length} Languages Tracked
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-          {(s.language_analytics || []).map((langItem, idx) => {
-            const maxReach = Math.max(...(s.language_analytics || []).map(l => l.reach), 1);
-            const reachPct = Math.round((langItem.reach / maxReach) * 100);
-            const deliveryRate = langItem.reach > 0 ? Math.round((langItem.delivered / langItem.reach) * 100) : 0;
-            const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
-            const color = colors[idx % colors.length];
+        {(() => {
+          const langList = s.language_analytics || [];
+          const totalReachAll = langList.reduce((acc, l) => acc + (l.reach || 0), 0) || 1;
+          const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+          const circumference = 2 * Math.PI * 52; // r=52 -> ~326.72
+          let accumDashOffset = 0;
 
-            return (
-              <div key={langItem.language} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '14px', padding: '18px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color }}></span>
-                    <span style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>{langItem.language}</span>
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '24px', alignItems: 'center' }}>
+              {/* Left Column: Language Cards (2-column grid when > 3 items) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: langList.length > 3 ? 'repeat(2, 1fr)' : '1fr',
+                gap: '8px'
+              }}>
+                {langList.map((langItem, idx) => {
+                  const maxReach = Math.max(...langList.map(l => l.reach), 1);
+                  const reachPct = Math.round((langItem.reach / maxReach) * 100);
+                  const sharePct = Math.round((langItem.reach / totalReachAll) * 100);
+                  const deliveryRate = langItem.reach > 0 ? Math.round((langItem.delivered / langItem.reach) * 100) : 0;
+                  const color = colors[idx % colors.length];
+
+                  return (
+                    <div key={langItem.language} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color-glass)', borderRadius: '8px', padding: '8px 10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
+                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: color, display: 'inline-block', flexShrink: 0 }}></span>
+                          <span style={{ fontWeight: '700', fontSize: '0.82rem', color: 'hsl(var(--text-primary))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{langItem.language}</span>
+                          <span style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: '500', flexShrink: 0 }}>({sharePct}%)</span>
+                        </div>
+                        <span style={{ fontSize: '0.66rem', fontWeight: '800', color: color, background: `${color}18`, padding: '1px 5px', borderRadius: '4px', flexShrink: 0 }}>
+                          {deliveryRate}%
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'hsl(var(--text-muted))', marginBottom: '4px' }}>
+                        <span>Reach: <strong style={{ color: 'hsl(var(--text-primary))' }}>{langItem.reach}</strong></span>
+                        <span>Delivered: <strong style={{ color: 'hsl(var(--accent))' }}>{langItem.delivered}</strong></span>
+                      </div>
+
+                      <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ width: `${reachPct}%`, height: '100%', background: color, borderRadius: '2px' }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Right Column: Eye-Catching SVG Donut/Pie Chart */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
+                <div style={{ position: 'relative', width: '180px', height: '180px' }}>
+                  <svg width="180" height="180" viewBox="0 0 160 160" style={{ transform: 'rotate(-90deg)', overflow: 'visible' }}>
+                    {/* Background Ring */}
+                    <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
+                    {/* Segment Arcs */}
+                    {langList.map((langItem, idx) => {
+                      const color = colors[idx % colors.length];
+                      const pct = (langItem.reach || 0) / totalReachAll;
+                      const dashLen = pct * circumference;
+                      const dashArray = `${dashLen} ${circumference - dashLen}`;
+                      const dashOffset = -accumDashOffset;
+                      accumDashOffset += dashLen;
+
+                      return (
+                        <circle
+                          key={langItem.language}
+                          cx="80"
+                          cy="80"
+                          r="52"
+                          fill="none"
+                          stroke={color}
+                          strokeWidth="18"
+                          strokeDasharray={dashArray}
+                          strokeDashoffset={dashOffset}
+                          style={{ transition: 'all 0.5s ease' }}
+                        />
+                      );
+                    })}
+                  </svg>
+                  {/* Center Donut Label */}
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'hsl(var(--text-primary))', lineHeight: 1 }}>
+                      {totalReachAll}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', fontWeight: '600', marginTop: '2px' }}>
+                      Target Reach
+                    </span>
                   </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: '800', color: color, background: `${color}15`, padding: '2px 8px', borderRadius: '6px' }}>
-                    {deliveryRate}% Delivered
-                  </span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'hsl(var(--text-muted))', marginBottom: '6px', fontWeight: '500' }}>
-                  <span>Target Reach: <strong style={{ color: 'hsl(var(--text-primary))' }}>{langItem.reach}</strong></span>
-                  <span>Delivered: <strong style={{ color: 'hsl(var(--accent))' }}>{langItem.delivered}</strong></span>
-                </div>
-
-                <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${reachPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${color}cc)`, borderRadius: '4px', transition: 'width 0.6s ease-in-out' }}></div>
+                {/* Compact Legend */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', justifyContent: 'center', marginTop: '12px' }}>
+                  {langList.map((langItem, idx) => {
+                    const color = colors[idx % colors.length];
+                    return (
+                      <div key={langItem.language} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'hsl(var(--text-muted))' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: color, display: 'inline-block' }}></span>
+                        <span>{langItem.language}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })()}
       </GlassCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '32px' }}>

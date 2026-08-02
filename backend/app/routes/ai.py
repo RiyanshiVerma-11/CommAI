@@ -130,7 +130,7 @@ class ComplianceResponse(BaseModel):
 @router.post("/generate", response_model=GenerateResponse)
 def ai_generate(
     request: GenerateRequest,
-    current_user=Depends(require_manager_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Generate campaign subject + body from a text prompt."""
     result = generate_campaign_content(

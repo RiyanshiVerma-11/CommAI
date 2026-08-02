@@ -23,24 +23,41 @@ import CitizenConversations from './pages/CitizenConversations';
 import LiveBulletins from './pages/LiveBulletins';
 import OperatorChat from './pages/OperatorChat';
 import BottomNavBar from './components/BottomNavBar';
+import SOSReports from './pages/SOSReports';
 
 
 
 
 // Connect dynamically to the backend API services (auto-resolves mobile phone LAN/hotspot hostname)
 const getDynamicBackendUrl = () => {
-  if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL;
-  }
+  let backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+  
   if (typeof window !== 'undefined' && window.location.hostname) {
     if (import.meta.env.PROD) {
       return window.location.origin;
     }
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return `http://${window.location.hostname}:8001`;
+    const currentHost = window.location.hostname;
+    // If backendUrl is set but contains localhost/127.0.0.1, and the current browser hostname is different,
+    // dynamically swap it out so LAN/hotspot client devices can connect.
+    if (backendUrl) {
+      try {
+        const urlObj = new URL(backendUrl);
+        if ((urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') && 
+            (currentHost !== 'localhost' && currentHost !== '127.0.0.1')) {
+          urlObj.hostname = currentHost;
+          return urlObj.origin;
+        }
+        return backendUrl;
+      } catch (e) {
+        // Fallback if URL parsing fails
+      }
+    }
+    // If no backend URL configured or dynamic swap didn't apply, resolve dynamically based on host
+    if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+      return `http://${currentHost}:8001`;
     }
   }
-  return 'http://localhost:8001';
+  return backendUrl || 'http://localhost:8001';
 };
 
 const BACKEND_URL = getDynamicBackendUrl();
@@ -946,6 +963,15 @@ function App() {
             headers={authHeaders}
           />
         );
+      case 'sos_reports':
+        return (
+          <SOSReports
+            user={user}
+            backendUrl={BACKEND_URL}
+            headers={authHeaders}
+            setActiveTab={setActiveTab}
+          />
+        );
       case 'emergency_inbox':
         if (user.role !== 'admin' && user.role !== 'campaign_manager') {
           return <div className="glass-card" style={{ padding: '24px', margin: '24px', color: 'hsl(var(--danger))' }}>Access Denied: Restricted to operators.</div>;
@@ -1376,7 +1402,7 @@ function App() {
                     <div className="profile-dropdown-header">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                         <img src="/logo.jpeg" alt="CommAI Logo" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
-                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CommAI Gateway</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.8rem', color: 'hsl(var(--text-primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CommAI Gateway</span>
                       </div>
                       <span className="profile-dropdown-name">{user?.full_name}</span>
                       <span className="profile-dropdown-email">{user?.email}</span>

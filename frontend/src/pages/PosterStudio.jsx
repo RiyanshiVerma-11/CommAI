@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
 const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofillPosterData }) => {

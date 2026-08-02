@@ -35,6 +35,107 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
   const [resetOtpCode, setResetOtpCode] = useState('');
   const [newPasswordReset, setNewPasswordReset] = useState('');
 
+  // Public SOS Modal states
+  const [showSosModal, setShowSosModal] = useState(false);
+  const [sosTitle, setSosTitle] = useState('');
+  const [sosDesc, setSosDesc] = useState('');
+  const [sosType, setSosType] = useState('medical');
+  const [sosLat, setSosLat] = useState('');
+  const [sosLng, setSosLng] = useState('');
+  const [sosLocName, setSosLocName] = useState('');
+  const [sosName, setSosName] = useState('');
+  const [sosPhone, setSosPhone] = useState('');
+  const [sosEmail, setSosEmail] = useState('');
+  const [sosLocLoading, setSosLocLoading] = useState(false);
+  const [sosSubmitting, setSosSubmitting] = useState(false);
+  const [sosModalSuccess, setSosModalSuccess] = useState('');
+  const [sosModalError, setSosModalError] = useState('');
+
+  const handleAnonymousSOSSubmit = async (e) => {
+    e.preventDefault();
+    if (!sosTitle.trim() || !sosDesc.trim()) {
+      setSosModalError('Please specify title and description of the emergency hazard.');
+      return;
+    }
+    setSosSubmitting(true);
+    setSosModalError('');
+    setSosModalSuccess('');
+    try {
+      const res = await fetch(`${backendUrl}/api/sos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: sosTitle.trim(),
+          description: sosDesc.trim(),
+          report_type: sosType,
+          latitude: sosLat ? parseFloat(sosLat) : null,
+          longitude: sosLng ? parseFloat(sosLng) : null,
+          location_name: sosLocName.trim(),
+          reporter_name: sosName.trim(),
+          reporter_phone: sosPhone.trim(),
+          reporter_email: sosEmail.trim()
+        })
+      });
+      const text = await res.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${res.status})`);
+      }
+      if (!res.ok) {
+        throw new Error(data.detail || 'Emergency distress call failed.');
+      }
+      setSosModalSuccess('Distress report submitted successfully! Dispatch operators have been notified.');
+      
+      // Reset form
+      setSosTitle('');
+      setSosDesc('');
+      setSosLat('');
+      setSosLng('');
+      setSosLocName('');
+      setSosName('');
+      setSosPhone('');
+      setSosEmail('');
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        setShowSosModal(false);
+        setSosModalSuccess('');
+      }, 3500);
+    } catch (err) {
+      setSosModalError(err.message);
+    } finally {
+      setSosSubmitting(false);
+    }
+  };
+
+  const handleGrabSosLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setSosLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSosLat(pos.coords.latitude.toFixed(6));
+        setSosLng(pos.coords.longitude.toFixed(6));
+        setSosLocName(`GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+        setSosLocLoading(false);
+      },
+      (err) => {
+        console.error(err);
+        alert('Could not retrieve GPS coordinates. Please enter location manually.');
+        setSosLocLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
   const demoAccounts = [
     { label: '🛡️ Admin Account', email: 'admin@example.com', password: 'AdminPassword123!' },
     { label: '💼 Campaign Manager', email: 'manager@example.com', password: 'ManagerPassword123!' },
@@ -70,7 +171,18 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         body: formData
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid server response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
+
       if (!response.ok) {
         throw new Error(data.detail || 'Login failed');
       }
@@ -128,7 +240,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
       if (!response.ok) {
         throw new Error(data.detail || 'Registration failed');
       }
@@ -144,7 +266,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         body: formData
       });
 
-      const loginData = await loginResponse.json();
+      const loginText = await loginResponse.text();
+      let loginData = {};
+      if (loginText) {
+        try {
+          loginData = JSON.parse(loginText);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${loginText.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${loginResponse.status})`);
+      }
       if (!loginResponse.ok) {
         throw new Error(loginData.detail || 'Login auto-trigger failed');
       }
@@ -171,7 +303,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         method: 'POST'
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
       if (!response.ok) {
         throw new Error(data.detail || 'OTP Request failed');
       }
@@ -202,7 +344,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         method: 'POST'
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
       if (!response.ok) {
         throw new Error(data.detail || 'Failed to request reset OTP');
       }
@@ -236,7 +388,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         body: JSON.stringify({ email, otp: resetOtpCode, new_password: newPasswordReset })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
       if (!response.ok) {
         throw new Error(data.detail || 'Reset failed');
       }
@@ -272,7 +434,17 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         body: JSON.stringify({ email, otp: otpCode })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+      } else {
+        throw new Error(`Empty response from server (Status: ${response.status})`);
+      }
       if (!response.ok) {
         throw new Error(data.detail || 'OTP verification failed');
       }
@@ -296,6 +468,46 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
       overflowY: 'auto',
       position: 'relative'
     }}>
+      <button
+        onClick={() => {
+          setShowSosModal(true);
+          setSosModalError('');
+          setSosModalSuccess('');
+        }}
+        title="Report Emergency Safety Hazard / SOS Distress Call"
+        style={{
+          position: 'fixed',
+          top: '24px',
+          right: '80px',
+          background: 'rgba(239, 68, 68, 0.15)',
+          border: '1.5px solid rgba(239, 68, 68, 0.4)',
+          borderRadius: '24px',
+          padding: '0 16px',
+          height: '42px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          color: '#ff4d4d',
+          boxShadow: '0 4px 14px rgba(239, 68, 68, 0.25)',
+          transition: 'all 0.2s ease',
+          zIndex: 9999,
+          fontWeight: 'bold',
+          fontSize: '0.85rem'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.04)';
+          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+        }}
+      >
+        <span style={{ display: 'inline-block', width: '8px', height: '8px', background: '#ff4d4d', borderRadius: '50%' }}></span>
+        🚨 Report Hazard (SOS)
+      </button>
+
       {toggleTheme && (
         <button
           onClick={toggleTheme}
@@ -1116,6 +1328,200 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
           </div>
         </div>
       </GlassCard>
+
+      {/* ─── PUBLIC ANONYMOUS SOS MODAL ─── */}
+      {showSosModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+          padding: '24px'
+        }}>
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.85)',
+            border: '1.5px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            padding: '24px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ff4d4d', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🚨 Submit Distress Alert / SOS (Anonymous)
+              </h3>
+              <button 
+                onClick={() => setShowSosModal(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {sosModalError && (
+              <div className="alert alert-danger" style={{ padding: '8px 12px', fontSize: '0.8rem', marginBottom: '12px', background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                ⚠️ {sosModalError}
+              </div>
+            )}
+            {sosModalSuccess && (
+              <div className="alert alert-success" style={{ padding: '8px 12px', fontSize: '0.8rem', marginBottom: '12px', background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                ✅ {sosModalSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleAnonymousSOSSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Incident Title / Safety Hazard *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={sosTitle}
+                  onChange={(e) => setSosTitle(e.target.value)}
+                  placeholder="e.g. Broken live electrical wire on pavement"
+                  required
+                  style={{ width: '100%', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Hazard Type</label>
+                  <select
+                    className="form-control"
+                    value={sosType}
+                    onChange={(e) => setSosType(e.target.value)}
+                    style={{ background: '#1e293b', color: '#fff', fontSize: '0.88rem', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="fire">🔥 Fire / Hazard</option>
+                    <option value="flood">🌊 Flood / Waterlogging</option>
+                    <option value="medical">🚑 Medical Distress</option>
+                    <option value="roadblock">🚧 Roadblock / Obstruction</option>
+                    <option value="other">⚠️ Other Danger</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Location Coordinates</label>
+                  <button
+                    type="button"
+                    onClick={handleGrabSosLocation}
+                    disabled={sosLocLoading}
+                    className="btn btn-dark btn-sm"
+                    style={{ width: '100%', fontSize: '0.78rem', height: '38px', fontWeight: 'bold' }}
+                  >
+                    {sosLocLoading ? 'Retrieving...' : '📍 Share Live GPS'}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Latitude</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={sosLat}
+                    onChange={(e) => setSosLat(e.target.value)}
+                    placeholder="e.g. 28.6139"
+                    style={{ width: '100%', fontSize: '0.88rem' }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Longitude</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={sosLng}
+                    onChange={(e) => setSosLng(e.target.value)}
+                    placeholder="e.g. 77.2090"
+                    style={{ width: '100%', fontSize: '0.88rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Landmark / Location Details *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={sosLocName}
+                  onChange={(e) => setSosLocName(e.target.value)}
+                  placeholder="e.g. Outside Metro Station gate, near water kiosk"
+                  required
+                  style={{ width: '100%', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Distress / Hazard Description *</label>
+                <textarea
+                  rows={3}
+                  className="form-control"
+                  value={sosDesc}
+                  onChange={(e) => setSosDesc(e.target.value)}
+                  placeholder="Describe the severity, roadblock details, and current danger status..."
+                  required
+                  style={{ width: '100%', fontSize: '0.88rem', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Reporter Name (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={sosName}
+                    onChange={(e) => setSosName(e.target.value)}
+                    placeholder="e.g. Guest Citizen"
+                    style={{ width: '100%', fontSize: '0.88rem' }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Contact Phone (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={sosPhone}
+                    onChange={(e) => setSosPhone(e.target.value)}
+                    placeholder="e.g. 9876543210"
+                    style={{ width: '100%', fontSize: '0.88rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowSosModal(false)} 
+                  className="btn btn-dark"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={sosSubmitting}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 24px', background: '#ff4d4d', borderColor: '#ff4d4d', color: '#fff', fontWeight: 'bold' }}
+                >
+                  {sosSubmitting ? 'Submitting Distress...' : '🚨 Broadcast Distress (SOS)'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

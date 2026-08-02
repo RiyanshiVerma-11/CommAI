@@ -280,6 +280,8 @@ class CampaignResponse(CampaignBase):
     failed_count: Optional[int] = 0
     dispatched_at: Optional[datetime] = None
     override_channel_preferences: Optional[bool] = False
+    reviewer_id: Optional[str] = None
+    review_remark: Optional[str] = None
     created_by: str
     updated_by: Optional[str] = None
     created_at: datetime
@@ -294,6 +296,7 @@ class CampaignResponse(CampaignBase):
 class DashboardStats(CustomBaseModel):
     total_audiences: int
     active_audiences: int
+    total_managers: Optional[int] = 0
     total_segments: int
     draft_campaigns: int
     total_campaigns: int
@@ -512,6 +515,40 @@ class RumorFlagUpdate(CustomBaseModel):
 
 class RumorFlagResponse(RumorFlagBase):
     id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- SOS EMERGENCY REPORT SCHEMAS ---
+
+class SOSReportBase(CustomBaseModel):
+    title: str
+    description: str
+    report_type: str
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+    location_name: Optional[str] = None
+    reporter_name: Optional[str] = None
+    reporter_phone: Optional[str] = None
+    reporter_email: Optional[str] = None
+
+class SOSReportCreate(SOSReportBase):
+    pass
+
+class SOSReportTriage(CustomBaseModel):
+    status: Optional[str] = None
+    staff_reply: Optional[str] = None
+
+class SOSReportResponse(SOSReportBase):
+    id: str
+    status: str
+    created_by: Optional[str] = None
+    staff_reply: Optional[str] = None
+    replied_by: Optional[str] = None
+    replied_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

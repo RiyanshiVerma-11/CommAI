@@ -466,6 +466,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          command: commandText,
           active_context: requestContext
         })
       });

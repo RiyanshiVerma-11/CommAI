@@ -110,7 +110,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
     <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
       <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '4px 0 0' }}>
+          <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.88rem', margin: '4px 0 0' }}>
             Answer general questions, troubleshoot template confusion, and assist users navigating campaigns.
           </p>
         </div>
@@ -167,12 +167,12 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
                 borderRadius: '10px',
                 border: '1px solid var(--input-border)',
                 background: 'var(--input-bg)',
-                color: 'var(--text-primary)',
+                color: 'hsl(var(--text-primary))',
                 outline: 'none',
                 fontSize: '0.88rem'
               }}
             />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ position: 'absolute', left: '14px', top: '12px', width: '16px', height: '16px', color: 'var(--text-muted)' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ position: 'absolute', left: '14px', top: '12px', width: '16px', height: '16px', color: 'hsl(var(--text-muted))' }}>
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -202,9 +202,9 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
 
       {/* Main Table or Card List */}
       {loading && queries.length === 0 ? (
-        <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading support desk queue...</div>
+        <div style={{ padding: '60px 0', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>Loading support desk queue...</div>
       ) : queries.length === 0 ? (
-        <GlassCard style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <GlassCard style={{ padding: '60px 0', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
           <div style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '6px' }}>No Queries Found</div>
           <div>Queue is currently empty for active filters.</div>
         </GlassCard>
@@ -215,13 +215,13 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>{q.subject}</h3>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'hsl(var(--text-primary))' }}>{q.subject}</h3>
                     <span className={`badge badge-${q.status === 'open' ? 'danger' : q.status === 'acknowledged' ? 'warning' : 'success'}`} style={{ textTransform: 'capitalize' }}>
                       {q.status}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    Submitted by: <strong style={{ color: 'var(--text-secondary)' }}>{q.user_name || 'Audience Member'}</strong> • {new Date(q.created_at).toLocaleString()}
+                  <div style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', fontWeight: 500 }}>
+                    Submitted by: <strong style={{ color: 'hsl(var(--text-secondary))' }}>{q.user_name || 'Audience Member'}</strong> • {new Date(q.created_at).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -235,7 +235,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
                   border: '1px solid rgba(255, 255, 255, 0.04)',
                   fontSize: '0.9rem',
                   lineHeight: '1.5',
-                  color: 'var(--text-secondary)',
+                  color: 'hsl(var(--text-secondary))',
                   marginBottom: '20px',
                   whiteSpace: 'pre-line'
                 }}
@@ -247,7 +247,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
               {q.status !== 'resolved' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid var(--border-color-glass)', paddingTop: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>Send Response</span>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'hsl(var(--text-primary))' }}>Send Response</span>
                     <button
                       className="btn btn-secondary"
                       disabled={generatingAI[q.id]}
@@ -278,7 +278,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
                       borderRadius: '10px',
                       border: '1px solid var(--input-border)',
                       background: 'var(--input-bg)',
-                      color: 'var(--text-primary)',
+                      color: 'hsl(var(--text-primary))',
                       fontSize: '0.88rem',
                       outline: 'none',
                       resize: 'none',
@@ -288,7 +288,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>Set Status:</span>
+                      <span style={{ fontSize: '0.82rem', color: 'hsl(var(--text-muted))', fontWeight: 600 }}>Set Status:</span>
                       <select
                         value={replyStatuses[q.id] || 'resolved'}
                         onChange={(e) => setReplyStatuses(prev => ({ ...prev, [q.id]: e.target.value }))}
@@ -297,7 +297,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
                           borderRadius: '8px',
                           border: '1px solid var(--input-border)',
                           background: 'var(--input-bg)',
-                          color: 'var(--text-primary)',
+                          color: 'hsl(var(--text-primary))',
                           fontSize: '0.8rem',
                           outline: 'none'
                         }}
@@ -331,7 +331,7 @@ const SupportQueries = ({ _user, backendUrl, headers }) => {
                       borderRadius: '8px', 
                       background: 'rgba(34, 197, 94, 0.02)', 
                       border: '1px solid rgba(34, 197, 94, 0.1)',
-                      color: 'var(--text-secondary)',
+                      color: 'hsl(var(--text-secondary))',
                       fontStyle: 'italic',
                       lineHeight: '1.4'
                     }}

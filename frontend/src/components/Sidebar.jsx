@@ -74,7 +74,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
           <path d="M9 15l2 2 4-4" />
         </svg>
       ), 
-      roles: ['admin'] 
+      roles: ['admin', 'campaign_manager'] 
     },
     { 
       id: 'users', 
@@ -215,6 +215,18 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
       ), 
       roles: ['admin', 'campaign_manager', 'audience'] 
     },
+    {
+      id: 'sos_reports',
+      label: '🚨 SOS Reports',
+      icon: (
+        <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      ),
+      roles: ['admin', 'campaign_manager', 'audience']
+    },
   ];
 
   const categories = [
@@ -236,7 +248,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     {
       id: 'support',
       label: 'Emergency & Chat',
-      items: ['emergency_inbox', 'fact_shield', 'operator_chat', 'support_queries', 'citizen_conversations']
+      items: ['sos_reports', 'emergency_inbox', 'fact_shield', 'operator_chat', 'support_queries', 'citizen_conversations']
     },
     {
       id: 'governance',
@@ -307,7 +319,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
                 fontSize: '0.68rem',
                 fontWeight: '900',
                 textTransform: 'uppercase',
-                color: 'var(--text-primary)',
+                color: 'hsl(var(--text-primary))',
                 letterSpacing: '0.08em',
                 display: 'flex',
                 alignItems: 'center',

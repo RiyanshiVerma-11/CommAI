@@ -234,6 +234,15 @@ graph TD
 - **Service Worker Caching & Network Failover**: Registers a custom Workbox service worker that caches essential static assets (`.js`, `.css`, `.html`, logos) to allow the app shell to load instantly, providing offline UI feedback when there is no internet connection.
 - **Auto-Update Lifecycle**: Automatic service worker registry update flow, ensuring operators are always running the latest governance, compliance, and campaign tools.
 
+### 10. 🚨 Distress Signals & Incident Triage (SOS)
+- **Anonymous Incident Reporting**: A guest-accessible public distress portal allowing citizens to submit real-time emergency reports containing coordinates (lat/lng), landmark location names, incident titles, hazard types (fire, flood, medical, roadblock), and distress descriptions.
+- **Operator Incident Panel**: A unified control-room triage console for operators and admins featuring live ticket status tracking and operator feedback replies.
+- **Incident State Machine**: Enforces a strict operational resolution lifecycle (`reported` → `acknowledged` → `resolved`) with persistent updates.
+
+### 11. ⚙️ Zero-Config LAN Portability & Resilient API Parsing
+- **Zero-Config LAN Testing**: Automatic dynamic backend address routing that replaces loopback `localhost` and `127.0.0.1` references with the client's current browser hostname. This lets developers test mobile notifications, responsive layouts, and audio synthesis on physical mobile devices over local Wi-Fi without modifying `.env` configs.
+- **Fail-Safe API Error Handling**: Safe text-buffered response parsing replacing all fragile client-side `.json()` calls on verification screens, ensuring empty responses or gateway failures show the exact HTTP status codes rather than browser-level JSON parser crashes.
+
 ---
 
 ## 🖼️ Interactive Visual Tour & Screenshots

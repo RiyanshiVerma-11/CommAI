@@ -24,6 +24,8 @@ class SettingsUpdateSchema(BaseModel):
     CALLMEBOT_DEFAULT_APIKEY: Optional[str] = ""
     DEFAULT_COUNTRY_CODE: Optional[str] = "91"
     GROQ_API_KEY: Optional[str] = ""
+    OPENAI_API_KEY: Optional[str] = ""
+    ANTHROPIC_API_KEY: Optional[str] = ""
     TELEGRAM_BOT_TOKEN: Optional[str] = ""
     TELEGRAM_CHAT_ID: Optional[str] = ""
     FCM_SERVICE_ACCOUNT_JSON: Optional[str] = ""
@@ -57,6 +59,8 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
         "CALLMEBOT_DEFAULT_APIKEY": "****************" if settings.CALLMEBOT_DEFAULT_APIKEY else "",
         "DEFAULT_COUNTRY_CODE": settings.DEFAULT_COUNTRY_CODE,
         "GROQ_API_KEY": "****************" if settings.GROQ_API_KEY else "",
+        "OPENAI_API_KEY": "****************" if settings.OPENAI_API_KEY else "",
+        "ANTHROPIC_API_KEY": "****************" if settings.ANTHROPIC_API_KEY else "",
         "TELEGRAM_BOT_TOKEN": "****************" if settings.TELEGRAM_BOT_TOKEN else "",
         "TELEGRAM_CHAT_ID": settings.TELEGRAM_CHAT_ID,
         "FCM_SERVICE_ACCOUNT_JSON": "****************" if settings.FCM_SERVICE_ACCOUNT_JSON else "",
@@ -68,6 +72,8 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
         "is_smtp_configured": bool(settings.SMTP_EMAIL and settings.SMTP_APP_PASSWORD),
         "is_whatsapp_configured": bool(settings.CALLMEBOT_DEFAULT_APIKEY),
         "is_groq_configured": bool(settings.GROQ_API_KEY),
+        "is_openai_configured": bool(settings.OPENAI_API_KEY),
+        "is_anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
         "is_telegram_configured": bool(settings.TELEGRAM_BOT_TOKEN),
         "is_fcm_configured": is_fcm_configured()
     }
@@ -93,6 +99,16 @@ def update_settings(
         update_data["GROQ_API_KEY"] = settings_in.GROQ_API_KEY
     elif settings_in.GROQ_API_KEY == "":
         update_data["GROQ_API_KEY"] = ""
+
+    if settings_in.OPENAI_API_KEY and settings_in.OPENAI_API_KEY != "****************":
+        update_data["OPENAI_API_KEY"] = settings_in.OPENAI_API_KEY
+    elif settings_in.OPENAI_API_KEY == "":
+        update_data["OPENAI_API_KEY"] = ""
+
+    if settings_in.ANTHROPIC_API_KEY and settings_in.ANTHROPIC_API_KEY != "****************":
+        update_data["ANTHROPIC_API_KEY"] = settings_in.ANTHROPIC_API_KEY
+    elif settings_in.ANTHROPIC_API_KEY == "":
+        update_data["ANTHROPIC_API_KEY"] = ""
 
     if settings_in.TELEGRAM_BOT_TOKEN and settings_in.TELEGRAM_BOT_TOKEN != "****************":
         update_data["TELEGRAM_BOT_TOKEN"] = settings_in.TELEGRAM_BOT_TOKEN
@@ -348,3 +364,36 @@ def remove_from_blacklist(
     db.delete(entry)
     db.commit()
     return {"message": "Removed from blacklist successfully", "id": id}
+
+
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/export/excel")
+def download_database_excel(current_user = Depends(require_manager_or_higher)):
+    """Generates and downloads a formatted Excel spreadsheet audit log of all database tables."""
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    db_path = os.path.join(backend_dir, "comm_platform.db")
+    output_path = os.path.join(backend_dir, "database_export.xlsx")
+    
+    from export_database_to_excel import export_excel
+    success = export_excel(db_path, output_path)
+    if not success or not os.path.exists(output_path):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to compile Excel database export.")
+        
+    return FileResponse(output_path, filename="database_export.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@router.get("/export/word")
+def download_database_word(current_user = Depends(require_manager_or_higher)):
+    """Generates and downloads a corporate styled Word audit and compliance report."""
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    db_path = os.path.join(backend_dir, "comm_platform.db")
+    output_path = os.path.join(backend_dir, "database_export.docx")
+    
+    from export_database_to_word import export_word
+    success = export_word(db_path, output_path)
+    if not success or not os.path.exists(output_path):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to compile Word database report.")
+        
+    return FileResponse(output_path, filename="database_export.docx", media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")

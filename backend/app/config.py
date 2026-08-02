@@ -55,6 +55,12 @@ class Settings:
     # --- Google Gemini API Key ---
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
+    # --- OpenAI API Key ---
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
+    # --- Anthropic API Key ---
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
     # --- Country Code for Phone Numbers ---
     DEFAULT_COUNTRY_CODE: str = os.getenv("DEFAULT_COUNTRY_CODE", "91")  # India
 
@@ -115,6 +121,8 @@ class Settings:
                 self.GROQ_API_KEY = data.get("GROQ_API_KEY") or self.GROQ_API_KEY
                 self.GROQ_API_KEY_SECONDARY = data.get("GROQ_API_KEY_SECONDARY") or self.GROQ_API_KEY_SECONDARY
                 self.GEMINI_API_KEY = data.get("GEMINI_API_KEY") or self.GEMINI_API_KEY
+                self.OPENAI_API_KEY = data.get("OPENAI_API_KEY") or self.OPENAI_API_KEY
+                self.ANTHROPIC_API_KEY = data.get("ANTHROPIC_API_KEY") or self.ANTHROPIC_API_KEY
                 self.DEFAULT_COUNTRY_CODE = data.get("DEFAULT_COUNTRY_CODE") or self.DEFAULT_COUNTRY_CODE
                 self.BACKEND_URL = data.get("BACKEND_URL") or self.BACKEND_URL
                 

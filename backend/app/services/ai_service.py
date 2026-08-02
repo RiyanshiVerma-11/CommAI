@@ -181,38 +181,11 @@ MODEL_LIST = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it",
 
 
 def _call_groq(system_prompt: str, user_content: str, temperature: float = 0.3, max_tokens: int = 2500) -> str | None:
-    """Send a chat completion request to Groq, with multi-model automatic fallback."""
-    if not settings.GROQ_API_KEY:
-        logger.warning("[AI] Groq API Key is not set.")
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    
-    for model_name in MODEL_LIST:
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-
-        try:
-            resp = requests.post(GROQ_URL, headers=headers, json=payload, timeout=25)
-            if resp.status_code == 200:
-                text = resp.json()["choices"][0]["message"]["content"].strip()
-                return _clean_output(text)
-            else:
-                logger.warning(f"[AI] Model {model_name} returned {resp.status_code}. Trying next fallback model...")
-        except Exception as e:
-            logger.warning(f"[AI] Exception calling Groq model {model_name}: {e}")
-
-    logger.error("[AI] All Groq fallback models failed.")
+    """Delegates to the unified multi-provider AI model router."""
+    from app.services.ai_provider import call_llm
+    res = call_llm(system_prompt, user_content, temperature, max_tokens)
+    if res:
+        return _clean_output(res)
     return None
 
 
@@ -1150,36 +1123,25 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
     user_content = f"Manager Name/Role: {display_name} ({user_role})\nActive Context: {json.dumps(active_context) if active_context else 'None'}\nSpoken Command: \"{prompt}\""
 
     result_json = None
-    if settings.GROQ_API_KEY:
-        try:
-            resp = requests.post(
-                GROQ_URL,
-                json={
-                    "model": MODEL_PRIMARY,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
-                    ],
-                    "temperature": 0.0,
-                    "max_tokens": 1200,
-                    "response_format": {"type": "json_object"}
-                },
-                headers={
-                    "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                timeout=25
-            )
-            if resp.status_code == 200:
-                raw_text = resp.json()["choices"][0]["message"]["content"].strip()
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.MULTILINE)
-                raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
-                parsed_val = json.loads(raw_text)
-                # Strict validation check
-                validated_obj = VoiceCommandResponse.model_validate(parsed_val)
-                result_json = validated_obj.model_dump()
-        except Exception as e:
-            logger.warning(f"[Voice AI] Groq voice command parsing or validation failed: {e}")
+    try:
+        from app.services.ai_provider import call_llm
+        raw_text = call_llm(
+            system_prompt=system_prompt,
+            user_content=user_content,
+            temperature=0.0,
+            max_tokens=1200,
+            response_format={"type": "json_object"}
+        )
+        if raw_text:
+            raw_text = raw_text.strip()
+            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.MULTILINE)
+            raw_text = re.sub(r"\s*```$", "", raw_text, flags=re.MULTILINE)
+            parsed_val = json.loads(raw_text)
+            # Strict validation check
+            validated_obj = VoiceCommandResponse.model_validate(parsed_val)
+            result_json = validated_obj.model_dump()
+    except Exception as e:
+        logger.warning(f"[Voice AI] Unified AI router voice command parsing or validation failed: {e}")
 
     # Fallback heuristic parser if AI API fails or is offline
     if not result_json:

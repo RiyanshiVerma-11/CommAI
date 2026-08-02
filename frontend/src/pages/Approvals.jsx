@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 
 const Approvals = ({ user, backendUrl, headers }) => {
+  const isAdmin = user?.role === 'admin';
+  const [activeReviewTab, setActiveReviewTab] = useState(isAdmin ? 'maker_checker' : 'citizen_proposals');
   const [pendingCampaigns, setPendingCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCamp, setSelectedCamp] = useState(null);
@@ -22,8 +24,10 @@ const Approvals = ({ user, backendUrl, headers }) => {
       const response = await fetch(`${backendUrl}/api/campaigns`, { headers });
       if (!response.ok) throw new Error('Failed to load campaigns');
       const data = await response.json();
-      // Filter only pending_approval campaigns
-      const pending = data.filter(c => c.status === 'pending_approval');
+      
+      // Filter campaigns based on active review tab selection
+      const targetStatus = activeReviewTab === 'maker_checker' ? 'pending_approval' : 'pending_review';
+      const pending = data.filter(c => c.status === targetStatus);
       setPendingCampaigns(pending);
       
       // Auto-select first if none selected, or keep selected if still exists
@@ -46,7 +50,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, headers, selectedCamp]);
+  }, [backendUrl, headers, selectedCamp, activeReviewTab]);
 
   const fetchSegmentsAndTemplates = useCallback(async () => {
     try {
@@ -94,24 +98,34 @@ const Approvals = ({ user, backendUrl, headers }) => {
 
   const handleApprove = async () => {
     if (!selectedCamp) return;
-    if (!window.confirm(`Approve campaign "${selectedCamp.title}" for delivery/scheduling?`)) return;
+    if (!window.confirm(`Approve campaign "${selectedCamp.title}"?`)) return;
 
     setActionLoading(true);
     setActionError('');
     setActionSuccess('');
 
     try {
-      const response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/approve`, {
-        method: 'POST',
-        headers
-      });
+      let response;
+      if (activeReviewTab === 'maker_checker') {
+        response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/approve`, {
+          method: 'POST',
+          headers
+        });
+      } else {
+        response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/review`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'approve', remark: reviewNote.trim() || 'Approved by operator' })
+        });
+      }
 
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || 'Approval failed');
       }
 
-      setActionSuccess('Campaign approved successfully!');
+      setActionSuccess(activeReviewTab === 'maker_checker' ? 'Campaign approved successfully!' : 'Citizen campaign proposal approved and moved to draft.');
+      setReviewNote('');
       fetchPendingCampaigns();
     } catch (err) {
       setActionError(err.message);
@@ -127,25 +141,35 @@ const Approvals = ({ user, backendUrl, headers }) => {
       return;
     }
 
-    if (!window.confirm(`Reject campaign "${selectedCamp.title}" and return it to draft status?`)) return;
+    if (!window.confirm(`Reject campaign "${selectedCamp.title}"?`)) return;
 
     setActionLoading(true);
     setActionError('');
     setActionSuccess('');
 
     try {
-      const response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/reject`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reviewNote.trim() })
-      });
+      let response;
+      if (activeReviewTab === 'maker_checker') {
+        response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/reject`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reviewNote.trim() })
+        });
+      } else {
+        response = await fetch(`${backendUrl}/api/campaigns/${selectedCamp.id}/review`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reject', remark: reviewNote.trim() })
+        });
+      }
 
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || 'Rejection failed');
       }
 
-      setActionSuccess('Campaign rejected and returned to draft.');
+      setActionSuccess(activeReviewTab === 'maker_checker' ? 'Campaign rejected and returned to draft.' : 'Citizen campaign proposal rejected.');
+      setReviewNote('');
       fetchPendingCampaigns();
     } catch (err) {
       setActionError(err.message);
@@ -175,7 +199,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
     if (!selectedCamp) return null;
 
     let originalSubject = "N/A";
-    let originalBody = "N/A (Write Custom Message option selected)";
+    let originalBody = selectedCamp.description || selectedCamp.objective || "N/A";
     
     if (selectedCamp.template_id) {
       const origTpl = templates.find(t => t.id === selectedCamp.template_id);
@@ -282,7 +306,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
     <div className="animate-fade-in" style={{ padding: '8px 4px', paddingBottom: '32px' }}>
       {/* Page Header Description */}
       <div style={{ marginBottom: '24px' }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '4px 0 0', lineHeight: 1.5 }}>
+        <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.88rem', margin: '4px 0 0', lineHeight: 1.5 }}>
           <strong>Maker-Checker Compliance Desk:</strong> Under standard government communications protocol, high-severity outreach and emergency alerts require dual-authorization. A campaign manager (Maker) drafts the campaign, and a system administrator (Checker) must audit target size, estimated costs, template diffs, and compliance history here before approving broadcast.
         </p>
       </div>
@@ -293,8 +317,32 @@ const Approvals = ({ user, backendUrl, headers }) => {
         <div style={{ flex: '1', maxWidth: '320px', minWidth: '280px' }}>
           <GlassCard style={{ padding: '16px', height: '100%', minHeight: '600px' }}>
             <h3 style={{ fontSize: '1.1rem', margin: '0 0 16px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', fontWeight: 700 }}>
-              Pending Inbox ({pendingCampaigns.length})
+              Approvals Inbox ({pendingCampaigns.length})
             </h3>
+            {isAdmin && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <button
+                  className={`btn ${activeReviewTab === 'maker_checker' ? 'btn-primary' : 'btn-dark'}`}
+                  style={{ flex: 1, fontSize: '0.74rem', padding: '6px 4px', fontWeight: 'bold' }}
+                  onClick={() => {
+                    setActiveReviewTab('maker_checker');
+                    setSelectedCamp(null);
+                  }}
+                >
+                  Maker-Checker
+                </button>
+                <button
+                  className={`btn ${activeReviewTab === 'citizen_proposals' ? 'btn-primary' : 'btn-dark'}`}
+                  style={{ flex: 1, fontSize: '0.74rem', padding: '6px 4px', fontWeight: 'bold' }}
+                  onClick={() => {
+                    setActiveReviewTab('citizen_proposals');
+                    setSelectedCamp(null);
+                  }}
+                >
+                  Citizen Proposals
+                </button>
+              </div>
+            )}
             {loading && pendingCampaigns.length === 0 ? (
               <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.9rem', textAlign: 'center', marginTop: '24px' }}>Scanning approvals...</p>
             ) : pendingCampaigns.length === 0 ? (
@@ -343,8 +391,8 @@ const Approvals = ({ user, backendUrl, headers }) => {
               <GlassCard style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px' }}>
                   <div>
-                    <span className="badge" style={{ background: 'hsl(35, 92%, 50%)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px' }}>
-                      Requires Administrator Verification
+                    <span className="badge" style={{ background: activeReviewTab === 'maker_checker' ? 'hsl(35, 92%, 50%)' : 'hsl(142, 70%, 45%)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px' }}>
+                      {activeReviewTab === 'maker_checker' ? 'Requires Administrator Verification' : 'Citizen Propose Campaign Review'}
                     </span>
                     <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '8px 0 4px 0' }}>{selectedCamp.title}</h2>
                     <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.9rem', margin: 0 }}>{selectedCamp.description || 'No description supplied.'}</p>
@@ -449,10 +497,10 @@ const Approvals = ({ user, backendUrl, headers }) => {
           ) : (
             <GlassCard style={{ padding: '32px', minHeight: '600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px', color: 'hsl(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   🔒 Maker-Checker Compliance Protocol
                 </h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
                   CommAI enforces dual-authorization (Maker-Checker mechanism) for high-impact communication. This dashboard ensures that all outgoing alerts are verified, cross-checked, and compliant with safety guidelines.
                 </p>
               </div>
@@ -462,7 +510,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>✍️</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>1. The Maker (Creator)</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     An operator or campaign manager sets target segments, chooses dispatch templates, and writes custom override messages. They submit it for approval.
                   </p>
                 </div>
@@ -470,7 +518,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>🔎</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>2. The Checker (Auditor)</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     The system administrator audits the proposed modifications, checks estimated transmission costs, examines diff maps, and looks for compliance risks.
                   </p>
                 </div>
@@ -478,7 +526,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>⚖️</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>3. Approval or Rejection</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     If safe, click <strong>Approve for Broadcast</strong> to queue delivery. If details are incorrect, enter review comments and click <strong>Reject Campaign</strong> to return it to draft.
                   </p>
                 </div>
@@ -486,7 +534,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>📝</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>4. Audit Trails</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     Every approval action, rejection reason, and campaign status transition is immutable and stored in database logs for full accountability.
                   </p>
                 </div>

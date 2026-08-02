@@ -478,8 +478,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   ];
   const aiCategories = ["emergency", "awareness", "education", "announcement"];
 
-  const fetchCampaigns = useCallback(async () => {
-    setLoading(true);
+  const fetchCampaigns = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await fetch(`${backendUrl}/api/campaigns`, { headers });
       if (!response.ok) throw new Error('Failed to load campaigns');
@@ -488,7 +488,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [backendUrl, headers]);
 
@@ -518,9 +518,9 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   useEffect(() => {
     if (viewMode === 'list') {
-      fetchCampaigns();
+      fetchCampaigns(false);
       const intervalId = setInterval(() => {
-        fetchCampaigns();
+        fetchCampaigns(true);
       }, 8000);
       return () => clearInterval(intervalId);
     } else {
@@ -1511,6 +1511,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         return <span className="badge" style={{ background: 'hsl(271, 76%, 53%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Scheduled</span>;
       case 'pending_approval':
         return <span className="badge" style={{ background: 'hsl(35, 92%, 50%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Pending Approval</span>;
+      case 'pending_review':
+        return <span className="badge" style={{ background: 'hsl(27, 90%, 55%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Pending Review</span>;
       case 'cancelled':
         return <span className="badge" style={{ background: 'hsl(0, 0%, 40%)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 'bold' }}>Cancelled</span>;
       default:
@@ -1520,7 +1522,8 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   const filteredCampaigns = campaigns.filter(c => {
     if (listTab === 'all') return true;
-    if (listTab === 'ongoing') return c.status === 'active' || c.status === 'scheduled' || c.status === 'pending_approval';
+    if (listTab === 'ongoing') return c.status === 'active' || c.status === 'scheduled';
+    if (listTab === 'pending') return c.status === 'pending_approval' || c.status === 'pending_review';
     if (listTab === 'past') return c.status === 'completed';
     if (listTab === 'drafts') return c.status === 'draft';
     if (listTab === 'cancelled') return c.status === 'cancelled';
@@ -1535,10 +1538,26 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
         </div>
         <div>
           {viewMode === 'list' ? (
-            <button className="btn btn-primary" onClick={() => { setEditingCampId(null); setViewMode('create'); }}>
-              <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Plan New Campaign
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                type="button"
+                className="btn btn-dark" 
+                onClick={() => fetchCampaigns(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Manually refresh campaigns database"
+              >
+                🔄 Refresh
+              </button>
+              <button 
+                type="button"
+                className="btn btn-primary" 
+                onClick={() => { setEditingCampId(null); setViewMode('create'); }} 
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Plan New Campaign
+              </button>
+            </div>
           ) : (
             <button className="btn btn-dark" onClick={() => setViewMode('list')}>
               Cancel Wizard
@@ -1563,7 +1582,14 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
               style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={() => setListTab('ongoing')}
             >
-              🔄 Ongoing ({campaigns.filter(c => c.status === 'active' || c.status === 'scheduled' || c.status === 'pending_approval').length})
+              🔄 Ongoing ({campaigns.filter(c => c.status === 'active' || c.status === 'scheduled').length})
+            </button>
+            <button 
+              className={`btn ${listTab === 'pending' ? 'btn-primary' : 'btn-dark'}`}
+              style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setListTab('pending')}
+            >
+              ⏳ Pending Approvals ({campaigns.filter(c => c.status === 'pending_approval' || c.status === 'pending_review').length})
             </button>
             <button 
               className={`btn ${listTab === 'past' ? 'btn-primary' : 'btn-dark'}`}
@@ -1602,13 +1628,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                 <table className="custom-table">
                   <thead>
                     <tr>
-                      <th>Campaign Info</th>
-                      <th>Audience Metrics</th>
-                      <th>Channels</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th>Created At</th>
-                      <th>Actions</th>
+                      <th style={{ width: '40%', minWidth: '240px' }}>Campaign Info</th>
+                      <th style={{ width: '12%', minWidth: '120px' }}>Audience Metrics</th>
+                      <th style={{ width: '10%', minWidth: '100px' }}>Channels</th>
+                      <th style={{ width: '12%', minWidth: '120px' }}>Type</th>
+                      <th style={{ width: '10%', minWidth: '110px' }}>Status</th>
+                      <th style={{ width: '10%', minWidth: '100px' }}>Created At</th>
+                      <th style={{ width: '6%', minWidth: '80px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1616,8 +1642,18 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                       <tr key={camp.id} style={{ position: 'relative', overflow: 'visible' }}>
                         <td style={{ position: 'relative', overflow: 'visible' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                            <strong style={{ fontSize: '1.05rem', color: 'hsl(var(--primary))' }}>{camp.title}</strong>
-                            <span style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', marginBottom: '4px' }}>{camp.objective}</span>
+                            <strong 
+                              title={camp.description || camp.objective}
+                              style={{ 
+                                fontSize: '0.94rem', 
+                                color: 'hsl(var(--text-primary))', 
+                                cursor: 'help',
+                                marginBottom: '6px',
+                                display: 'inline-block'
+                              }}
+                            >
+                              {camp.title}
+                            </strong>
                             <VoiceBulletinPlayer
                               text={`${camp.title}. ${camp.description || camp.objective || ''}`}
                               campaignId={camp.id}
@@ -1628,7 +1664,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                           </div>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem' }}>
                             <span>Target: <strong>{camp.target_audience_count}</strong></span>
                             <span style={{ color: 'hsl(var(--text-muted))' }}>Est. Reach: {camp.estimated_reach}</span>
                           </div>
@@ -1636,17 +1672,17 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         <td>
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                             {camp.channel_preferences.map(ch => (
-                              <span key={ch} style={{ fontSize: '0.8rem', padding: '2px 8px', background: 'var(--border-color-glass)', borderRadius: '100px', textTransform: 'uppercase', color: 'hsl(var(--text-secondary))' }}>
+                              <span key={ch} style={{ fontSize: '0.72rem', padding: '2px 8px', background: 'var(--border-color-glass)', borderRadius: '100px', textTransform: 'uppercase', color: 'hsl(var(--text-secondary))' }}>
                                 {ch}
                               </span>
                             ))}
                           </div>
                         </td>
                         <td>
-                          <span style={{ fontSize: '0.9rem' }}>{getCampaignTypeLabel(camp.campaign_type)}</span>
+                          <span style={{ fontSize: '0.8rem' }}>{getCampaignTypeLabel(camp.campaign_type)}</span>
                         </td>
                         <td>{getStatusBadge(camp.status)}</td>
-                        <td style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
+                        <td style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))' }}>
                           {camp.status === 'scheduled' && camp.scheduled_at ? (
                             <div>
                               <span style={{ fontSize: '0.72rem', display: 'block', color: 'hsl(var(--primary))', fontWeight: 'bold' }}>⏰ Scheduled (IST):</span>
@@ -1962,7 +1998,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                               title="Select Voice Speech Language"
                               style={{
                                 background: 'rgba(255,255,255,0.08)',
-                                color: 'var(--text-primary)',
+                                color: 'hsl(var(--text-primary))',
                                 border: '1px solid var(--border-color-glass)',
                                 borderRadius: '8px',
                                 padding: '3px 8px',

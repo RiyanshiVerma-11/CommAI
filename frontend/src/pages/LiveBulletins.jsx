@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
 

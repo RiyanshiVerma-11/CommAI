@@ -127,11 +127,16 @@ class Campaign(Base):
     failed_count = Column(Integer, default=0, nullable=False)
     dispatched_at = Column(DateTime, nullable=True)
     
+    # Review details for citizen-submitted campaigns
+    reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    review_remark = Column(Text, nullable=True)
+    
     # Relationships
     segment = relationship("Segment", back_populates="campaigns")
     template = relationship("Template", back_populates="campaigns")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_campaigns")
     updater = relationship("User", foreign_keys=[updated_by], back_populates="updated_campaigns")
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
     audit_logs = relationship("AuditLog", back_populates="campaign", cascade="all, delete-orphan")
     delivery_logs = relationship("DeliveryLog", back_populates="campaign", cascade="all, delete-orphan")
     feedback = relationship("CampaignFeedback", back_populates="campaign", cascade="all, delete-orphan")
@@ -307,6 +312,32 @@ class RumorFlag(Base):
 
     # Relationships
     campaign = relationship("Campaign")
+
+
+class SOSReport(Base):
+    __tablename__ = "sos_reports"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    title = Column(String(100), nullable=False)
+    description = Column(Text, nullable=False)
+    report_type = Column(String(50), nullable=False)  # hazard, medical, fire, accident, other
+    status = Column(String(50), default="reported", nullable=False)  # reported, acknowledged, resolved
+    latitude = Column(String(30), nullable=True)
+    longitude = Column(String(30), nullable=True)
+    location_name = Column(String(255), nullable=True)
+    reporter_name = Column(String(100), nullable=True)
+    reporter_phone = Column(String(20), nullable=True)
+    reporter_email = Column(String(255), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    staff_reply = Column(Text, nullable=True)
+    replied_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    replied_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationships
+    reporter = relationship("User", foreign_keys=[created_by])
+    replier = relationship("User", foreign_keys=[replied_by])
 
 
 

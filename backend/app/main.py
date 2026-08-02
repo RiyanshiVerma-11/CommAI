@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 from app.config import settings
 from app.database import engine, Base, get_db, SessionLocal
-from app.models import User, Audience, Segment, Template, Campaign, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery, RumorFlag
+from app.models import User, Audience, Segment, Template, Campaign, AuditLog, DeliveryLog, Blacklist, CampaignFeedback, EmergencyContact, SupportQuery, CitizenMessage, Poster, OperatorMessage, RumorFlag, SOSReport
 from app.auth import get_password_hash, require_any_authenticated, require_manager_or_higher
 from jose import JWTError, jwt
 from app.routes import auth, audience, template, campaign, settings as settings_router, translate, queries as queries_router, fact_shield
@@ -20,6 +20,7 @@ from app.routes import sentiment_map as sentiment_map_router
 from app.routes import webhook as webhook_router
 from app.routes import operator_chat
 from app.routes import voice as voice_router
+from app.routes import sos as sos_router
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from app.services.websocket_manager import bulletin_manager
@@ -70,6 +71,13 @@ def add_missing_columns():
         for col, col_type in [("target_audience_ids", "TEXT"), ("target_segment_id", "VARCHAR(36)")]:
             try:
                 conn.execute(text(f"ALTER TABLE posters ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
+
+        # Add reviewer columns to campaigns table if missing
+        for col, col_type in [("reviewer_id", "VARCHAR(36)"), ("review_remark", "TEXT")]:
+            try:
+                conn.execute(text(f"ALTER TABLE campaigns ADD COLUMN {col} {col_type}"))
             except Exception:
                 pass
 
@@ -183,6 +191,7 @@ api_router.include_router(sentiment_map_router.router)
 api_router.include_router(webhook_router.router)
 api_router.include_router(operator_chat.router)
 api_router.include_router(voice_router.router)
+api_router.include_router(sos_router.router)
 
 app.mount("/static/audio_cache", StaticFiles(directory=CACHE_DIR), name="audio_cache")
 
@@ -288,6 +297,7 @@ def get_dashboard_stats(
     # Aggregates
     total_audiences = db.query(Audience).filter(Audience.is_deleted == False).count()
     active_audiences = db.query(Audience).filter(Audience.is_deleted == False, Audience.is_active == True).count()
+    total_managers = db.query(User).filter(User.role.in_(['campaign_manager', 'admin']), User.is_deleted == False, User.is_active == True).count()
     total_segments = db.query(Segment).count()
     draft_campaigns = db.query(Campaign).filter(Campaign.is_deleted == False, Campaign.status == "draft").count()
     total_campaigns = db.query(Campaign).filter(Campaign.is_deleted == False).count()
@@ -352,9 +362,10 @@ def get_dashboard_stats(
                 language_counts[lang_name] = {"reach": 0, "delivered": 0}
             language_counts[lang_name]["reach"] += 1
 
+    audience_map = {aud.id: aud for aud in all_audiences}
     logs_with_aud = db.query(DeliveryLog).filter(DeliveryLog.status.in_(["sent", "delivered", "read"])).all()
     for log in logs_with_aud:
-        aud = db.query(Audience).filter(Audience.id == log.audience_id).first()
+        aud = audience_map.get(log.audience_id)
         if aud:
             langs = []
             if aud.preferred_languages:
@@ -391,6 +402,7 @@ def get_dashboard_stats(
     return {
         "total_audiences": total_audiences,
         "active_audiences": active_audiences,
+        "total_managers": total_managers,
         "total_segments": total_segments,
         "draft_campaigns": draft_campaigns,
         "total_campaigns": total_campaigns,

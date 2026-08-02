@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import { createPortal } from 'react-dom';
 
 const INDIC_LANGUAGES = [
   { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
@@ -56,10 +56,10 @@ const VoiceBulletinPlayer = ({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1.0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
 
   const audioRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -67,43 +67,22 @@ const VoiceBulletinPlayer = ({
 
   const userHasPickedLang = useRef(false);
 
+  const filteredLanguages = INDIC_LANGUAGES.filter(
+    lang =>
+      lang.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lang.native.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lang.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   useEffect(() => {
     if (!userHasPickedLang.current) {
       setSelectedLang(getInitialLanguage());
     }
   }, [userPreferredLang]);
 
-  const updateDropdownPosition = () => {
-    if (dropdownRef.current) {
-      const rect = dropdownRef.current.getBoundingClientRect();
-      const width = 320;
-      let left = rect.right - width;
-      if (left < 10) left = 10;
-      if (left + width > window.innerWidth - 10) left = window.innerWidth - width - 10;
-      let top = rect.bottom + 6;
-      setDropdownCoords({ top, left });
-    }
-  };
-
-  useEffect(() => {
-    if (dropdownOpen) {
-      updateDropdownPosition();
-      window.addEventListener('resize', updateDropdownPosition);
-      window.addEventListener('scroll', updateDropdownPosition, true);
-    }
-    return () => {
-      window.removeEventListener('resize', updateDropdownPosition);
-      window.removeEventListener('scroll', updateDropdownPosition, true);
-    };
-  }, [dropdownOpen]);
-
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        dropdownRef.current && 
-        !dropdownRef.current.contains(e.target) &&
-        !e.target.closest?.('.voice-lang-portal-modal')
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
     };
@@ -284,42 +263,14 @@ const VoiceBulletinPlayer = ({
     }
   };
 
-  const formatTime = (sec) => {
-    if (!sec || isNaN(sec) || !isFinite(sec)) return '0:00';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  const filteredLanguages = INDIC_LANGUAGES.filter(
-    l => l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.native.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="voice-player-wrapper" style={{ marginTop: '10px', marginBottom: '10px', position: 'relative', zIndex: dropdownOpen ? 99999 : 'auto' }}>
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleAudioTimeUpdate}
-        onLoadedMetadata={handleAudioLoadedMetadata}
-        onDurationChange={handleAudioLoadedMetadata}
-        onCanPlay={handleAudioLoadedMetadata}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => {
-          if (audioRef.current && !audioRef.current.seeking) {
-            setIsPlaying(false);
-          }
-        }}
-        onError={() => stopAllAudio()}
-        onEnded={stopAllAudio}
-      />
-
-      {/* Main Glass Player Bar */}
+  const renderPlayerContent = () => {
+    return (
       <div style={{
         background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.88) 100%)',
         backdropFilter: 'blur(16px)',
         border: '1px solid rgba(255, 255, 255, 0.16)',
-        borderRadius: compact ? '14px' : '18px',
-        padding: compact ? '10px 14px' : '14px 18px',
+        borderRadius: '14px',
+        padding: '14px 18px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
         position: 'relative',
         zIndex: dropdownOpen ? 99999 : 1
@@ -327,17 +278,15 @@ const VoiceBulletinPlayer = ({
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           
-          {/* Left Group: Circular Play Button + Label */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             
-            {/* HERO PLAY/PAUSE CIRCULAR BUTTON */}
             <button
               onClick={() => handlePlayVoice(selectedLang)}
               disabled={loading}
               title={isPlaying ? "Pause voice bulletin" : `Listen bulletin in ${selectedLang.name}`}
               style={{
-                width: compact ? '36px' : '42px',
-                height: compact ? '36px' : '42px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '50%',
                 border: 'none',
                 background: isPlaying 
@@ -371,10 +320,9 @@ const VoiceBulletinPlayer = ({
               )}
             </button>
 
-            {/* Title & Badge */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, fontSize: compact ? '0.88rem' : '0.96rem', color: '#f8fafc' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.94rem', color: '#f8fafc' }}>
                   🔊 Listen Bulletin
                 </span>
                 {isPlaying && (
@@ -398,15 +346,11 @@ const VoiceBulletinPlayer = ({
 
           </div>
 
-          {/* Right Group: Language Selector Pill + Speed Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', position: 'relative' }} ref={dropdownRef}>
             
-            {/* LANGUAGE SELECTOR PILL BUTTON */}
             <button
-              onClick={() => {
-                setDropdownOpen(!dropdownOpen);
-                updateDropdownPosition();
-              }}
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -422,16 +366,12 @@ const VoiceBulletinPlayer = ({
                 transition: 'all 0.2s ease',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = dropdownOpen ? 'rgba(99, 102, 241, 0.35)' : 'rgba(255, 255, 255, 0.08)'}
             >
               <span>{selectedLang.flag}</span>
               <span>{selectedLang.name} ({selectedLang.native})</span>
               <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700 }}>▼ Select Language</span>
             </button>
 
-
-            {/* SPEED CONTROLS PILL */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -443,17 +383,18 @@ const VoiceBulletinPlayer = ({
               {[0.75, 1.0, 1.25].map((s) => (
                 <button
                   key={s}
+                  type="button"
                   onClick={() => handleSpeedChange(s)}
                   style={{
                     padding: '3px 8px',
                     fontSize: '0.72rem',
                     fontWeight: 700,
-                    borderRadius: '14px',
+                    borderRadius: '16px',
                     border: 'none',
-                    background: speed === s ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent',
+                    background: speed === s ? '#6366f1' : 'transparent',
                     color: speed === s ? '#ffffff' : '#94a3b8',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   {s}x
@@ -461,110 +402,87 @@ const VoiceBulletinPlayer = ({
               ))}
             </div>
 
-            {/* LANGUAGE SELECTION POPOVER PORTAL */}
-            {dropdownOpen && ReactDOM.createPortal(
-              <div
-                className="voice-lang-portal-modal"
+            {dropdownOpen && (
+              <div 
                 style={{
-                  position: 'fixed',
-                  top: `${dropdownCoords.top}px`,
-                  left: `${dropdownCoords.left}px`,
-                  zIndex: 99999999,
-                  width: '320px',
-                  background: '#0f172a',
-                  border: '1.5px solid #6366f1',
-                  borderRadius: '16px',
-                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(99, 102, 241, 0.5)',
-                  padding: '14px',
-                  backdropFilter: 'blur(24px)',
-                  animation: 'animate-slide-up 0.2s ease-out'
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '6px',
+                  width: '300px',
+                  maxHeight: '280px',
+                  background: 'rgba(15, 23, 42, 0.98)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+                  padding: '12px',
+                  zIndex: 9999999,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🌐 Select Any Language (23)
-                  </span>
-                  <button
-                    onClick={() => setDropdownOpen(false)}
-                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Search Bar */}
                 <input
                   type="text"
-                  placeholder="Search 23 Indic languages..."
+                  placeholder="Search 22 official languages..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: 'rgba(255, 255, 255, 0.05)',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
                     color: '#ffffff',
-                    fontSize: '0.82rem',
-                    marginBottom: '10px',
+                    fontSize: '0.8rem',
                     outline: 'none'
                   }}
                 />
 
-                {/* 23 Languages Grid */}
-                <div style={{
-                  maxHeight: '220px',
-                  overflowY: 'auto',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px'
-                }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {filteredLanguages.map((lang) => {
-                    const isSelected = selectedLang.code === lang.code;
+                    const isLangSelected = selectedLang.code === lang.code;
                     return (
                       <button
                         key={lang.code}
-                        onClick={() => handlePlayVoice(lang)}
+                        type="button"
+                        onClick={() => {
+                          handlePlayVoice(lang);
+                          setDropdownOpen(false);
+                        }}
                         style={{
+                          width: '100%',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          padding: '7px 10px',
-                          borderRadius: '8px',
-                          border: isSelected ? '1px solid #818cf8' : '1px solid transparent',
-                          background: isSelected ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.03)',
-                          color: isSelected ? '#818cf8' : '#cbd5e1',
-                          fontSize: '0.78rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          cursor: 'pointer',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: isLangSelected ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                          color: isLangSelected ? '#818cf8' : '#e2e8f0',
+                          fontSize: '0.8rem',
                           textAlign: 'left',
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                          cursor: 'pointer',
+                          fontWeight: isLangSelected ? 700 : 500,
+                          transition: 'all 0.1s ease'
                         }}
                       >
                         <span style={{ fontSize: '1rem' }}>{lang.flag}</span>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <div>{lang.name}</div>
-                          <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{lang.native}</div>
+                          <div>{lang.name} ({lang.native})</div>
                         </div>
                       </button>
                     );
                   })}
                 </div>
-              </div>,
-              document.body
+              </div>
             )}
-
           </div>
-
         </div>
 
-        {/* SPOKEN SCRIPT BANNER & EQUALIZER */}
         {(translatedText || text) && (
           <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <div style={{
@@ -583,7 +501,6 @@ const VoiceBulletinPlayer = ({
               lineHeight: '1.5',
               letterSpacing: '0.01em'
             }}>
-              {/* Equalizer Animation */}
               {isPlaying && (
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '16px', flexShrink: 0 }}>
                   {[1, 2, 3, 4, 5].map((i) => (
@@ -600,7 +517,7 @@ const VoiceBulletinPlayer = ({
                   ))}
                 </div>
               )}
-              <div>
+              <div style={{ overflowWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                 📖 <strong>Spoken Speech ({selectedLang.native || selectedLang.name}):</strong> <span style={{ fontWeight: 800, color: '#f8fafc' }}>"{translatedText || text}"</span>
               </div>
             </div>
@@ -608,6 +525,112 @@ const VoiceBulletinPlayer = ({
         )}
 
       </div>
+    );
+  };
+
+  return (
+    <div className="voice-player-wrapper" style={{ display: 'inline-block', position: 'relative' }}>
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleAudioTimeUpdate}
+        onLoadedMetadata={handleAudioLoadedMetadata}
+        onDurationChange={handleAudioLoadedMetadata}
+        onCanPlay={handleAudioLoadedMetadata}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => {
+          if (audioRef.current && !audioRef.current.seeking) {
+            setIsPlaying(false);
+          }
+        }}
+        onError={() => stopAllAudio()}
+        onEnded={stopAllAudio}
+      />
+
+      {compact ? (
+        <>
+          <button
+            onClick={() => setShowPlayerModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              background: isPlaying ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.12)',
+              border: isPlaying ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid rgba(99, 102, 241, 0.35)',
+              color: isPlaying ? '#ff4d4d' : '#818cf8',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isPlaying ? 'rgba(239, 68, 68, 0.25)' : 'rgba(99, 102, 241, 0.22)';
+              e.currentTarget.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isPlaying ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.12)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <span>{isPlaying ? '⏸ Playing' : '▶️ Listen Bulletin'}</span>
+          </button>
+
+          {showPlayerModal && createPortal(
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999999,
+              padding: '20px'
+            }} onClick={() => {
+              setShowPlayerModal(false);
+              setDropdownOpen(false);
+            }}>
+              <div style={{
+                width: '100%',
+                maxWidth: '600px',
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.96) 100%)',
+                borderRadius: '18px',
+                border: '1.5px solid rgba(255, 255, 255, 0.18)',
+                padding: '20px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.65)',
+                position: 'relative'
+              }} onClick={(e) => e.stopPropagation()}>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🔊 Indic AI Voice Bulletin Player
+                  </h4>
+                  <button 
+                    onClick={() => {
+                      setShowPlayerModal(false);
+                      setDropdownOpen(false);
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                {renderPlayerContent()}
+
+              </div>
+            </div>,
+            document.body
+          )}
+        </>
+      ) : (
+        renderPlayerContent()
+      )}
     </div>
   );
 };

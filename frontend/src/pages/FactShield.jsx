@@ -235,7 +235,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
       {/* Upper header summary */}
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '4px 0 0' }}>
+          <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.88rem', margin: '4px 0 0' }}>
             Identify crisis-related fake news spreading in the community, auto-verify with RAG databases, and push containment updates.
           </p>
         </div>
@@ -327,7 +327,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                 borderRadius: '8px',
                 border: '1px solid rgba(255,255,255,0.08)',
                 background: 'rgba(255,255,255,0.04)',
-                color: 'var(--text-primary)',
+                color: 'hsl(var(--text-primary))',
                 fontSize: '0.88rem'
               }}
             />
@@ -351,9 +351,9 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
         {/* Left Side: Rumors list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '700px', overflowY: 'auto' }}>
           {loading && rumors.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Checking rumor database...</div>
+            <div style={{ textAlign: 'center', padding: '40px', color: 'hsl(var(--text-muted))' }}>Checking rumor database...</div>
           ) : rumors.length === 0 ? (
-            <div className="glass-card" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div className="glass-card" style={{ padding: '32px', textAlign: 'center', color: 'hsl(var(--text-muted))' }}>
               No rumors flagged in this category.
             </div>
           ) : (
@@ -381,15 +381,15 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                   </div>
                 </div>
 
-                <h4 style={{ margin: '0 0 6px', fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <h4 style={{ margin: '0 0 6px', fontSize: '0.92rem', fontWeight: 600, color: 'hsl(var(--text-primary))' }}>
                   {r.claim_summary}
                 </h4>
 
-                <p style={{ margin: '0 0 10px', fontSize: '0.82rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
+                <p style={{ margin: '0 0 10px', fontSize: '0.82rem', color: 'hsl(var(--text-muted))', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
                   "{r.suspected_rumor_text}"
                 </p>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'hsl(var(--text-muted))' }}>
                   <span>
                     📍 {r.city || r.district || 'Unspecified'}
                   </span>
@@ -442,7 +442,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                     borderRadius: '8px',
                     background: 'rgba(244, 63, 94, 0.04)',
                     border: '1px solid rgba(244, 63, 94, 0.15)',
-                    color: 'var(--text-primary)',
+                    color: 'hsl(var(--text-primary))',
                     fontSize: '0.88rem',
                     lineHeight: 1.5,
                     fontStyle: 'italic',
@@ -466,7 +466,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                       borderRadius: '8px',
                       background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.08)',
-                      color: 'var(--text-primary)',
+                      color: 'hsl(var(--text-primary))',
                       fontSize: '0.88rem',
                       lineHeight: 1.5,
                       minHeight: '120px',
@@ -479,12 +479,12 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
 
               {/* Geotargeting parameters */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '8px' }}>
                   📍 Geofencing & Broadcast Containment Scope
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>City / Pincode</label>
+                    <label style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '4px' }}>City / Pincode</label>
                     <input
                       type="text"
                       value={editedCity}
@@ -496,14 +496,14 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                         borderRadius: '6px',
                         border: '1px solid rgba(255,255,255,0.08)',
                         background: 'rgba(255,255,255,0.02)',
-                        color: 'var(--text-primary)',
+                        color: 'hsl(var(--text-primary))',
                         fontSize: '0.85rem'
                       }}
                       placeholder="e.g. Sector 5"
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>District</label>
+                    <label style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '4px' }}>District</label>
                     <input
                       type="text"
                       value={editedDistrict}
@@ -515,14 +515,14 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                         borderRadius: '6px',
                         border: '1px solid rgba(255,255,255,0.08)',
                         background: 'rgba(255,255,255,0.02)',
-                        color: 'var(--text-primary)',
+                        color: 'hsl(var(--text-primary))',
                         fontSize: '0.85rem'
                       }}
                       placeholder="e.g. Pune"
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>State</label>
+                    <label style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '4px' }}>State</label>
                     <input
                       type="text"
                       value={editedState}
@@ -534,7 +534,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                         borderRadius: '6px',
                         border: '1px solid rgba(255,255,255,0.08)',
                         background: 'rgba(255,255,255,0.02)',
-                        color: 'var(--text-primary)',
+                        color: 'hsl(var(--text-primary))',
                         fontSize: '0.85rem'
                       }}
                       placeholder="e.g. Maharashtra"
@@ -545,7 +545,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
 
               {/* Channels preference checkbox */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', display: 'block', marginBottom: '8px' }}>
                   📡 Broadcast Channels
                 </label>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -635,10 +635,10 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
           ) : (
             <GlassCard style={{ padding: '32px', minHeight: '550px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px', color: 'hsl(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   🛡️ AI Fact Shield Command Room
                 </h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
                   A localized rumor containment center. AI monitors community channels, cross-references unverified notifications with official guides, and prepares instant broadcasts.
                 </p>
               </div>
@@ -648,7 +648,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>🚨</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>1. Monitor Claims</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     View panic reports flagged in incoming SMS/WhatsApp channels. Higher flame icons denote viral claims.
                   </p>
                 </div>
@@ -656,7 +656,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>🤖</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>2. Verify with RAG</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     AI verifies claims by scanning official circulars, documents, and FAQs. It automatically drafts the refutation text.
                   </p>
                 </div>
@@ -664,7 +664,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>📍</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>3. Geofence Affected Zone</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     Select targeted locations (City, District, State) to restrict warnings to affected areas and prevent widespread panic.
                   </p>
                 </div>
@@ -672,7 +672,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                 <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>📡</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>4. Multi-Channel Push</h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
                     Publish and broadcast verified alerts instantly to targeted citizens via WhatsApp, Telegram, SMS, and Email.
                   </p>
                 </div>

@@ -107,29 +107,9 @@ const FEATURES = [
     ),
     accent: '#8b5cf6', bg: '#f3e8ff',
     title: 'Jarvis AI Voice Cockpit',
-    desc: 'Hands-free voice assistant. Control campaign creation, send staff messages, issue state emergency alerts, and audit approvals using natural speech commands and "Hey Jarvis" wake word.',
-    badge: 'KILLER FEATURE 🔥',
+    desc: 'Hands-free voice assistant. Control campaign creation, target segments, send staff messages, issue state emergency alerts, and audit approvals using natural speech and "Hey Jarvis" wake word.',
+    badge: 'FLAGSHIP 🔥',
     isKiller: true,
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-      </svg>
-    ),
-    accent: '#06b6d4', bg: '#ecfeff',
-    title: 'Campaign Feedback Portal',
-    desc: 'Empower audience members to rate broadcasts and submit comments. Provides campaign managers with sentiment analytics and dashboards.',
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
-      </svg>
-    ),
-    accent: '#7c3aed', bg: '#f5f3ff',
-    title: 'Dynamic Segments',
-    desc: 'Build multi-criteria filters with AND/OR logic. Member counts recalculate live with demographic charts.',
   },
   {
     icon: (
@@ -138,72 +118,126 @@ const FEATURES = [
       </svg>
     ),
     accent: '#dc2626', bg: '#fef2f2',
-    title: 'Maker-Checker Workflows',
-    desc: 'Emergency alerts or large campaigns automatically escalate to pending_approval, requiring strict admin checks.',
+    title: 'AI Fact Shield',
+    desc: 'Misinformation defense hub. Monitor social rumors, perform vector database lookups, generate automated fact-checking campaigns, and route them to the approvals queue.',
+    badge: 'NEW 🛡️',
   },
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
-    ),
-    accent: '#16a34a', bg: '#f0fdf4',
-    title: '4-Step Campaign Wizard',
-    desc: 'Choose segment → pick channels → bind template → review reach. Estimates delivery costs in real time.',
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
       </svg>
     ),
     accent: '#0891b2', bg: '#ecfeff',
-    title: 'Diagnostics & Safety Caps',
-    desc: 'Run connection handshakes for SMTP/Groq/WhatsApp and configure daily rate limits and suppression blacklists.',
+    title: 'AI Poster Studio',
+    desc: 'Visual campaign generation. Compose public warning flyers, banners, and infographics in any regional language with dark/light themes and instant custom typography canvas overlays.',
+    badge: 'CREATIVE 🎨',
   },
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        <circle cx="12" cy="10" r="3"/>
+        <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/>
       </svg>
     ),
-    accent: '#d97706', bg: '#fffbeb',
-    title: 'Full Audit Trail & Logs',
-    desc: 'Record every create, update, delete, and state change. Export delivery records and audit logs to CSV.',
+    accent: '#eab308', bg: '#fef9c3',
+    title: 'Geospatial Sentiment Map',
+    desc: 'Geographical telemetry. Track public sentiment metrics and emergency reports dynamically across states and districts on an interactive visual heat map.',
+    badge: 'ANALYTICS 🗺️',
   },
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
     ),
     accent: '#ef4444', bg: '#fef2f2',
-    title: 'Emergency Inbox & AI Replies',
-    desc: 'Monitor incoming citizen emergency requests. Filter by urgency and use AI to automatically draft contextual, professional responses.',
+    title: 'Distress SOS Signals',
+    desc: 'Real-time incident triage. Citizens can report localized hazards (fire, medical, flood) with live GPS coordinates, landmarks, and photos for instant dispatch resolution.',
+    badge: 'CRITICAL 🚨',
   },
   {
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-5.1 7-11V5l-7-3-7 3v5c0 5.9 7 11 7 11z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+    ),
+    accent: '#10b981', bg: '#ecfdf5',
+    title: 'NL Segment Builder',
+    desc: 'Natural language target segmentation. Construct dynamic recipient lists (e.g. "Farmers in Pune district speaking Marathi") using plain conversational English text.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>
+    ),
+    accent: '#3b82f6', bg: '#eff6ff',
+    title: 'PWA Mobile Standalone',
+    desc: 'Offline-ready standalone application. Fully PWA-compliant with service worker static caching, automatic updates, and lag-free native-feel transition performance.',
+    badge: 'PWA 📱',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    ),
+    accent: '#ec4899', bg: '#fdf2f8',
+    title: 'RAG AI Help Desk',
+    desc: 'Knowledge-base retrieval assistant. Direct citizen queries fetch context from uploaded government manuals and advisory documents to draft prompt, verified answers.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+    accent: '#3b82f6', bg: '#eff6ff',
+    title: 'Inter-Operator Staff Chat',
+    desc: 'Real-time operational collaboration. Active operators can coordinate mass broadcasts in a shared WebSocket room, featuring customizable channels and voice alerts.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    ),
+    accent: '#6366f1', bg: '#e0e7ff',
+    title: 'Zero-Config LAN Testing',
+    desc: 'Zero-configuration regional testing. Developers can run diagnostics and test notification templates on physical mobile devices over local Wi-Fi without ENV changes.',
+  },
+  {
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 11l2 2 4-4"/>
+      </svg>
+    ),
     accent: '#ef4444', bg: '#fef2f2',
-    title: 'State Emergency Broadcasts',
-    desc: 'Managers and admins can launch a direct, state-targeted emergency alert from the Geographic Sentiment Map.',
+    title: 'Four-Eye Governance Queue',
+    desc: 'Rigid maker-checker broadcast rules. Any campaign exceeding 100 targets or marked as an Emergency escalates to checker validation before dispatch.',
   },
   {
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>,
-    accent: '#7c3aed', bg: '#f5f3ff',
-    title: 'Live Citizen Alert Centre',
-    desc: 'Critical alerts trigger a real-time dashboard chime and popup, then remain available in each citizen’s Emergency Alerts tab.',
-  },
-  {
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>,
-    accent: '#0891b2', bg: '#ecfeff',
-    title: 'AI Emergency Flyers',
-    desc: 'Generate an urgent visual background and persistent flyer for the selected audience while keeping the message actionable.',
-  },
-  {
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H4z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>,
-    accent: '#16a34a', bg: '#f0fdf4',
-    title: 'Four Emergency Channels',
-    desc: 'Deliver through Email, WhatsApp, SMS, and Push while connected citizens see the dashboard alert immediately.',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h16v12H4z"/><path d="M8 20h8"/><path d="M12 16v4"/>
+      </svg>
+    ),
+    accent: '#10b981', bg: '#ecfdf5',
+    title: 'Omnichannel Mass Dispatch',
+    desc: 'Simultaneous, high-delivery message broadcasting across SMS, WhatsApp, Email (with CID attachments), Telegram, and Push notifications.',
   },
 ];
 
@@ -214,8 +248,20 @@ const ROLES = [
     badge: '#7c3aed',
     badgeBg: '#f5f3ff',
     borderActive: '#c4b5fd',
-    desc: 'Platform gatekeeper. Controls settings, diagnostics and safety caps, approves queued campaigns, and can issue direct state emergency broadcasts.',
-    sees: ['Dashboard', 'Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs', 'User Directory', 'Integration Parameters'],
+    desc: 'Full-access superuser. Exercises final four-eye maker-checker approval authority, manages campaign managers, audits security logs, and configures integration diagnostics.',
+    sees: [
+      'All 19 Workspace Panels',
+      'Dashboard Overview & Live Bulletins',
+      'Campaigns, Templates & Poster Studio',
+      'Approvals Queue (Final Approval Authority)',
+      'Audience Segments & Directory',
+      'Emergency SOS Reports & Inbox',
+      'AI Fact Shield & Support Queries',
+      'Operator Staff Chat',
+      'Campaign Managers Directory (Admin Only)',
+      'Audit Trail Logs (Admin Only)',
+      'System Settings & Latency Diagnostics'
+    ],
     hidden: [],
   },
   {
@@ -225,9 +271,19 @@ const ROLES = [
     badgeBg: '#eff6ff',
     borderActive: '#93c5fd',
     highlighted: true,
-    desc: 'Core planner. Orchestrates campaigns and segments, and can issue a direct state emergency broadcast from the active Sentiment Map.',
-    sees: ['Dashboard', 'Audience & Segments', 'Templates Library', 'Campaign Planner Wizard', 'Audit Logs'],
-    hidden: ['User Directory', 'Integration Parameters'],
+    desc: 'Core workspace operator. Dictates templates, runs audience segmentation, drafts AI counter-campaigns, designs regional posters, monitors local SOS alerts, and collaborates with staff.',
+    sees: [
+      '17 Workspace Panels',
+      'Dashboard Overview & Live Bulletins',
+      'Campaigns, Templates & Poster Studio',
+      'Approvals Queue (View/Submit)',
+      'Audience Segments & Directory',
+      'Emergency SOS Reports & Inbox',
+      'AI Fact Shield & Support Queries',
+      'Operator Staff Chat',
+      'Settings & Preferences'
+    ],
+    hidden: [],
   },
   {
     emoji: '📣',
@@ -235,8 +291,14 @@ const ROLES = [
     badge: '#06b6d4',
     badgeBg: '#ecfeff',
     borderActive: '#a5f3fc',
-    desc: 'Public campaign recipient. Receives broadcasts, live critical alerts and persistent emergency flyers, configures language settings, and contacts officials for support.',
-    sees: ['Emergency Alerts centre', 'Live dashboard notifications', 'Feedback Log', 'Emergency Contact support', 'Profile Settings'],
+    desc: 'Public citizen user. Listens to regional voice bulletins, provides campaign feedback, submits distress SOS signals, and communicates with RAG-based AI chat assistants.',
+    sees: [
+      'Personal Dashboard Portal',
+      'Live Audio Bulletins',
+      'Campaign Feedback Logs',
+      'Citizen RAG Chat Support',
+      'Distress SOS Submissions'
+    ],
     hidden: [],
   },
 ];
@@ -680,7 +742,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
       )}
 
       {/* ══════════════════════ HERO ══════════════════════ */}
-      <section id="hero" className="landing-hero-section" style={{ maxWidth:1140, margin:'0 auto', padding:'110px 32px 80px', position:'relative' }}>
+      <section id="hero" className="landing-hero-section" style={{ maxWidth:1140, margin:'0 auto', padding:'80px 32px 80px', position:'relative' }}>
         {/* Hero background blobs */}
         <div style={{ position:'absolute', top:-60, left:-80, width:550, height:550, borderRadius:'50%', background:'radial-gradient(circle, rgba(76,78,243,0.14) 0%, transparent 70%)', pointerEvents:'none', zIndex:0 }}></div>
         <div style={{ position:'absolute', top:80, right:-100, width:450, height:450, borderRadius:'50%', background:'radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)', pointerEvents:'none', zIndex:0 }}></div>
@@ -762,7 +824,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           </div>
 
           {/* Right — dashboard preview card */}
-          <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:22, overflow:'hidden', boxShadow:'0 24px 70px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08)', position: 'relative', transform:'rotate(1.2deg)' }}>
+          <div style={{ background:T.white, border:`1px solid ${T.border}`, borderRadius:22, overflow:'hidden', boxShadow:'0 24px 70px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08)', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}></div>
             {/* Fake window chrome */}
             <div style={{ background: theme==='dark'?'rgba(255,255,255,0.01)':'#f8fafc', borderBottom:`1px solid ${T.border}`, padding:'14px 20px', display:'flex', alignItems:'center', gap:8 }}>
@@ -1550,14 +1612,6 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2 6 5 9 10 3" stroke={role.badge} strokeWidth="2.2" strokeLinecap="round"/></svg>
                     </div>
                     {item}
-                  </div>
-                ))}
-                {role.hidden.map(item => (
-                  <div key={item} style={{ display:'flex', alignItems:'center', gap:8, fontSize:'0.88rem', color:T.textMuted }}>
-                    <div style={{ width:18, height:18, borderRadius:'50%', background:T.bg, border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="8" height="8" viewBox="0 0 8 8"><line x1="2" y1="2" x2="6" y2="6" stroke={T.textMuted} strokeWidth="1.8" strokeLinecap="round"/><line x1="6" y1="2" x2="2" y2="6" stroke={T.textMuted} strokeWidth="1.8" strokeLinecap="round"/></svg>
-                    </div>
-                    <span style={{ textDecoration:'line-through', opacity:0.7 }}>{item}</span>
                   </div>
                 ))}
               </div>

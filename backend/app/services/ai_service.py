@@ -27,80 +27,73 @@ and Web Broadcasts.
 There are THREE user roles with different permissions and UI layouts:
 
 --- ROLE 1: Audience / Citizen ---
-Citizens have restricted access. They CANNOT create campaigns, templates, segments, or manage users.
+Citizens have restricted access. They CANNOT create campaigns, templates, segments, or manage operator directories.
 Their sidebar shows these sections:
 
   CORE DASHBOARD:
     • Dashboard ("Your Portal") — personal overview stats and quick links.
     • Live Bulletins — real-time emergency alert broadcast feed.
 
-  OUTREACH & INSIGHTS:
-    • Campaign Feedback — this is the MAIN page for citizen interaction. It has 3 sub-tabs:
-        1. "📬 Received Campaigns" — browse awareness/emergency campaigns sent to them. 
-           Click "Give Feedback" to rate (1-5 stars) and classify (helpful / confusing / not relevant).
-        2. "⭐ My Feedback History" — view and delete past feedback submissions.
-        3. "🚨 Emergency Support" — TWO panels:
-             LEFT: "Submit Urgent Request" form with Subject, Urgency Priority 
-                   (Normal / Urgent / Critical), and Detailed Message. Click "Send Emergency Message".
-             RIGHT: "My Support Requests" — track submitted requests and view official responses 
-                    from campaign managers.
+  AUDIENCE & INSIGHTS:
+    • Campaign Feedback — view received campaigns and provide feedback ratings/comments.
 
-  EMERGENCY & CHAT:
+  EMERGENCY OPERATIONS:
+    • SOS Reports — submit and track emergency incident alerts.
+
+  HELP DESK & CHAT:
     • Citizen RAG Chat — AI-powered chatbot for platform help and questions.
 
   PREFERENCES:
-    • Settings — edit profile, change password, view audience profile details.
+    • Settings — edit profile, change password, and customize channels/languages.
 
 --- ROLE 2: Campaign Manager ---
-Managers can create and manage campaigns, templates, audience segments, and respond to citizen queries.
+Managers can compose broadcasts, organize templates, build target segments, compile posters, and triage emergencies.
 Their sidebar shows these sections:
 
   CORE DASHBOARD:
     • Dashboard Overview — platform-wide metrics and stats.
     • Live Bulletins — real-time broadcast feed.
 
-  CAMPAIGN PLANNER:
-    • Campaign Planner — create campaigns (types: Emergency Alert, Awareness Drive, General Announcement).
-      Uses a step-by-step wizard: select template → choose audience/segment → configure channels → launch.
-    • Templates Library — create/edit message templates. Includes AI tools: Generate, Optimize, 
-      Personalize, Compliance Check, and multi-language translation.
-    • Poster Studio — AI-powered visual poster generation and distribution.
+  CAMPAIGNS & BROADCASTS:
+    • Campaign Planner — create and launch broadcasts (Emergency, Awareness, General) via a wizard.
+    • Templates Library — manage templates with built-in AI generators and translation tools.
+    • Approvals Queue — view pending approvals or checker reviews.
+    • Poster Studio — AI-powered visual flyer design canvas.
 
-  OUTREACH & INSIGHTS:
-    • Audience & Segments — view/create audience profiles and smart segments.
-    • Sentiment Map — geographic visualization of citizen feedback sentiment.
-    • Campaign Feedback — "📊 Feedback Sentiment Analytics" dashboard to view ratings/comments 
-      per campaign. Also has "🚨 Emergency Assistance Requests" tab to monitor/respond.
+  AUDIENCE & INSIGHTS:
+    • Audience & Segments — configure demographic targeting.
+    • Audience Directory — full list of registered audience users.
+    • Sentiment Map — district-level feedback sentiment visualization.
+    • Campaign Feedback — view citizen ratings and assistance queries.
 
-  EMERGENCY & CHAT:
-    • Emergency Inbox — dedicated page to monitor ALL citizen emergency requests. 
-      Managers can search, filter by status/urgency, reply with AI-drafted responses, 
-      and mark requests as acknowledged/resolved.
-    • Support Queries — dedicated page to answer citizen confusion/help queries. 
-      Managers can search, filter, generate AI draft replies, and resolve queries.
-    • Citizen RAG Chat — view AI-powered citizen conversation feed.
+  EMERGENCY OPERATIONS:
+    • SOS Reports — track hazard reports (medical, fire, flood) with GPS coordinates.
+    • Emergency Inbox — respond to citizen emergency messages with AI assistance.
+    • AI Fact Shield — monitor rumors, verify claims, and deploy counter-campaigns.
+
+  HELP DESK & CHAT:
+    • Citizen RAG Chat — inspect chatbot conversations.
+    • Support Queries — resolve customer help queries.
+    • Operator Staff Chat — coordinate with other operators in real-time WebSockets.
 
   PREFERENCES:
-    • Settings — SMTP email config, WhatsApp config, API keys, blacklist management, diagnostics.
+    • Settings — configure SMTP, WhatsApp APIs, diagnostics, and daily limits.
 
 --- ROLE 3: Admin ---
-Admins have full access to everything Campaign Managers have, PLUS:
+Admins have full access to all Campaign Manager panels, plus:
 
   SYSTEM GOVERNANCE:
-    • User Directory — manage all platform operator accounts.
     • Campaign Managers — manage campaign manager accounts.
-    • Audit Logs — complete operator activity trail.
-    • Approvals Queue — maker-checker approval workflow for campaigns.
+    • Audit Logs — complete activity logs with CSV exporting.
 
 === KEY NAVIGATION RULES ===
-• To submit an emergency request (Citizen): Go to "Campaign Feedback" in sidebar → click "🚨 Emergency Support" tab → fill the form on the left → click "Send Emergency Message".
-• To check emergency request status (Citizen): Same page → "My Support Requests" panel on the right.
-• To respond to emergencies (Manager/Admin): Go to "Emergency Inbox" in sidebar under "Emergency & Chat".
-• To respond to support queries (Manager/Admin): Go to "Support Queries" in sidebar under "Emergency & Chat".
-• To create a campaign (Manager/Admin): Go to "Campaign Planner" in sidebar → click "Create New Campaign".
-• To give feedback on a campaign (Citizen): Go to "Campaign Feedback" → "📬 Received Campaigns" tab → click "Give Feedback".
-• To use the chatbot (All roles): Go to "Citizen RAG Chat" in sidebar, or use the floating chat widget.
-• To view live alerts (All roles): Go to "Live Bulletins" in sidebar.
+• To submit an SOS / Incident Report (Citizen): Go to "SOS Reports" in the sidebar and fill the distress form.
+• To submit an emergency message (Citizen): Go to "Campaign Feedback" → "🚨 Emergency Support" tab.
+• To respond to emergencies (Manager/Admin): Go to "Emergency Inbox" in the sidebar under "Emergency Operations".
+• To respond to support queries (Manager/Admin): Go to "Support Queries" under "Help Desk & Chat".
+• To check rumors & fact checks (Manager/Admin): Go to "AI Fact Shield" under "Emergency Operations".
+• To run diagnostics (Manager/Admin): Go to "Settings" under "Preferences".
+• To view audit trails (Admin): Go to "Audit Logs" under "System Governance".
 """
 
 PLACEHOLDER_GUARD = (

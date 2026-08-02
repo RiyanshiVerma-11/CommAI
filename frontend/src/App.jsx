@@ -1084,22 +1084,24 @@ function App() {
       case 'dashboard': return { category: 'Core Dashboard', item: user?.role === 'audience' ? 'Your Portal' : 'Overview' };
       case 'live_bulletins': return { category: 'Core Dashboard', item: 'Live Bulletins' };
       
-      case 'campaigns': return { category: 'Campaign Planner', item: 'Wizard' };
-      case 'templates': return { category: 'Campaign Planner', item: 'Templates Library' };
-      case 'approvals': return { category: 'Campaign Planner', item: 'Approvals Queue' };
-      case 'poster_studio': return { category: 'Campaign Planner', item: 'Poster Studio' };
+      case 'campaigns': return { category: 'Campaigns & Broadcasts', item: 'Wizard' };
+      case 'templates': return { category: 'Campaigns & Broadcasts', item: 'Templates Library' };
+      case 'approvals': return { category: 'Campaigns & Broadcasts', item: 'Approvals Queue' };
+      case 'poster_studio': return { category: 'Campaigns & Broadcasts', item: 'Poster Studio' };
       
-      case 'audiences': return { category: 'Outreach & Insights', item: 'Audience & Segments' };
-      case 'sentiment_map': return { category: 'Outreach & Insights', item: 'Sentiment Alarms Map' };
-      case 'feedback': return { category: 'Outreach & Insights', item: 'Campaign Feedback' };
+      case 'audiences': return { category: 'Audience & Insights', item: 'Audience & Segments' };
+      case 'users': return { category: 'Audience & Insights', item: 'Audience Directory' };
+      case 'sentiment_map': return { category: 'Audience & Insights', item: 'Sentiment Alarms Map' };
+      case 'feedback': return { category: 'Audience & Insights', item: 'Campaign Feedback' };
       
-      case 'emergency_inbox': return { category: 'Emergency & Chat', item: 'Emergency Inbox' };
-      case 'fact_shield': return { category: 'Emergency & Chat', item: 'AI Fact Shield' };
-      case 'operator_chat': return { category: 'Emergency & Chat', item: 'Operator Staff Chat' };
-      case 'support_queries': return { category: 'Emergency & Chat', item: 'Support Queries Desk' };
-      case 'citizen_conversations': return { category: 'Emergency & Chat', item: 'Citizen Chat' };
+      case 'sos_reports': return { category: 'Emergency Operations', item: 'SOS Reports' };
+      case 'emergency_inbox': return { category: 'Emergency Operations', item: 'Emergency Inbox' };
+      case 'fact_shield': return { category: 'Emergency Operations', item: 'AI Fact Shield' };
       
-      case 'users': return { category: 'System Governance', item: 'Audience Directory' };
+      case 'operator_chat': return { category: 'Help Desk & Chat', item: 'Operator Staff Chat' };
+      case 'support_queries': return { category: 'Help Desk & Chat', item: 'Support Queries Desk' };
+      case 'citizen_conversations': return { category: 'Help Desk & Chat', item: 'Citizen Chat' };
+      
       case 'managers': return { category: 'System Governance', item: 'Managers Directory' };
       case 'audit_logs': return { category: 'System Governance', item: 'Audit Trail Logs' };
       
@@ -1468,6 +1470,7 @@ function App() {
         setActiveTab={setActiveTab}
         user={user}
         unreadNotifCount={totalUnreadNotifications}
+        emergencyCount={user?.role === 'audience' ? unreadRepliesCount : emergencyCount}
       />
       
       {liveAlert && (

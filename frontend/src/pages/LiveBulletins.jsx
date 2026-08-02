@@ -372,7 +372,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
                         animation: 'pulse 1s infinite'
                       }}></span>
                     )}
-                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: isCritical ? 'hsl(var(--danger))' : 'white' }}>
+                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: isCritical ? 'hsl(var(--danger))' : 'hsl(var(--text-primary))' }}>
                       {interpolateText(b.title)}
                     </h4>
                   </div>

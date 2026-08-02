@@ -271,6 +271,9 @@ a:hover {
   background: var(--bg-gradient-app);
   background-size: 180% 180%;
   animation: ambientBgMove 22s ease-in-out infinite;
+  /* Contain layout to prevent mobile overflow issues */
+  overflow: hidden;
+  position: relative;
 }
 
 @keyframes ambientBgMove {
@@ -293,12 +296,15 @@ a:hover {
   height: 100%;
   background: var(--sidebar-bg);
   backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-right: 1px solid var(--border-color-glass);
   box-shadow: 4px 0 30px rgba(99, 102, 241, 0.05);
   display: flex;
   flex-direction: column;
   padding: 30px 20px;
   z-index: 10;
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-logo {
@@ -479,6 +485,10 @@ a:hover {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-gradient-content);
+  /* Ensure main content always takes correct space and doesn't push header off */
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .header {
@@ -490,8 +500,13 @@ a:hover {
   border-bottom: 1px solid var(--border-color-glass);
   background: rgba(8, 10, 15, 0.45);
   backdrop-filter: blur(16px);
-  position: relative;
-  z-index: 9999;
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .light-theme .header {
@@ -2199,6 +2214,7 @@ input[type=range]::-webkit-slider-runnable-track {
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   z-index: 998;
   animation: fadeIn 0.28s ease;
 }
@@ -2210,14 +2226,16 @@ input[type=range]::-webkit-slider-runnable-track {
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 999;
-    margin-left: -270px;
-    /* Hidden offscreen */
+    z-index: 9999;
+    transform: translateX(-270px);
+    /* GPU-accelerated hidden offscreen */
     box-shadow: none;
+    height: 100%;
+    height: 100dvh;
   }
 
   .sidebar-mobile-open .sidebar {
-    margin-left: 0;
+    transform: translateX(0);
     box-shadow: var(--glass-shadow), 20px 0 50px rgba(0, 0, 0, 0.6);
   }
 
@@ -3868,3 +3886,44 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     transform: translateY(0);
   }
 }
+
+/* ============================================================
+   PERFORMANCE: Disable heavy animations on mobile for smooth PWA
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Stop the ambient gradient animation on mobile — saves GPU cycles */
+  .app-container {
+    animation: none !important;
+    background-size: 100% 100% !important;
+  }
+
+  /* Promote scroll container to its own GPU layer for silky smooth scrolling */
+  .view-container {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    will-change: scroll-position;
+  }
+
+  /* Reduce blur complexity on mobile for performance */
+  .glass-card {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .header {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+}
+
+/* Respect OS-level reduce-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .app-container {
+    animation: none !important;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

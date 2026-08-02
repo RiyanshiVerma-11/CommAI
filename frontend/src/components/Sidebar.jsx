@@ -217,7 +217,7 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     },
     {
       id: 'sos_reports',
-      label: '🚨 SOS Reports',
+      label: 'SOS Reports',
       icon: (
         <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -237,23 +237,28 @@ const Sidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarCollapsed: _s
     },
     {
       id: 'campaigns',
-      label: 'Campaign Planner',
+      label: 'Campaigns & Broadcasts',
       items: ['campaigns', 'templates', 'approvals', 'poster_studio']
     },
     {
       id: 'outreach',
-      label: 'Outreach & Insights',
-      items: ['audiences', 'sentiment_map', 'feedback']
+      label: 'Audience & Insights',
+      items: ['audiences', 'users', 'sentiment_map', 'feedback']
+    },
+    {
+      id: 'emergency',
+      label: 'Emergency Operations',
+      items: ['sos_reports', 'emergency_inbox', 'fact_shield']
     },
     {
       id: 'support',
-      label: 'Emergency & Chat',
-      items: ['sos_reports', 'emergency_inbox', 'fact_shield', 'operator_chat', 'support_queries', 'citizen_conversations']
+      label: 'Help Desk & Chat',
+      items: ['citizen_conversations', 'support_queries', 'operator_chat']
     },
     {
       id: 'governance',
       label: 'System Governance',
-      items: ['users', 'managers', 'audit_logs']
+      items: ['managers', 'audit_logs']
     },
     {
       id: 'settings',

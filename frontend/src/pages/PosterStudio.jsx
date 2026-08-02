@@ -702,7 +702,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '32px' }}>
         <div>
           <GlassCard style={{ padding: '24px' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '20px', color: 'hsl(var(--primary))' }}>
@@ -776,7 +776,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Category</label>
                   <select

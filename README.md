@@ -243,6 +243,11 @@ graph TD
 - **Zero-Config LAN Testing**: Automatic dynamic backend address routing that replaces loopback `localhost` and `127.0.0.1` references with the client's current browser hostname. This lets developers test mobile notifications, responsive layouts, and audio synthesis on physical mobile devices over local Wi-Fi without modifying `.env` configs.
 - **Fail-Safe API Error Handling**: Safe text-buffered response parsing replacing all fragile client-side `.json()` calls on verification screens, ensuring empty responses or gateway failures show the exact HTTP status codes rather than browser-level JSON parser crashes.
 
+### 12. 🛡️ AI Fact Shield & Rumor Neutralizer
+- **Proactive Rumor Detection & Fact-Checking**: Identifies and catalogs unverified community rumors, allowing operators to cross-reference claims against official verified data.
+- **AI Counter-Campaign Generator**: Instantly drafts authoritative, localized fact-check responses across 23 languages to combat misinformation.
+- **Integrated Maker-Checker Approvals**: Proposed fact-check campaigns automatically enter the secure Maker-Checker approval queue for four-eye administrator verification before public broadcast.
+
 ---
 
 ## 🖼️ Interactive Visual Tour & Screenshots

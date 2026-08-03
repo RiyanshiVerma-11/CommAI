@@ -970,9 +970,9 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                     borderRadius: '50%',
                     animation: 'spin 0.8s linear infinite'
                   }}></div>
-                  <div style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'hsl(var(--text-primary))' }}>
                     <strong>Synthesizing AI Poster... {loadingTimer}s</strong>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginTop: '2px' }}>
                       Querying xAI Grok / Pollinations AI & rasterizing web fonts...
                     </div>
                   </div>
@@ -1127,7 +1127,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                     width: '100%',
                     padding: '14px',
                     borderRadius: '10px',
-                    background: 'rgba(255,255,255,0.04)',
+                    background: 'var(--chatbot-msg-bg)',
                     border: '1px solid var(--border-color-glass)',
                     marginBottom: '16px',
                     fontSize: '0.8rem',
@@ -1341,7 +1341,8 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                   <div style={{
                     padding: '12px',
                     borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--chatbot-msg-bg)',
+                    color: 'hsl(var(--text-primary))',
                     fontSize: '0.75rem',
                     lineHeight: '1.4',
                     fontFamily: 'monospace',

@@ -25,6 +25,88 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
   const [regeneratingText, setRegeneratingText] = useState(false);
   const [error, setError] = useState('');
   const [posterTheme, setPosterTheme] = useState('dark');
+  const [loadingTimer, setLoadingTimer] = useState(0);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  const [showTemplateChoiceModal, setShowTemplateChoiceModal] = useState(false);
+  const [pendingTemplateData, setPendingTemplateData] = useState(null);
+
+  const applyTemplateReplace = (data) => {
+    setTitle(data.title || '');
+    setDescription(data.description || '');
+    setCategory(data.category || 'awareness');
+    if (data.tone) setTone(data.tone);
+    if (data.language) setLanguage(data.language);
+    setPosterUrl('');
+    setRawImageUrl('');
+    setPosterContent(null);
+    setPromptUsed('');
+    setPosterId(null);
+    setShowTemplateChoiceModal(false);
+    setPendingTemplateData(null);
+  };
+
+  const applyTemplateMerge = (data) => {
+    setTitle(prev => prev ? `${prev} • ${data.title}` : data.title);
+    setDescription(prev => prev ? `${prev}\n• ${data.description}` : data.description);
+    if (posterContent) {
+      setPosterContent(prev => ({
+        ...prev,
+        body_points: [...(prev.body_points || []), data.description]
+      }));
+    }
+    setShowTemplateChoiceModal(false);
+    setPendingTemplateData(null);
+  };
+
+  const handleSelectTemplateOrCampaign = (data) => {
+    if (title.trim() || description.trim() || posterContent) {
+      setPendingTemplateData(data);
+      setShowTemplateChoiceModal(true);
+    } else {
+      applyTemplateReplace(data);
+    }
+  };
+
+  // Restore draft prompt from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('commai_poster_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.title && !title) setTitle(parsed.title);
+        if (parsed.description && !description) setDescription(parsed.description);
+        if (parsed.category) setCategory(parsed.category);
+        if (parsed.tone) setTone(parsed.tone);
+        if (parsed.language) setLanguage(parsed.language);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Save prompt draft to localStorage whenever form inputs change
+  useEffect(() => {
+    if (title || description) {
+      try {
+        localStorage.setItem('commai_poster_draft', JSON.stringify({
+          title, description, category, tone, language
+        }));
+      } catch (e) {}
+    }
+  }, [title, description, category, tone, language]);
+
+  // Generation timer effect
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      setLoadingTimer(0);
+      interval = setInterval(() => {
+        setLoadingTimer(prev => prev + 1);
+      }, 1000);
+    } else {
+      setLoadingTimer(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const [campaignsList, setCampaignsList] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
@@ -169,30 +251,15 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
 
   const handleCampaignSelect = (campId) => {
     setSelectedCampaignId(campId);
-    
-    // Clear previously generated poster data so we do not show stale visuals
-    setPosterUrl('');
-    setRawImageUrl('');
-    setPosterContent(null);
-    setPromptUsed('');
-    setPosterId(null);
-    setIsFallback(false);
-    setError('');
-
-    if (!campId) {
-      setTitle('');
-      setDescription('');
-      return;
-    }
+    if (!campId) return;
     const selected = campaignsList.find(c => c.id === campId);
     if (selected) {
-      setTitle(selected.title || '');
-      setDescription(selected.custom_body || selected.description || selected.objective || '');
-      if (selected.campaign_type === 'emergency_alert') {
-        setCategory('emergency');
-      } else {
-        setCategory('awareness');
-      }
+      const data = {
+        title: selected.title || '',
+        description: selected.custom_body || selected.description || selected.objective || '',
+        category: selected.campaign_type === 'emergency_alert' ? 'emergency' : 'awareness'
+      };
+      handleSelectTemplateOrCampaign(data);
     }
   };
 
@@ -248,8 +315,25 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
    * CORE: Composite translated text onto the AI-generated text-free background
    * using Canvas with proper Noto Sans font rendering for all Indian scripts.
    */
-  const compositeTextOnPoster = useCallback((imageUrl, content, lang, cat, theme = 'dark') => {
-    return new Promise((resolve) => {
+   const compositeTextOnPoster = useCallback((imageUrl, content, lang, cat, theme = 'dark') => {
+    return new Promise(async (resolve) => {
+      const fontFamily = getFontFamily(lang);
+
+      // Preload target web font faces before canvas rendering to prevent font glitching or metric overlapping
+      try {
+        if (document.fonts) {
+          await Promise.all([
+            document.fonts.load(`400 20px "${fontFamily}"`),
+            document.fonts.load(`600 22px "${fontFamily}"`),
+            document.fonts.load(`700 20px "${fontFamily}"`),
+            document.fonts.load(`900 42px "${fontFamily}"`)
+          ]);
+          await document.fonts.ready;
+        }
+      } catch (e) {
+        console.warn('Font load warning before canvas composite:', e);
+      }
+
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = imageUrl;
@@ -261,7 +345,6 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
         canvas.width = W;
         canvas.height = H;
         const ctx = canvas.getContext('2d');
-        const fontFamily = getFontFamily(lang);
         const rtl = isRTL(lang);
         const colors = categoryColors[cat] || categoryColors.awareness;
         const isDark = theme === 'dark';
@@ -869,9 +952,68 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                 </div>
               </div>
 
+              {loading && (
+                <div className="animate-fade-in" style={{
+                  marginTop: '12px',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  background: 'rgba(139, 92, 246, 0.12)',
+                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <div style={{
+                    width: '20px', height: '20px',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderTopColor: '#8b5cf6',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                  }}></div>
+                  <div style={{ fontSize: '0.85rem', color: '#e2e8f0' }}>
+                    <strong>Synthesizing AI Poster... {loadingTimer}s</strong>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                      Querying xAI Grok / Pollinations AI & rasterizing web fonts...
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {error && (
-                <div style={{ color: 'hsl(var(--danger))', fontSize: '0.8rem', marginTop: '8px' }}>
-                  {error}
+                <div style={{
+                  marginTop: '10px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#fca5a5',
+                  fontSize: '0.82rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', fontWeight: '700' }}>
+                    <span>⚠️</span>
+                    <span>Generation Failed / Timed Out</span>
+                  </div>
+                  <div>{error}</div>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    style={{
+                      marginTop: '8px',
+                      padding: '6px 12px',
+                      fontSize: '0.78rem',
+                      borderRadius: '6px',
+                      background: '#ef4444',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    🔄 Retry AI Generation (Preserving Prompt Draft)
+                  </button>
                 </div>
               )}
 
@@ -891,7 +1033,7 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                   transition: 'opacity 0.2s',
                 }}
               >
-                {loading ? 'Synthesizing Poster...' : '🎨 Generate Flyer / Infographic'}
+                {loading ? `Synthesizing Poster (${loadingTimer}s)...` : '🎨 Generate Flyer / Infographic'}
               </button>
             </form>
           </GlassCard>
@@ -1534,6 +1676,52 @@ const PosterStudio = ({ user, backendUrl, headers, autofillPosterData, setAutofi
                 Close
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Template Application Choice Modal */}
+        {showTemplateChoiceModal && pendingTemplateData && (
+          <div className="modal-overlay" style={{ zIndex: 1100, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+            <GlassCard className="modal-content animate-fade-in" style={{ width: '90%', maxWidth: '520px', padding: '24px', background: 'rgba(18, 24, 38, 0.95)', border: '1px solid rgba(0, 212, 255, 0.3)' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 12px 0', color: '#00e5ff' }}>
+                🎨 Apply Template to Poster Workspace
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+                You already have active content in your workspace (<strong>"{title || 'Untitled Workspace'}"</strong>). How would you like to apply <strong>"{pendingTemplateData.title}"</strong>?
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => applyTemplateMerge(pendingTemplateData)}
+                  style={{ padding: '12px 16px', textTransform: 'none', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981' }}
+                >
+                  <span style={{ fontSize: '1.2rem' }}>➕</span>
+                  <div style={{ textAlign: 'left' }}>
+                    <div>Merge & Append Template Layers</div>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>Keeps existing background image & title, appending template details.</div>
+                  </div>
+                </button>
+
+                <button
+                  className="btn btn-danger"
+                  onClick={() => applyTemplateReplace(pendingTemplateData)}
+                  style={{ padding: '12px 16px', textTransform: 'none', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}
+                >
+                  <span style={{ fontSize: '1.2rem' }}>🔄</span>
+                  <div style={{ textAlign: 'left' }}>
+                    <div>Replace Workspace Canvas</div>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>Resets current canvas layers and applies template defaults.</div>
+                  </div>
+                </button>
+              </div>
+
+              <div style={{ marginTop: '16px', textAlign: 'right' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => { setShowTemplateChoiceModal(false); setPendingTemplateData(null); }}>
+                  Cancel
+                </button>
+              </div>
+            </GlassCard>
           </div>
         )}
       </div>

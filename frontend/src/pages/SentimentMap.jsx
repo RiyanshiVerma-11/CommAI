@@ -263,6 +263,10 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
 
   useEffect(() => {
     fetchData();
+    const intervalId = setInterval(() => {
+      fetchData();
+    }, 10000);
+    return () => clearInterval(intervalId);
   }, [fetchData]);
 
   // Map initialization and updates
@@ -438,9 +442,9 @@ const SentimentMap = ({ user, backendUrl, headers, setActiveTab, setAutofillPost
         <GlassCard style={{ padding: '16px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', padding: '0 8px' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'hsl(var(--text-primary))' }}>India Real-time Emergency Clusters</h3>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="dot" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'hsl(var(--accent))', display: 'inline-block' }}></span>
-              Live Sentiment Feeds
+            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '3px 10px', borderRadius: '12px', fontWeight: '600' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+              ⚡ Live Geo-Sync Active (10s)
             </span>
           </div>
 

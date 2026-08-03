@@ -614,7 +614,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '1.2rem' }}>🎙️</span>
-              <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Jarvis AI Voice Cockpit
               </span>
             </div>
@@ -623,14 +623,14 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                 setShowMicBanner(false);
                 sessionStorage.setItem('jarvis_mic_notice_shown', 'true');
               }}
-              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '0.9rem' }}
             >
               ✕
             </button>
           </div>
 
-          <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-            Make sure your <strong>microphone permission is allowed</strong> in the browser to use <strong>Jarvis AI</strong> hands-free (say <em>"Hey Jarvis"</em> anytime)!
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#ffffff', lineHeight: '1.5' }}>
+            Make sure your <strong style={{ color: '#ffffff', fontWeight: 700 }}>microphone permission is allowed</strong> in the browser to use <strong style={{ color: '#ffffff', fontWeight: 700 }}>Jarvis AI</strong> hands-free (say <em style={{ color: '#ffffff' }}>"Hey Jarvis"</em> anytime)!
           </p>
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
@@ -675,9 +675,9 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
               style={{
                 padding: '8px 12px',
                 borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: '#94a3b8',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 fontWeight: 600,
                 fontSize: '0.78rem',
                 cursor: 'pointer'

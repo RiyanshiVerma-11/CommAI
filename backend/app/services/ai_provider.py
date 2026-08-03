@@ -14,29 +14,33 @@ def call_llm(
 ) -> str | None:
     """
     Unified multi-provider AI model router.
-    Attempts generation across Google Gemini, Groq, OpenAI, and Anthropic
+    Attempts generation across xAI Grok, Groq (Primary & Secondary), Google Gemini, OpenAI, and Anthropic
     based on configured environment variables.
     Returns generated content string or None if all providers fail.
     """
     providers = []
     
-    # 1. Groq (Primary)
+    # 1. Grok (xAI Primary)
+    if getattr(settings, "GROK_API_KEY", None):
+        providers.append(("Grok", _call_grok_api))
+
+    # 2. Groq (Primary)
     if getattr(settings, "GROQ_API_KEY", None):
         providers.append(("Groq", _call_groq_api))
         
-    # 2. Groq-Secondary (Fallback)
+    # 3. Groq-Secondary (Fallback)
     if getattr(settings, "GROQ_API_KEY_SECONDARY", None):
         providers.append(("Groq-Secondary", _call_groq_secondary_api))
 
-    # 3. Google Gemini
+    # 4. Google Gemini
     if getattr(settings, "GEMINI_API_KEY", None):
         providers.append(("Gemini", _call_gemini_api))
         
-    # 4. OpenAI
+    # 5. OpenAI
     if getattr(settings, "OPENAI_API_KEY", None):
         providers.append(("OpenAI", _call_openai_api))
         
-    # 5. Anthropic
+    # 6. Anthropic
     if getattr(settings, "ANTHROPIC_API_KEY", None):
         providers.append(("Anthropic", _call_anthropic_api))
 
@@ -58,6 +62,41 @@ def call_llm(
 
     logger.error("[AI-ROUTER] All AI model providers failed.")
     return None
+
+
+def _call_grok_api(system_prompt: str, user_content: str, temperature: float, max_tokens: int, response_format: dict) -> str | None:
+    url = "https://api.x.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.GROK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    models = ["grok-2-latest", "grok-beta"]
+    last_err = None
+    for model in models:
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        if response_format:
+            payload["response_format"] = response_format
+
+        try:
+            resp = requests.post(url, json=payload, headers=headers, timeout=25)
+            if resp.status_code == 200:
+                return resp.json()["choices"][0]["message"]["content"]
+            else:
+                last_err = Exception(f"Grok API {model} returned code {resp.status_code}: {resp.text}")
+                logger.warning(f"[AI-ROUTER] Grok model {model} failed. Trying next model...")
+        except Exception as e:
+            last_err = e
+            logger.warning(f"[AI-ROUTER] Grok model {model} error: {e}")
+            
+    raise last_err if last_err else Exception("Grok failed")
 
 
 def _call_gemini_api(system_prompt: str, user_content: str, temperature: float, max_tokens: int, response_format: dict) -> str | None:

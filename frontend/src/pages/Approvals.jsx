@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
+import { formatIST } from '../utils/dateUtils';
 
 const Approvals = ({ user, backendUrl, headers }) => {
   const isAdmin = user?.role === 'admin';
@@ -7,10 +8,56 @@ const Approvals = ({ user, backendUrl, headers }) => {
   const [pendingCampaigns, setPendingCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCamp, setSelectedCamp] = useState(null);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState([]);
   const [reviewNote, setReviewNote] = useState('');
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  const handleToggleSelectAll = () => {
+    if (selectedCampaignIds.length === pendingCampaigns.length) {
+      setSelectedCampaignIds([]);
+    } else {
+      setSelectedCampaignIds(pendingCampaigns.map(c => c.id));
+    }
+  };
+
+  const handleToggleSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedCampaignIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBatchApprove = async () => {
+    if (selectedCampaignIds.length === 0) return;
+    if (!window.confirm(`Approve ${selectedCampaignIds.length} campaign(s) in batch?`)) return;
+
+    setActionLoading(true);
+    setActionError('');
+    setActionSuccess('');
+
+    try {
+      const response = await fetch(`${backendUrl}/api/campaigns/batch-approve`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaign_ids: selectedCampaignIds })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Batch approval failed');
+      }
+
+      setActionSuccess(`Batch approved ${data.approved_count} campaign(s) successfully!`);
+      setSelectedCampaignIds([]);
+      fetchPendingCampaigns();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Lists fetched from DB for dropdown selection
   const [segments, setSegments] = useState([]);
@@ -320,28 +367,54 @@ const Approvals = ({ user, backendUrl, headers }) => {
               Approvals Inbox ({pendingCampaigns.length})
             </h3>
             {isAdmin && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <button
-                  className={`btn ${activeReviewTab === 'maker_checker' ? 'btn-primary' : 'btn-ghost'}`}
-                  style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
-                  onClick={() => {
-                    setActiveReviewTab('maker_checker');
-                    setSelectedCamp(null);
-                  }}
-                >
-                  Maker-Checker
-                </button>
-                <button
-                  className={`btn ${activeReviewTab === 'citizen_proposals' ? 'btn-primary' : 'btn-ghost'}`}
-                  style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
-                  onClick={() => {
-                    setActiveReviewTab('citizen_proposals');
-                    setSelectedCamp(null);
-                  }}
-                >
-                  Citizen Proposals
-                </button>
-              </div>
+              <>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                  <button
+                    className={`btn ${activeReviewTab === 'maker_checker' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
+                    onClick={() => {
+                      setActiveReviewTab('maker_checker');
+                      setSelectedCamp(null);
+                    }}
+                  >
+                    Maker-Checker
+                  </button>
+                  <button
+                    className={`btn ${activeReviewTab === 'citizen_proposals' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ flex: '1 1 auto', minWidth: '120px', fontSize: '0.78rem', padding: '8px 10px', fontWeight: '700', whiteSpace: 'nowrap', textTransform: 'none' }}
+                    onClick={() => {
+                      setActiveReviewTab('citizen_proposals');
+                      setSelectedCamp(null);
+                    }}
+                  >
+                    Citizen Proposals
+                  </button>
+                </div>
+
+                {activeReviewTab === 'maker_checker' && pendingCampaigns.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: 600, userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={pendingCampaigns.length > 0 && selectedCampaignIds.length === pendingCampaigns.length}
+                        onChange={handleToggleSelectAll}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'hsl(var(--primary))' }}
+                      />
+                      Select All ({pendingCampaigns.length})
+                    </label>
+                    {selectedCampaignIds.length > 0 && (
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleBatchApprove}
+                        disabled={actionLoading}
+                        style={{ fontSize: '0.78rem', padding: '4px 12px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#10b981', fontWeight: 700 }}
+                      >
+                        ⚡ Approve ({selectedCampaignIds.length})
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             {loading && pendingCampaigns.length === 0 ? (
               <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.9rem', textAlign: 'center', marginTop: '24px' }}>Scanning approvals...</p>
@@ -363,17 +436,32 @@ const Approvals = ({ user, backendUrl, headers }) => {
                       border: '1px solid',
                       borderColor: selectedCamp?.id === camp.id ? 'hsl(var(--primary))' : 'rgba(255,255,255,0.04)',
                       background: selectedCamp?.id === camp.id ? 'rgba(0, 212, 255, 0.04)' : 'rgba(255,255,255,0.01)',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
                     }}
                   >
-                    <div style={{ fontWeight: '700', fontSize: '0.92rem', color: selectedCamp?.id === camp.id ? 'hsl(var(--primary))' : 'inherit' }}>
-                      {camp.title}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', marginTop: '4px' }}>
-                      Type: {getCampaignTypeLabel(camp.campaign_type)}
-                    </div>
-                    <div style={{ display: 'flex', justifyBetween: 'space-between', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginTop: '8px' }}>
-                      <span>Target: {camp.target_audience_count}</span>
+                    {isAdmin && activeReviewTab === 'maker_checker' && (
+                      <input
+                        type="checkbox"
+                        checked={selectedCampaignIds.includes(camp.id)}
+                        onChange={(e) => handleToggleSelect(camp.id, e)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', marginTop: '2px', accentColor: 'hsl(var(--primary))' }}
+                      />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: '700', fontSize: '0.92rem', color: selectedCamp?.id === camp.id ? 'hsl(var(--primary))' : 'inherit' }}>
+                        {camp.title}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))', marginTop: '4px' }}>
+                        Type: {getCampaignTypeLabel(camp.campaign_type)}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'hsl(var(--text-muted))', marginTop: '8px' }}>
+                        <span>Target: {camp.target_audience_count}</span>
+                        {camp.review_remark && <span style={{ color: '#ef4444', fontWeight: 600 }}>Has Revision Note</span>}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -403,6 +491,15 @@ const Approvals = ({ user, backendUrl, headers }) => {
                   </div>
                 </div>
 
+                {selectedCamp.review_remark && (
+                  <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#fca5a5', fontSize: '0.85rem' }}>
+                    <strong>📌 Previous Revision Remark / Rejection Note:</strong>
+                    <p style={{ margin: '4px 0 0', color: '#fff', fontStyle: 'italic', background: 'rgba(0,0,0,0.2)', padding: '8px 10px', borderRadius: '6px' }}>
+                      "{selectedCamp.review_remark}"
+                    </p>
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginTop: '16px' }}>
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Audience Segment</span>
@@ -427,7 +524,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
                   <div>
                     <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>Launch Schedule</span>
                     <strong style={{ display: 'block', fontSize: '0.95rem', marginTop: '2px', color: selectedCamp.scheduled_at ? 'hsl(var(--primary))' : 'inherit' }}>
-                      {selectedCamp.scheduled_at ? new Date(selectedCamp.scheduled_at).toLocaleString() : 'Immediate Dispatch'}
+                      {selectedCamp.scheduled_at ? formatIST(selectedCamp.scheduled_at) : 'Immediate Dispatch'}
                     </strong>
                   </div>
                 </div>
@@ -462,7 +559,32 @@ const Approvals = ({ user, backendUrl, headers }) => {
                 )}
 
                 <div style={{ marginBottom: '16px' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem' }}>Review/Decision Comments (Mandatory for rejection)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.88rem', margin: 0 }}>
+                      Review/Decision Comments (Mandatory for rejection)
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                    {[
+                      "⚠️ Target count too broad — split into focused sub-segments",
+                      "📞 Missing helpline phone number in emergency body",
+                      "📝 Message tone needs formal phrasing",
+                      "🏷️ Dynamic variable mismatch (check {{city}} tags)"
+                    ].map(pill => (
+                      <button
+                        key={pill}
+                        type="button"
+                        style={{
+                          fontSize: '0.72rem', padding: '3px 8px', borderRadius: '12px',
+                          background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                          color: '#fca5a5', cursor: 'pointer', textAlign: 'left'
+                        }}
+                        onClick={() => setReviewNote(pill)}
+                      >
+                        {pill}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
                     rows={3}
                     className="text-input"

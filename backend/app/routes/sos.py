@@ -80,8 +80,8 @@ def submit_sos_report(
         description=report_in.description,
         report_type=report_in.report_type,
         status="reported",  # reported -> acknowledged -> resolved
-        latitude=report_in.latitude,
-        longitude=report_in.longitude,
+        latitude=str(report_in.latitude) if report_in.latitude is not None else None,
+        longitude=str(report_in.longitude) if report_in.longitude is not None else None,
         location_name=report_in.location_name,
         reporter_name=name,
         reporter_phone=phone,

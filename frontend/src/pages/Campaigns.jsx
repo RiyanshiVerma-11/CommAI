@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
 import VoiceBulletinPlayer from '../components/VoiceBulletinPlayer';
+import { parseApiError } from '../utils/apiError';
+import { formatIST, formatShortIST } from '../utils/dateUtils';
 
 const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterData, initialVoicePlan, clearInitialVoicePlan }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'create'
@@ -112,6 +114,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
   // Delivery Modal States
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [publishedResultModal, setPublishedResultModal] = useState(null);
   const [selectedCampaignForDelivery, setSelectedCampaignForDelivery] = useState(null);
   const [deliverySummary, setDeliverySummary] = useState(null);
   const [deliveryLogs, setDeliveryLogs] = useState([]);
@@ -919,10 +922,19 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     const targetStatus = isScheduled ? 'scheduled' : 'active';
     const scheduleDateStr = isScheduled && scheduledTime ? new Date(scheduledTime).toLocaleString() : '';
     
+    const reachCount = evalReach.reach || (targetType === 'recipient' ? (selectedRecipientId ? 1 : 0) : 0);
+    const isEmergency = formType.includes('emergency') || formType === 'emergency_broadcast';
+    const isManagerEscalation = user?.role !== 'admin' && (isEmergency || reachCount >= 100);
+
     if (!bypassConfirm) {
-      const confirmMessage = isScheduled
-        ? `⚠️ WARNING: This will SCHEDULE this campaign to trigger deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()} at ${scheduleDateStr}.\n\nDo you want to proceed?`
-        : `⚠️ WARNING: Launching this campaign will trigger REAL deliveries to approximately ${evalReach.reach} audience member(s) via ${selectedChannels.join(', ').toUpperCase()}.\n\nDo you want to proceed?`;
+      let confirmMessage = '';
+      if (isManagerEscalation) {
+        confirmMessage = `🛡️ MAKER-CHECKER APPROVAL ESCALATION NOTICE:\n\nAs a Campaign Manager, launching a campaign reaching ${reachCount} citizen(s) or containing emergency advisories will submit it to the Admin Approvals Queue (pending_approval).\n\nDo you want to submit this campaign for Admin review?`;
+      } else if (isScheduled) {
+        confirmMessage = `⚠️ SCHEDULE CAMPAIGN:\n\nThis will schedule this campaign to trigger deliveries to approximately ${reachCount} citizen(s) via ${selectedChannels.join(', ').toUpperCase()} at ${scheduleDateStr}.\n\nDo you want to proceed?`;
+      } else {
+        confirmMessage = `⚠️ LAUNCH CAMPAIGN:\n\nLaunching this campaign will trigger REAL deliveries to approximately ${reachCount} citizen(s) via ${selectedChannels.join(', ').toUpperCase()}.\n\nDo you want to proceed?`;
+      }
 
       if (!window.confirm(confirmMessage)) {
         return;
@@ -972,6 +984,16 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
 
       setEditingCampId(null);
       setViewMode('list');
+
+      // Set explicit outcome modal so operator clearly knows if it went live or to pending_approval!
+      setPublishedResultModal({
+        id: publishData.id,
+        title: publishData.title,
+        status: publishData.status,
+        reach: publishData.estimated_reach || reachCount,
+        scheduledAt: publishData.scheduled_at,
+        isMakerChecker: publishData.status === 'pending_approval'
+      });
     } catch (err) {
       setWizardError(err.message);
     }
@@ -1654,6 +1676,21 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                             >
                               {camp.title}
                             </strong>
+                            {camp.review_remark && (
+                              <div style={{
+                                marginTop: '6px',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#fca5a5',
+                                fontSize: '0.78rem',
+                                lineHeight: '1.4'
+                              }}>
+                                <strong style={{ color: '#ef4444', display: 'block', marginBottom: '2px' }}>❌ Admin Rejection Feedback:</strong>
+                                "{camp.review_remark}"
+                              </div>
+                            )}
                             <VoiceBulletinPlayer
                               text={`${camp.title}. ${camp.description || camp.objective || ''}`}
                               campaignId={camp.id}
@@ -1697,14 +1734,20 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                             {camp.status === 'draft' && (
                               <button 
                                 className="btn btn-primary" 
-                                style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                                style={{
+                                  padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px',
+                                  background: camp.review_remark ? 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' : undefined,
+                                  borderColor: camp.review_remark ? '#ef4444' : undefined,
+                                  color: '#fff', fontWeight: 600
+                                }} 
                                 onClick={() => handleResumeEditCampaign(camp)}
-                                title="Resume Stepper Wizard"
+                                title={camp.review_remark ? "Revise rejected draft and resubmit for approval" : "Resume Stepper Wizard"}
                               >
                                 <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.9rem', height: '0.9rem' }}>
-                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
-                                <span style={{ fontSize: '0.8rem' }}>Resume</span>
+                                <span style={{ fontSize: '0.8rem' }}>{camp.review_remark ? '✏️ Revise & Resubmit' : 'Resume'}</span>
                               </button>
                             )}
                             {camp.status === 'scheduled' && (
@@ -2511,8 +2554,15 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                     </div>
 
                     {isScheduled && (
-                      <div className="form-group animate-fade-in">
-                        <label className="form-label">Select Date & Time (Local Time) *</label>
+                      <div className="form-group animate-fade-in" style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-color-glass)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                          <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>
+                            Select Date & Time *
+                          </label>
+                          <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.15)', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 700 }}>
+                            🇮🇳 IST (Indian Standard Time, UTC+05:30)
+                          </span>
+                        </div>
                         <input
                           type="datetime-local"
                           className="form-control"
@@ -2521,6 +2571,11 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                           onChange={(e) => setScheduledTime(e.target.value)}
                           required
                         />
+                        {scheduledTime && (
+                          <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            ⏰ <strong>Target Dispatch:</strong> {formatIST(scheduledTime)}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3404,7 +3459,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   <div className="receipt-item">
                     <span className="receipt-label">Execution Schedule</span>
                     <span className="receipt-value" style={{ color: isScheduled ? 'hsl(var(--warning))' : 'hsl(var(--accent))', fontWeight: 'bold' }}>
-                      {isScheduled ? `📅 Scheduled: ${new Date(scheduledTime).toLocaleString()}` : '🚀 Send Immediately'}
+                      {isScheduled ? `📅 Scheduled: ${formatIST(scheduledTime)}` : '🚀 Send Immediately'}
                     </span>
                   </div>
 
@@ -3444,6 +3499,30 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                           </div>
                         ))
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {user?.role !== 'admin' && ((evalReach.reach || 0) >= 100 || formType.includes('emergency')) && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '16px 20px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.12) 100%)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                    boxShadow: '0 4px 16px rgba(245, 158, 11, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px'
+                  }}>
+                    <span style={{ fontSize: '1.6rem' }}>🛡️</span>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#f59e0b' }}>
+                        MAKER-CHECKER APPROVAL ESCALATION NOTICE
+                      </h4>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#cbd5e1', lineHeight: '1.45' }}>
+                        As a Campaign Manager, submitting a campaign targeting ≥100 citizens ({evalReach.reach || 0} target count) or emergency advisories will submit it to the <strong>Admin Approvals Queue (Pending Approval)</strong>. An Administrator must review and approve it before real-time dispatch begins.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -3605,14 +3684,18 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                   Save Campaign Draft
                 </button>
                 {user && (user.role === 'admin' || user.role === 'campaign_manager') ? (
-                  <button type="button" className="btn btn-primary" onClick={handlePublishCampaign}>
+                  <button type="button" className="btn btn-primary" onClick={() => handlePublishCampaign(false)}>
                     <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                    {isScheduled ? 'Schedule Campaign' : 'Launch Campaign (Active)'}
+                    {isScheduled 
+                      ? '📅 Schedule Campaign' 
+                      : (user.role !== 'admin' && ((evalReach.reach || 0) >= 100 || formType.includes('emergency'))
+                          ? '📋 Submit for Admin Approval'
+                          : '🚀 Launch Campaign (Broadcast Live)')}
                   </button>
                 ) : (
                   <button type="button" className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Only Campaign Managers can launch campaigns">
                     <svg className="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '1rem', height: '1rem' }}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                    {isScheduled ? 'Schedule Campaign' : 'Launch Campaign (Active)'}
+                    {isScheduled ? '📅 Schedule Campaign' : '🚀 Launch Campaign (Active)'}
                   </button>
                 )}
               </div>
@@ -3620,6 +3703,73 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
           </div>
 
         </GlassCard>
+      )}
+
+      {/* --- MAKER-CHECKER PUBLISH OUTCOME MODAL OVERLAY --- */}
+      {publishedResultModal && (
+        <div className="modal-overlay" style={{ zIndex: 999999 }}>
+          <GlassCard className="modal-content animate-fade-in" style={{ width: '100%', maxWidth: '540px', padding: '28px', border: publishedResultModal.isMakerChecker ? '2px solid #f59e0b' : '2px solid #10b981' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: publishedResultModal.isMakerChecker ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                border: publishedResultModal.isMakerChecker ? '2px solid #f59e0b' : '2px solid #10b981',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '2rem', marginBottom: '12px'
+              }}>
+                {publishedResultModal.isMakerChecker ? '📋' : publishedResultModal.status === 'scheduled' ? '📅' : '🚀'}
+              </div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '4px 0', color: '#f8fafc' }}>
+                {publishedResultModal.isMakerChecker
+                  ? 'Campaign Submitted to Admin Queue'
+                  : publishedResultModal.status === 'scheduled'
+                  ? 'Campaign Scheduled Successfully'
+                  : 'Campaign Launched & Broadcasting!'}
+              </h3>
+              <span className="badge" style={{
+                background: publishedResultModal.isMakerChecker ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)',
+                color: publishedResultModal.isMakerChecker ? '#f59e0b' : '#10b981',
+                fontSize: '0.82rem', fontWeight: 800, padding: '4px 12px', borderRadius: '12px', marginTop: '6px'
+              }}>
+                STATUS: {publishedResultModal.status.toUpperCase().replace('_', ' ')}
+              </span>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5', textAlign: 'center', marginBottom: '20px' }}>
+              {publishedResultModal.isMakerChecker ? (
+                <>Your campaign <strong>"{publishedResultModal.title}"</strong> has been saved with status <strong>PENDING APPROVAL</strong>. Because it reaches {publishedResultModal.reach} citizen(s), an Administrator must review and approve it from the Approvals Queue before real-time dispatch begins.</>
+              ) : publishedResultModal.status === 'scheduled' ? (
+                <>Your campaign <strong>"{publishedResultModal.title}"</strong> is scheduled to go live to {publishedResultModal.reach} citizen(s) at {new Date(publishedResultModal.scheduledAt).toLocaleString()}.</>
+              ) : (
+                <>Your campaign <strong>"{publishedResultModal.title}"</strong> is now ACTIVE and delivering to {publishedResultModal.reach} target citizens in real time!</>
+              )}
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              {publishedResultModal.isMakerChecker && user?.role === 'admin' && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setPublishedResultModal(null);
+                    if (setActiveTab) setActiveTab('approvals');
+                  }}
+                  style={{ background: '#f59e0b', borderColor: '#f59e0b', color: '#000', fontWeight: 700 }}
+                >
+                  📋 Open Approvals Queue
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-dark"
+                onClick={() => setPublishedResultModal(null)}
+                style={{ fontWeight: 600 }}
+              >
+                📊 Back to Campaigns Directory
+              </button>
+            </div>
+          </GlassCard>
+        </div>
       )}
 
       {/* --- AUDIT TIMELINE MODAL OVERLAY --- */}

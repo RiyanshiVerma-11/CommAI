@@ -46,6 +46,9 @@ class Settings:
     # --- Firebase FCM Configuration ---
     FCM_SERVICE_ACCOUNT_JSON: str = os.getenv("FCM_SERVICE_ACCOUNT_JSON", "")
 
+    # --- Grok (xAI) Configuration ---
+    GROK_API_KEY: str = os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY") or ""
+
     # --- Groq Translation Configuration ---
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
 
@@ -118,6 +121,7 @@ class Settings:
                 self.TELEGRAM_CHAT_ID = data.get("TELEGRAM_CHAT_ID") or self.TELEGRAM_CHAT_ID
                 self.FCM_SERVICE_ACCOUNT_JSON = data.get("FCM_SERVICE_ACCOUNT_JSON") or self.FCM_SERVICE_ACCOUNT_JSON
                 
+                self.GROK_API_KEY = data.get("GROK_API_KEY") or self.GROK_API_KEY
                 self.GROQ_API_KEY = data.get("GROQ_API_KEY") or self.GROQ_API_KEY
                 self.GROQ_API_KEY_SECONDARY = data.get("GROQ_API_KEY_SECONDARY") or self.GROQ_API_KEY_SECONDARY
                 self.GEMINI_API_KEY = data.get("GEMINI_API_KEY") or self.GEMINI_API_KEY

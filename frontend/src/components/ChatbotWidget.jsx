@@ -16,7 +16,7 @@ const INDIAN_SPEECH_LANGUAGES = [
   { code: 'as-IN', label: '🇮🇳 Assamese (অসমীয়া)' }
 ];
 
-const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
+const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiveTab }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -58,7 +58,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
       const isAudience = user.role === 'audience';
       const displayName = user.full_name || (user.role === 'admin' ? 'System Administrator' : user.role === 'manager' ? 'Campaign Manager' : 'there');
       const initialGreeting = isAudience
-        ? `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, or seeking assistance!`
+        ? `Hello ${displayName}! I'm your CommAI Assistant. Ask me anything about emergency warnings, campaign alerts, or tap below to file a location pin-point SOS alert!`
         : `Hello ${displayName}! Click the 🎤 Mic button or speak to me: "Create a flood alert campaign for Varanasi in Hindi" and I will auto-generate it and switch to Campaign Planner in the background!`;
 
       setMessages([
@@ -549,15 +549,27 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions (Manager Role) */}
-          {(user?.role === 'admin' || user?.role === 'campaign_manager') && messages.length <= 2 && (
+          {/* Quick Actions */}
+          {messages.length <= 2 && (
             <div style={{ padding: '0 16px 8px 16px', display: 'flex', gap: '6px', overflowX: 'auto' }}>
               <button
-                onClick={() => handleQuickAction("Create an emergency flood alert campaign for Varanasi in Hindi")}
-                style={{ background: 'var(--chatbot-btn-bg)', border: '1px solid var(--chatbot-border)', color: 'hsl(var(--primary))', padding: '4px 8px', borderRadius: '12px', fontSize: '0.72rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                onClick={() => {
+                  if (setActiveTab) setActiveTab('sos');
+                  setIsOpen(false);
+                }}
+                style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', padding: '5px 10px', borderRadius: '12px', fontSize: '0.74rem', whiteSpace: 'nowrap', cursor: 'pointer', fontWeight: 700 }}
               >
-                🎙️ Auto-Create Flood Alert (Hindi)
+                🚨 Report Emergency SOS (Pin Location)
               </button>
+
+              {(user?.role === 'admin' || user?.role === 'campaign_manager') && (
+                <button
+                  onClick={() => handleQuickAction("Create an emergency flood alert campaign for Varanasi in Hindi")}
+                  style={{ background: 'var(--chatbot-btn-bg)', border: '1px solid var(--chatbot-border)', color: 'hsl(var(--primary))', padding: '5px 10px', borderRadius: '12px', fontSize: '0.74rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                >
+                  🎙️ Auto-Create Flood Alert (Hindi)
+                </button>
+              )}
             </div>
           )}
 

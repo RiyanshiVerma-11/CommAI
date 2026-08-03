@@ -23,7 +23,10 @@ class SettingsUpdateSchema(BaseModel):
     SMTP_APP_PASSWORD: Optional[str] = ""
     CALLMEBOT_DEFAULT_APIKEY: Optional[str] = ""
     DEFAULT_COUNTRY_CODE: Optional[str] = "91"
+    GROK_API_KEY: Optional[str] = ""
     GROQ_API_KEY: Optional[str] = ""
+    GROQ_API_KEY_SECONDARY: Optional[str] = ""
+    GEMINI_API_KEY: Optional[str] = ""
     OPENAI_API_KEY: Optional[str] = ""
     ANTHROPIC_API_KEY: Optional[str] = ""
     TELEGRAM_BOT_TOKEN: Optional[str] = ""
@@ -58,7 +61,10 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
         "SMTP_APP_PASSWORD": "****************" if settings.SMTP_APP_PASSWORD else "",
         "CALLMEBOT_DEFAULT_APIKEY": "****************" if settings.CALLMEBOT_DEFAULT_APIKEY else "",
         "DEFAULT_COUNTRY_CODE": settings.DEFAULT_COUNTRY_CODE,
+        "GROK_API_KEY": "****************" if getattr(settings, "GROK_API_KEY", None) else "",
         "GROQ_API_KEY": "****************" if settings.GROQ_API_KEY else "",
+        "GROQ_API_KEY_SECONDARY": "****************" if getattr(settings, "GROQ_API_KEY_SECONDARY", None) else "",
+        "GEMINI_API_KEY": "****************" if getattr(settings, "GEMINI_API_KEY", None) else "",
         "OPENAI_API_KEY": "****************" if settings.OPENAI_API_KEY else "",
         "ANTHROPIC_API_KEY": "****************" if settings.ANTHROPIC_API_KEY else "",
         "TELEGRAM_BOT_TOKEN": "****************" if settings.TELEGRAM_BOT_TOKEN else "",
@@ -71,7 +77,10 @@ def get_settings(current_user = Depends(require_manager_or_higher)) -> Dict[str,
         "DAILY_CAP_PUSH": settings.DAILY_CAP_PUSH,
         "is_smtp_configured": bool(settings.SMTP_EMAIL and settings.SMTP_APP_PASSWORD),
         "is_whatsapp_configured": bool(settings.CALLMEBOT_DEFAULT_APIKEY),
+        "is_grok_configured": bool(getattr(settings, "GROK_API_KEY", None)),
         "is_groq_configured": bool(settings.GROQ_API_KEY),
+        "is_groq_secondary_configured": bool(getattr(settings, "GROQ_API_KEY_SECONDARY", None)),
+        "is_gemini_configured": bool(getattr(settings, "GEMINI_API_KEY", None)),
         "is_openai_configured": bool(settings.OPENAI_API_KEY),
         "is_anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
         "is_telegram_configured": bool(settings.TELEGRAM_BOT_TOKEN),
@@ -94,11 +103,26 @@ def update_settings(
         update_data["SMTP_APP_PASSWORD"] = settings_in.SMTP_APP_PASSWORD
     elif settings_in.SMTP_APP_PASSWORD == "":
         update_data["SMTP_APP_PASSWORD"] = ""
+
+    if settings_in.GROK_API_KEY and settings_in.GROK_API_KEY != "****************":
+        update_data["GROK_API_KEY"] = settings_in.GROK_API_KEY
+    elif settings_in.GROK_API_KEY == "":
+        update_data["GROK_API_KEY"] = ""
         
     if settings_in.GROQ_API_KEY and settings_in.GROQ_API_KEY != "****************":
         update_data["GROQ_API_KEY"] = settings_in.GROQ_API_KEY
     elif settings_in.GROQ_API_KEY == "":
         update_data["GROQ_API_KEY"] = ""
+
+    if settings_in.GROQ_API_KEY_SECONDARY and settings_in.GROQ_API_KEY_SECONDARY != "****************":
+        update_data["GROQ_API_KEY_SECONDARY"] = settings_in.GROQ_API_KEY_SECONDARY
+    elif settings_in.GROQ_API_KEY_SECONDARY == "":
+        update_data["GROQ_API_KEY_SECONDARY"] = ""
+
+    if settings_in.GEMINI_API_KEY and settings_in.GEMINI_API_KEY != "****************":
+        update_data["GEMINI_API_KEY"] = settings_in.GEMINI_API_KEY
+    elif settings_in.GEMINI_API_KEY == "":
+        update_data["GEMINI_API_KEY"] = ""
 
     if settings_in.OPENAI_API_KEY and settings_in.OPENAI_API_KEY != "****************":
         update_data["OPENAI_API_KEY"] = settings_in.OPENAI_API_KEY

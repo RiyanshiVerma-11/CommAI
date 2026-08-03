@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
+import { parseApiError } from '../utils/apiError';
 
 const Templates = ({ user, backendUrl, headers }) => {
   const [templates, setTemplates] = useState([]);
@@ -910,7 +911,7 @@ const Templates = ({ user, backendUrl, headers }) => {
                                 body: JSON.stringify({ text: formBody, category: formCat })
                               });
                               const data = await resp.json();
-                              if (!resp.ok) throw new Error(data.detail || 'Compliance check failed');
+                              if (!resp.ok) throw new Error(parseApiError(data, 'Compliance check failed'));
                               setAiComplianceResult(data);
                             } catch (err) { setAiError(err.message); }
                             finally { setAiLoading(false); }

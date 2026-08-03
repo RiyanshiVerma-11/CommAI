@@ -88,7 +88,15 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
         throw new Error(`Empty response from server (Status: ${res.status})`);
       }
       if (!res.ok) {
-        throw new Error(data.detail || 'Emergency distress call failed.');
+        let errStr = 'Emergency distress call failed.';
+        if (Array.isArray(data.detail)) {
+          errStr = data.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+        } else if (data.detail && typeof data.detail === 'object') {
+          errStr = data.detail.message || JSON.stringify(data.detail);
+        } else if (data.detail) {
+          errStr = String(data.detail);
+        }
+        throw new Error(errStr);
       }
       setSosModalSuccess('Distress report submitted successfully! Dispatch operators have been notified.');
       

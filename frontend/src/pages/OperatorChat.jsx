@@ -11,7 +11,51 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [attachedFile, setAttachedFile] = useState(null);
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  // Audio Chime Synthesis using Web Audio API
+  const playMessageChime = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (e) {}
+  }, []);
+
+  // Notification Permission Request on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Track incoming message audio ping & desktop notifications
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && lastMsg.user_id !== user?.id) {
+        playMessageChime();
+        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification('New Operator Staff Message', {
+            body: `${lastMsg.sender_name || 'Operator'}: ${lastMsg.message}`
+          });
+        }
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages, user, playMessageChime]);
 
   const publicChannels = [
     { id: 'general', label: '💬 #general-ops', desc: 'General internal coordination & team updates' },
@@ -94,18 +138,22 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     }
   }, [backendUrl, headers, channel]);
 
-  // Initial fetch staff
+  // Periodic fetch staff roster (10s)
   useEffect(() => {
     fetchStaff();
+    const staffInterval = setInterval(() => {
+      fetchStaff();
+    }, 10000);
+    return () => clearInterval(staffInterval);
   }, [fetchStaff]);
 
-  // Fetch messages on channel change or initial load + background 5s fallback poll
+  // Fetch messages on channel change or initial load + continuous 3s real-time poll
   useEffect(() => {
     fetchMessages(true);
-    const interval = setInterval(() => {
+    const msgInterval = setInterval(() => {
       fetchMessages(false);
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 3000);
+    return () => clearInterval(msgInterval);
   }, [fetchMessages]);
 
   // Listen for real-time WebSocket events from App.jsx without requiring refresh
@@ -154,14 +202,36 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     setChannel(dmChannelId);
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setAttachedFile({
+        name: file.name,
+        type: file.type,
+        dataUrl: evt.target.result
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleSendMessage = async (e, overrideMsg = null, overrideChan = null) => {
     e?.preventDefault?.();
-    const payloadMsg = overrideMsg || (e && typeof e === 'object' && (e.detail?.message || e.detail?.message_text)) || inputMsg;
-    if (!payloadMsg || !payloadMsg.trim() || sending) return;
+    const rawMsg = overrideMsg || (e && typeof e === 'object' && (e.detail?.message || e.detail?.message_text)) || inputMsg;
+    if ((!rawMsg || !rawMsg.trim()) && !attachedFile) return;
 
-    const textToSend = payloadMsg.trim();
+    let textToSend = (rawMsg || '').trim();
+    if (attachedFile) {
+      textToSend = textToSend 
+        ? `${textToSend}\n\n📎 Attachment: [${attachedFile.name}](${attachedFile.dataUrl})`
+        : `📎 Attachment: [${attachedFile.name}](${attachedFile.dataUrl})`;
+    }
+
     const targetChannel = overrideChan || (e && typeof e === 'object' && e.detail?.channel) || channel;
     setInputMsg('');
+    setAttachedFile(null);
     setSending(true);
 
     try {
@@ -190,7 +260,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     } catch (err) {
       console.error(err);
       setError(err.message || 'Error sending message');
-      setInputMsg(textToSend); // Restore on error
+      setInputMsg(rawMsg); // Restore on error
     } finally {
       setSending(false);
     }
@@ -317,8 +387,9 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'hsl(var(--accent))', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-            ● Encrypted Staff Session
+          <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
+            ⚡ Continuous Dispatch Sync Active (3s)
           </span>
         </div>
       </div>
@@ -591,20 +662,43 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
           ))}
         </div>
 
+        {/* Attachment preview chip */}
+        {attachedFile && (
+          <div style={{ padding: '6px 14px', background: 'rgba(99, 102, 241, 0.15)', borderTop: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#38bdf8' }}>
+            <span>📎 Attached File: <strong>{attachedFile.name}</strong></span>
+            <button type="button" onClick={() => setAttachedFile(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕ Remove</button>
+          </div>
+        )}
+
         {/* Input Bar Form */}
         <form onSubmit={handleSendMessage} style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.6))', borderTop: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ fontSize: '1.2rem', padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+            title="Attach image or document"
+          >
+            📎
+          </button>
           <input
             type="text"
             className="form-control"
             placeholder={activeDmUser ? `Private DM with ${activeDmUser.full_name}...` : `Message #${headerInfo.label.split(' ')[0]} (Admins & Managers)...`}
             value={inputMsg}
             onChange={(e) => setInputMsg(e.target.value)}
-            style={{ borderRadius: '10px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)' }}
+            style={{ borderRadius: '10px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', flex: 1 }}
           />
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={!inputMsg.trim() || sending}
+            disabled={(!inputMsg.trim() && !attachedFile) || sending}
             style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
           >
             {sending ? 'Sending...' : 'Send 🚀'}

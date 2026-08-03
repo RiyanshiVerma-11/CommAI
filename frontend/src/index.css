@@ -86,13 +86,13 @@
   --danger: 350 89% 55%;
   /* Rose #E11D48 */
 
-  /* Text HSL colors */
-  --text-primary: 222 47% 11%;
-  /* Slate Dark #0F172A */
-  --text-secondary: 215 25% 27%;
-  /* Slate Medium #334155 */
-  --text-muted: 215 16% 47%;
-  /* Slate Muted #64748B */
+  /* Text HSL colors — High-Contrast Light Mode */
+  --text-primary: 222 47% 9%;
+  /* Deep Charcoal #0F172A */
+  --text-secondary: 215 28% 18%;
+  /* Dark Slate #1E293B */
+  --text-muted: 215 25% 30%;
+  /* High-Contrast Slate #334155 */
 
   --glass-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
   --neon-shadow: 0 0 15px rgba(79, 70, 229, 0.12);
@@ -3220,6 +3220,30 @@ select option {
   border: 1px solid #fecdd3 !important;
 }
 
+.channel-badge-website {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+
+.light-theme .channel-badge-website {
+  background: #dbeafe !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
+}
+
+.channel-badge-voice {
+  background: rgba(251, 146, 60, 0.16) !important;
+  color: #fb923c !important;
+  border: 1px solid rgba(251, 146, 60, 0.35) !important;
+}
+
+.light-theme .channel-badge-voice {
+  background: #ffedd5 !important;
+  color: #ea580c !important;
+  border: 1px solid #fed7aa !important;
+}
+
 /* Individual Channel Selection Card Highlights */
 .channel-pill-card.selected.channel-email {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%) !important;
@@ -3979,4 +4003,88 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE CONTRAST & ACCESSIBILITY ENFORCEMENT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.light-theme .form-label {
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+.light-theme .receipt-label {
+  color: #334155 !important;
+  font-weight: 600;
+}
+
+.light-theme .receipt-value {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+
+.light-theme .form-control {
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme .form-control::placeholder {
+  color: #64748b !important;
+}
+
+.light-theme [style*="color: #cbd5e1"],
+.light-theme [style*="color: rgb(203, 213, 225)"],
+.light-theme [style*="color: #94a3b8"],
+.light-theme [style*="color: rgb(148, 163, 184)"],
+.light-theme [style*="color: #e2e8f0"],
+.light-theme [style*="color: rgb(226, 232, 240)"],
+.light-theme [style*="color: #7f91a4"] {
+  color: #1e293b !important;
+}
+
+.light-theme [style*="color: rgba(255, 255, 255, 0.4)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.5)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.6)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.7)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.8)"] {
+  color: #334155 !important;
+}
+
+.light-theme [style*="color: hsl(var(--text-muted))"],
+.light-theme .text-muted {
+  color: #334155 !important;
+}
+
+.light-theme [style*="color: hsl(var(--text-secondary))"],
+.light-theme .text-secondary {
+  color: #1e293b !important;
+}
+
+.light-theme .btn-dark {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.light-theme .btn-dark:hover {
+  background: #e2e8f0 !important;
+  color: #020617 !important;
+}
+
+.light-theme .custom-table th {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  font-weight: 700;
+}
+
+.light-theme .custom-table td {
+  color: #1e293b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light-theme .custom-table tr:hover td {
+  background: rgba(79, 70, 229, 0.04) !important;
 }

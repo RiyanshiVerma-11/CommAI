@@ -42,14 +42,28 @@ const VoiceBulletinPlayer = ({
   compact = false,
 }) => {
   const getInitialLanguage = () => {
-    if (!userPreferredLang) return INDIC_LANGUAGES[0];
-    const cleanPref = String(userPreferredLang).toLowerCase().trim();
+    const saved = localStorage.getItem('commai_preferred_language');
+    const target = saved || userPreferredLang || 'Hindi';
+    const cleanPref = String(target).toLowerCase().trim();
     return INDIC_LANGUAGES.find(
       l => l.name.toLowerCase() === cleanPref || l.code.toLowerCase() === cleanPref || l.native.toLowerCase() === cleanPref
     ) || INDIC_LANGUAGES[0];
   };
 
   const [selectedLang, setSelectedLang] = useState(getInitialLanguage());
+
+  // Listen for global language changes across portal sub-pages
+  useEffect(() => {
+    const handleLangChange = (e) => {
+      const newLangName = e.detail;
+      const match = INDIC_LANGUAGES.find(l => l.name.toLowerCase() === String(newLangName).toLowerCase().trim());
+      if (match) {
+        setSelectedLang(match);
+      }
+    };
+    window.addEventListener('commai_language_changed', handleLangChange);
+    return () => window.removeEventListener('commai_language_changed', handleLangChange);
+  }, []);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -93,6 +107,27 @@ const VoiceBulletinPlayer = ({
     };
   }, []);
 
+  const chunkTextForSpeech = (text) => {
+    if (!text) return [];
+    // Split on sentence boundaries, punctuation, and newlines
+    const rawSentences = text.split(/(?<=[.!?\n।])\s+/);
+    const chunks = [];
+    let currentChunk = '';
+
+    for (const sentence of rawSentences) {
+      if ((currentChunk + ' ' + sentence).length > 120) {
+        if (currentChunk.trim()) chunks.push(currentChunk.trim());
+        currentChunk = sentence;
+      } else {
+        currentChunk = currentChunk ? currentChunk + ' ' + sentence : sentence;
+      }
+    }
+    if (currentChunk.trim()) chunks.push(currentChunk.trim());
+    return chunks;
+  };
+
+  const heartbeatRef = useRef(null);
+
   const stopAllAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -104,6 +139,10 @@ const VoiceBulletinPlayer = ({
     if (speechTimerRef.current) {
       clearInterval(speechTimerRef.current);
       speechTimerRef.current = null;
+    }
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
     }
     setCurrentTime(0);
     setIsPlaying(false);
@@ -152,7 +191,7 @@ const VoiceBulletinPlayer = ({
             await audioRef.current.play();
             setIsPlaying(true);
           } catch (pErr) {
-            console.warn('Audio playback error:', pErr);
+            console.warn('Audio element play error, attempting speech synthesis fallback:', pErr);
             setIsPlaying(false);
           } finally {
             setLoading(false);
@@ -167,7 +206,7 @@ const VoiceBulletinPlayer = ({
       console.warn('Backend voice synth failed, using browser voice fallback:', err);
     }
 
-    // Fallback: Web Speech Synthesis
+    // Fallback: Robust Mobile-Safe Web Speech Synthesis with Chunk Queue & Heartbeat
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       let textToSpeak = translatedText || text;
@@ -189,9 +228,16 @@ const VoiceBulletinPlayer = ({
         }
       }
 
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = langToPlay.code === 'hi' ? 'hi-IN' : langToPlay.code === 'en' ? 'en-IN' : langToPlay.code;
-      utterance.rate = speed;
+      const chunks = chunkTextForSpeech(textToSpeak);
+      if (chunks.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const wordCount = textToSpeak.split(/\s+/).length;
+      const estimatedDuration = Math.max(3, Math.ceil(wordCount / (2.2 * speed)));
+      setDuration(estimatedDuration);
+      setCurrentTime(0);
 
       const voices = window.speechSynthesis.getVoices();
       const cleanCode = langToPlay.code.toLowerCase();
@@ -202,32 +248,64 @@ const VoiceBulletinPlayer = ({
         v.name.toLowerCase().includes(cleanName)
       );
 
-      if (matchingVoice) {
-        utterance.voice = matchingVoice;
-      }
+      let chunkIndex = 0;
 
-      const wordCount = textToSpeak.split(/\s+/).length;
-      const estimatedDuration = Math.max(3, Math.ceil(wordCount / (2.2 * speed)));
-      setDuration(estimatedDuration);
-      setCurrentTime(0);
+      const speakNextChunk = () => {
+        if (chunkIndex >= chunks.length) {
+          stopAllAudio();
+          return;
+        }
 
+        const currentChunkText = chunks[chunkIndex];
+        const utterance = new SpeechSynthesisUtterance(currentChunkText);
+        utterance.lang = langToPlay.code === 'hi' ? 'hi-IN' : langToPlay.code === 'en' ? 'en-IN' : langToPlay.code;
+        utterance.rate = speed;
+        if (matchingVoice) utterance.voice = matchingVoice;
+
+        utterance.onend = () => {
+          chunkIndex++;
+          if (chunkIndex < chunks.length) {
+            speakNextChunk();
+          } else {
+            stopAllAudio();
+          }
+        };
+
+        utterance.onerror = (e) => {
+          console.warn('Utterance speech error:', e);
+          chunkIndex++;
+          if (chunkIndex < chunks.length) {
+            speakNextChunk();
+          } else {
+            stopAllAudio();
+          }
+        };
+
+        window.speechSynthesis.speak(utterance);
+      };
+
+      // Timer update
       if (speechTimerRef.current) clearInterval(speechTimerRef.current);
       const startTime = Date.now();
       speechTimerRef.current = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000;
         if (elapsed >= estimatedDuration) {
-          clearInterval(speechTimerRef.current);
-          speechTimerRef.current = null;
           setCurrentTime(estimatedDuration);
         } else {
           setCurrentTime(elapsed);
         }
       }, 250);
 
-      utterance.onend = () => stopAllAudio();
-      utterance.onerror = () => stopAllAudio();
+      // Heartbeat keep-alive timer for iOS Safari / Chrome idle timeouts
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(() => {
+        if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 5000);
 
-      window.speechSynthesis.speak(utterance);
+      speakNextChunk();
       setIsPlaying(true);
       setLoading(false);
     }

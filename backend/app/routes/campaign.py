@@ -863,6 +863,8 @@ def reject_campaign(
     reason = rejection_note.get("reason", "No reason provided")
 
     camp.status = new_status
+    camp.review_remark = reason
+    camp.reviewer_id = current_user.id
     camp.updated_by = current_user.id
     camp.updated_at = datetime.datetime.utcnow()
     
@@ -880,6 +882,76 @@ def reject_campaign(
     db.refresh(camp)
 
     return format_campaign_response(camp)
+
+
+@router.post("/batch-approve")
+def batch_approve_campaigns(
+    payload: Dict[str, List[str]],
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin)
+):
+    """Admin approves multiple pending campaigns in a single batch operation."""
+    campaign_ids = payload.get("campaign_ids", [])
+    if not campaign_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No campaign IDs provided for batch approval")
+        
+    campaigns = db.query(Campaign).filter(
+        Campaign.id.in_(campaign_ids),
+        Campaign.status == "pending_approval",
+        Campaign.is_deleted == False
+    ).all()
+
+    if not campaigns:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending campaigns found matching the provided IDs")
+
+    approved_campaigns = []
+    for camp in campaigns:
+        old_status = camp.status
+        new_status = "active"
+        if camp.scheduled_at:
+            if camp.scheduled_at.tzinfo is not None:
+                sched_utc_naive = camp.scheduled_at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            else:
+                ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+                sched_utc_naive = camp.scheduled_at.replace(tzinfo=ist_tz).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
+            if sched_utc_naive > datetime.datetime.utcnow():
+                new_status = "scheduled"
+
+        camp.status = new_status
+        camp.reviewer_id = current_user.id
+        camp.updated_by = current_user.id
+        camp.updated_at = datetime.datetime.utcnow()
+
+        # Write audit log
+        audit = AuditLog(
+            user_id=current_user.id,
+            campaign_id=camp.id,
+            action="STATUS_CHANGE",
+            old_status=old_status,
+            new_status=new_status,
+            changes=json.dumps({"status": {"old": old_status, "new": new_status}, "note": "Batch approved by administrator"})
+        )
+        db.add(audit)
+        
+        if new_status == "active":
+            try:
+                from app.services.dispatcher import dispatch_campaign
+                dispatch_campaign(camp.id)
+            except Exception as ex:
+                logger.error(f"Error dispatching batch approved campaign {camp.id}: {ex}")
+
+        approved_campaigns.append(camp)
+
+    db.commit()
+    for c in approved_campaigns:
+        db.refresh(c)
+
+    return {
+        "message": f"Successfully approved {len(approved_campaigns)} campaign(s)",
+        "approved_count": len(approved_campaigns),
+        "approved_campaigns": [format_campaign_response(c) for c in approved_campaigns]
+    }
 
 
 @router.get("/{id}/export-delivery-logs")
@@ -924,16 +996,32 @@ def export_delivery_logs(
 @router.get("/audit-logs/export/all")
 def export_audit_logs(
     campaign_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user = Depends(require_admin)
 ):
-    """Export all audit logs as CSV. Restricted to Administrators."""
+    """Export all or filtered audit logs as CSV. Restricted to Administrators."""
     query = db.query(AuditLog)
     if campaign_id:
         query = query.filter(AuditLog.campaign_id == campaign_id)
+    if action_type:
+        query = query.filter(AuditLog.action == action_type)
         
     logs = query.order_by(AuditLog.timestamp.desc()).all()
-    
+
+    if search and search.strip():
+        s = search.strip().lower()
+        filtered_logs = []
+        for l in logs:
+            user_name = (l.user.full_name if l.user else "System").lower()
+            user_email = (l.user.email if l.user else "System").lower()
+            action_name = l.action.lower()
+            changes_text = (l.changes or "").lower()
+            if s in user_name or s in user_email or s in action_name or s in changes_text:
+                filtered_logs.append(l)
+        logs = filtered_logs
+
     output = io.StringIO()
     writer = csv.writer(output)
     
@@ -955,8 +1043,9 @@ def export_audit_logs(
         ])
         
     output.seek(0)
+    filename = "audit_logs_export.csv" if not action_type else f"audit_logs_{action_type.lower()}.csv"
     headers = {
-        'Content-Disposition': 'attachment; filename="system_audit_logs.csv"'
+        'Content-Disposition': f'attachment; filename="{filename}"'
     }
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers=headers)
 

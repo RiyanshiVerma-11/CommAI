@@ -9,7 +9,10 @@ const Settings = ({ user, backendUrl, headers }) => {
   const [telegramChatId, setTelegramChatId] = useState('');
   const [fcmServiceAccountJson, setFcmServiceAccountJson] = useState('');
   const [defaultCountryCode, setDefaultCountryCode] = useState('91');
+  const [grokApiKey, setGrokApiKey] = useState('');
   const [groqApiKey, setGroqApiKey] = useState('');
+  const [groqSecondaryApiKey, setGroqSecondaryApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [dailyCapEmail, setDailyCapEmail] = useState(5000);
   const [dailyCapSms, setDailyCapSms] = useState(5000);
   const [dailyCapWhatsapp, setDailyCapWhatsapp] = useState(5000);
@@ -84,7 +87,10 @@ const Settings = ({ user, backendUrl, headers }) => {
       setTelegramBotToken(data.TELEGRAM_BOT_TOKEN || '');
       setTelegramChatId(data.TELEGRAM_CHAT_ID || '');
       setFcmServiceAccountJson(data.FCM_SERVICE_ACCOUNT_JSON || '');
+      setGrokApiKey(data.GROK_API_KEY || '');
       setGroqApiKey(data.GROQ_API_KEY || '');
+      setGroqSecondaryApiKey(data.GROQ_API_KEY_SECONDARY || '');
+      setGeminiApiKey(data.GEMINI_API_KEY || '');
       setDefaultCountryCode(data.DEFAULT_COUNTRY_CODE || '91');
       setDailyCapEmail(data.DAILY_CAP_EMAIL || 5000);
       setDailyCapSms(data.DAILY_CAP_SMS || 5000);
@@ -95,7 +101,10 @@ const Settings = ({ user, backendUrl, headers }) => {
       setHealth({
         smtp: data.is_smtp_configured,
         whatsapp: data.is_whatsapp_configured,
+        grok: data.is_grok_configured,
         groq: data.is_groq_configured,
+        groq_secondary: data.is_groq_secondary_configured,
+        gemini: data.is_gemini_configured,
         telegram: data.is_telegram_configured,
         fcm: data.is_fcm_configured
       });
@@ -273,7 +282,10 @@ const Settings = ({ user, backendUrl, headers }) => {
       TELEGRAM_CHAT_ID: telegramChatId,
       FCM_SERVICE_ACCOUNT_JSON: fcmServiceAccountJson,
       DEFAULT_COUNTRY_CODE: defaultCountryCode,
+      GROK_API_KEY: grokApiKey,
       GROQ_API_KEY: groqApiKey,
+      GROQ_API_KEY_SECONDARY: groqSecondaryApiKey,
+      GEMINI_API_KEY: geminiApiKey,
       DAILY_CAP_EMAIL: parseInt(dailyCapEmail),
       DAILY_CAP_SMS: parseInt(dailyCapSms),
       DAILY_CAP_WHATSAPP: parseInt(dailyCapWhatsapp),
@@ -305,7 +317,7 @@ const Settings = ({ user, backendUrl, headers }) => {
         throw new Error(data.detail || 'Failed to save settings');
       }
       
-      setMessage({ text: 'Settings and Guardrails updated successfully!', type: 'success' });
+      setMessage({ text: '✅ Settings updated & AI Provider Sessions Hot-Reloaded!', type: 'success' });
       fetchSettings();
       fetchDiagnostics();
     } catch (err) {

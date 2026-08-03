@@ -116,10 +116,28 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
     const typedText = replyText;
     setReplyText('');
 
+    const tempUserMsgId = `temp-user-${Date.now()}`;
+    const tempAiMsgId = `temp-ai-${Date.now()}`;
+
+    // Optimistically push user message & live AI thinking indicator
+    setMessages(prev => [
+      ...prev,
+      {
+        id: tempUserMsgId,
+        content: typedText,
+        direction: 'inbound',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: tempAiMsgId,
+        content: '🤖 Grok Indic RAG Engine: Searching public bulletin knowledgebase & translating response...',
+        direction: 'outbound',
+        created_at: new Date().toISOString(),
+        isPending: true
+      }
+    ]);
+
     try {
-      // Determine request format.
-      // If operator and simulateCitizen is unchecked, send operator manual-reply.
-      // Otherwise, send a simulated citizen message.
       const useManualReply = isOperator && !simulateCitizen;
       const endpoint = useManualReply 
         ? `${backendUrl}/api/webhook/manual-reply`
@@ -143,12 +161,14 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
         throw new Error(errData.detail || 'API communication error');
       }
       
-      // Reload thread
+      // Reload actual thread from database
       await fetchThread(activeConvoId);
       if (isOperator) {
         fetchConversationsList();
       }
     } catch (err) {
+      // Remove pending thinking indicator on error
+      setMessages(prev => prev.filter(m => m.id !== tempAiMsgId));
       alert(err.message);
     } finally {
       setSubmittingReply(false);
@@ -307,18 +327,20 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
                           style={{
                             padding: '10px 14px',
                             borderRadius: isInbound ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            background: isInbound ? 'hsl(var(--primary))' : 'var(--border-color-glass)',
+                            background: m.isPending
+                              ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)'
+                              : isInbound ? 'hsl(var(--primary))' : 'var(--border-color-glass)',
                             color: isInbound ? 'white' : 'hsl(var(--text-primary))',
                             fontSize: '0.82rem',
                             lineHeight: '1.4',
-                            border: isInbound ? 'none' : '1px solid var(--border-color-glass)'
+                            border: m.isPending ? '1.5px solid #818cf8' : isInbound ? 'none' : '1px solid var(--border-color-glass)',
+                            animation: m.isPending ? 'pulse 1.2s infinite ease-in-out' : 'none'
                           }}
                         >
                           {m.content}
                         </div>
                         <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))', marginTop: '4px' }}>
-                          {new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                          {isInbound ? ' (Citizen)' : ' (AI Assist)'}
+                          {m.isPending ? '⚡ Grok Indic AI processing...' : `${new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} ${isInbound ? '(Citizen)' : '(AI Assist)'}`}
                         </span>
                       </div>
                     );

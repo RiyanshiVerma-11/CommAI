@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime, timezone, timedelta
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -18,6 +18,18 @@ class CustomBaseModel(BaseModel):
                 v = v.replace(tzinfo=timezone.utc)
             else:
                 v = v.astimezone(timezone.utc)
+        return v
+
+    @field_validator("age", "target_audience_count", "estimated_reach", "sent_count", "failed_count", mode="before", check_fields=False)
+    @classmethod
+    def coerce_empty_numeric(cls, v):
+        if v == "" or v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except ValueError:
+                return v
         return v
 
 # --- AUTH SCHEMAS ---
@@ -287,8 +299,8 @@ class CampaignResponse(CampaignBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+class CampaignBatchApprove(CustomBaseModel):
+    campaign_ids: List[str]
 
 
 # --- STATS/DASHBOARD SCHEMAS ---
@@ -528,8 +540,8 @@ class SOSReportBase(CustomBaseModel):
     title: str
     description: str
     report_type: str
-    latitude: Optional[str] = None
-    longitude: Optional[str] = None
+    latitude: Optional[Union[str, float]] = None
+    longitude: Optional[Union[str, float]] = None
     location_name: Optional[str] = None
     reporter_name: Optional[str] = None
     reporter_phone: Optional[str] = None

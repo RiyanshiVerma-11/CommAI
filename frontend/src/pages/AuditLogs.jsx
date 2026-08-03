@@ -6,6 +6,8 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+  const [inspectLog, setInspectLog] = useState(null);
+  const [copiedJson, setCopiedJson] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -121,7 +123,11 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 188, 212, 0.2)', border: '1px solid rgba(0, 188, 212, 0.4)', color: '#00e5ff' }}
             onClick={async () => {
               try {
-                const response = await fetch(`${backendUrl}/api/campaigns/audit-logs/export/all`, { headers });
+                const queryParams = new URLSearchParams();
+                if (actionFilter) queryParams.append('action_type', actionFilter);
+                if (search) queryParams.append('search', search);
+
+                const response = await fetch(`${backendUrl}/api/campaigns/audit-logs/export/all?${queryParams.toString()}`, { headers });
                 if (!response.ok) {
                   const errData = await response.json().catch(() => ({}));
                   throw new Error(errData.detail || 'Export failed');
@@ -130,7 +136,7 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = downloadUrl;
-                a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.download = `audit_logs_${actionFilter ? actionFilter.toLowerCase() : 'filtered'}_${new Date().toISOString().slice(0, 10)}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -140,9 +146,9 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
                 alert(`CSV Export failed: ${err.message}`);
               }
             }}
-            title="Export all operational audit logs to CSV"
+            title="Export filtered operational audit logs to CSV"
           >
-            📥 Export CSV
+            📥 Export CSV ({filteredLogs.length})
           </button>
         </div>
 
@@ -159,11 +165,12 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
             <table className="custom-table" style={{ verticalAlign: 'top' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '180px' }}>Timestamp</th>
-                  <th style={{ width: '180px' }}>Operator</th>
-                  <th style={{ width: '150px' }}>Action Type</th>
-                  <th style={{ width: '180px' }}>State Details</th>
+                  <th style={{ width: '160px' }}>Timestamp</th>
+                  <th style={{ width: '160px' }}>Operator</th>
+                  <th style={{ width: '130px' }}>Action Type</th>
+                  <th style={{ width: '160px' }}>State Details</th>
                   <th>Modified Property Details</th>
+                  <th style={{ width: '120px' }}>Inspect</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,6 +203,15 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
                       )}
                     </td>
                     <td>{renderChanges(log.changes)}</td>
+                    <td>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: '0.75rem', padding: '4px 8px', color: '#00e5ff', background: 'rgba(0, 229, 255, 0.08)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: '6px' }}
+                        onClick={() => setInspectLog(log)}
+                      >
+                        🔍 View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -203,6 +219,75 @@ const AuditLogs = ({ user: _user, backendUrl, headers }) => {
           )}
         </div>
       </GlassCard>
+
+      {/* Interactive JSON Inspection Modal Overlay */}
+      {inspectLog && (
+        <div className="modal-overlay" style={{ zIndex: 1000, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <GlassCard className="modal-content animate-fade-in" style={{ width: '90%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto', padding: '24px', background: 'rgba(18, 24, 38, 0.95)', border: '1px solid rgba(0, 212, 255, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: '#00e5ff' }}>
+                  🔍 Audit Event Inspection Drawer
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: 'hsl(var(--text-muted))' }}>
+                  Log ID: {inspectLog.id}
+                </span>
+              </div>
+              <button className="btn btn-dark" style={{ padding: '4px 10px' }} onClick={() => setInspectLog(null)}>
+                ✕
+              </button>
+            </div>
+
+            {/* Log Metadata Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '10px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', display: 'block' }}>Operator / Actor</span>
+                <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{inspectLog.user_name}</strong>
+                <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>User ID: {inspectLog.user_id}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', display: 'block' }}>Timestamp</span>
+                <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{new Date(inspectLog.timestamp).toLocaleString()}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', display: 'block' }}>Action Type</span>
+                {getActionBadge(inspectLog.action)}
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', display: 'block' }}>Target Campaign ID</span>
+                <span style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#38bdf8' }}>{inspectLog.campaign_id || 'Global System Event'}</span>
+              </div>
+            </div>
+
+            {/* Formatted Field Changes */}
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '8px', color: '#fff' }}>Field Changes & State Diffs</h4>
+              {renderChanges(inspectLog.changes)}
+            </div>
+
+            {/* Raw JSON Payload Viewer */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>Raw Audit JSON Payload</h4>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.75rem', padding: '4px 10px', color: copiedJson ? '#10b981' : '#00e5ff', background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '6px' }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(inspectLog, null, 2));
+                    setCopiedJson(true);
+                    setTimeout(() => setCopiedJson(false), 2000);
+                  }}
+                >
+                  {copiedJson ? '✅ Copied to Clipboard!' : '📋 Copy JSON Payload'}
+                </button>
+              </div>
+              <pre style={{ background: '#0d1117', color: '#38bdf8', padding: '14px', borderRadius: '8px', fontSize: '0.8rem', overflowX: 'auto', maxHeight: '220px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {JSON.stringify(inspectLog, null, 2)}
+              </pre>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 };

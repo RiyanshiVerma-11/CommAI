@@ -77,9 +77,25 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [autofillPosterData, setAutofillPosterData] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    return localStorage.getItem('commai_preferred_language') || 'Hindi';
+  });
 
+  const handleLanguageChange = (newLang) => {
+    setSelectedLanguage(newLang);
+    localStorage.setItem('commai_preferred_language', newLang);
+    window.dispatchEvent(new CustomEvent('commai_language_changed', { detail: newLang }));
+  };
 
+  useEffect(() => {
+    if (user && user.preferred_languages && user.preferred_languages.length > 0) {
+      const saved = localStorage.getItem('commai_preferred_language');
+      if (!saved) {
+        localStorage.setItem('commai_preferred_language', user.preferred_languages[0]);
+        setSelectedLanguage(user.preferred_languages[0]);
+      }
+    }
+  }, [user]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -210,11 +226,13 @@ function App() {
   };
 
   const [emergencyCount, setEmergencyCount] = useState(0);
+  const [sosCount, setSosCount] = useState(0);
   const [queriesCount, setQueriesCount] = useState(0);
   const [unreadRepliesCount, setUnreadRepliesCount] = useState(0);
   const [bulletinCount, setBulletinCount] = useState(0);
   const [operatorChatCount, setOperatorChatCount] = useState(0);
   const [liveAlert, setLiveAlert] = useState(null);
+  const [autofillPosterData, setAutofillPosterData] = useState(null);
   const [pendingVoicePlan, setPendingVoicePlan] = useState(null);
   const [pendingVoiceAlert, setPendingVoiceAlert] = useState(null);
   const [pendingOperatorChatTarget, setPendingOperatorChatTarget] = useState(null);
@@ -721,10 +739,13 @@ function App() {
     checkExistingEmergencies();
   }, [token, user]);
 
-  // Reset bulletin count when live_bulletins is viewed
+  // Reset bulletin count when live_bulletins is viewed, reset sosCount when sos_reports is viewed
   useEffect(() => {
     if (activeTab === 'live_bulletins') {
       setBulletinCount(0);
+    }
+    if (activeTab === 'sos_reports') {
+      setSosCount(0);
     }
   }, [activeTab]);
 
@@ -759,6 +780,20 @@ function App() {
       }
     };
 
+    const fetchSosCount = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/sos?status_filter=reported`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSosCount(data.length);
+        }
+      } catch (err) {
+        console.error('Error fetching SOS count:', err);
+      }
+    };
+
     const fetchQueriesCount = async () => {
       try {
         const response = await fetch(`${BACKEND_URL}/api/queries?status_filter=open`, {
@@ -786,9 +821,11 @@ function App() {
     };
 
     fetchCount();
+    fetchSosCount();
     fetchQueriesCount();
     const interval = setInterval(() => {
       fetchCount();
+      fetchSosCount();
       fetchQueriesCount();
     }, 5000);
     return () => clearInterval(interval);
@@ -1130,6 +1167,7 @@ function App() {
         setSidebarCollapsed={setSidebarCollapsed}
         closeMobileSidebar={() => setMobileSidebarOpen(false)}
         emergencyCount={user?.role === 'audience' ? unreadRepliesCount : emergencyCount}
+        sosCount={sosCount}
         queriesCount={queriesCount}
         bulletinCount={bulletinCount}
         operatorChatCount={operatorChatCount}
@@ -1192,6 +1230,31 @@ function App() {
               </svg>
               {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
+            <span className="header-date" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
+            {/* Global Multilingual Language Selector */}
+            <select
+              value={selectedLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              title="Persistent Portal Language"
+              style={{
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: 'hsl(var(--text-primary))',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '8px',
+                padding: '5px 10px',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                outline: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}
+            >
+              {["Hindi", "English", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"].map(lang => (
+                <option key={lang} value={lang} style={{ background: 'var(--input-bg)', color: 'hsl(var(--text-primary))' }}>
+                  🌐 {lang}
+                </option>
+              ))}
+            </select>
             <span className="header-date" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
             
             {/* Custom Theme Switch Pill */}
@@ -1465,6 +1528,7 @@ function App() {
         backendUrl={BACKEND_URL} 
         token={token} 
         onAutoCreateCampaign={handleAutoCreateCampaign} 
+        setActiveTab={setActiveTab}
       />
       <VoiceCommandCenter
         user={user}

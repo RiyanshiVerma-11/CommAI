@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import GlassCard from '../components/GlassCard';
+import { parseApiError } from '../utils/apiError';
 
 const Users = ({ user: _currentUser, backendUrl, headers }) => {
   const [activeSubTab, setActiveSubTab] = useState('active'); // 'active' or 'past'
@@ -195,7 +196,7 @@ const Users = ({ user: _currentUser, backendUrl, headers }) => {
 
         if (!response.ok) {
           const errData = await response.json();
-          throw new Error(errData.detail || 'Failed to create audience user');
+          throw new Error(parseApiError(errData, 'Failed to create audience user'));
         }
 
         setMessage({ text: `Audience user ${formFullName} created successfully!`, type: 'success' });

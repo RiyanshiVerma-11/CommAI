@@ -96,11 +96,11 @@ graph TD
 
 ## ⚡ Core SaaS Feature Pillars
 
-### 1. 🔑 Enterprise Security & Real-Time Email 2FA OTP Authentication
-- **Multi-Factor Authentication (MFA)**: Secure operator sign-in enforced by JWT access tokens and real-time email 2FA OTP verification. Upon login request, a dynamic 6-digit verification code is instantly generated and delivered directly to the user's registered email inbox via SMTP, supported by active expiration timers, cache invalidation, and resend protection.
-- **Granular Role-Based Access Control (RBAC)**: Distinct permissions for `admin`, `campaign_manager`, and `communicator` user roles.
-- **Self-Service Password Recovery**: Secure self-service password reset flow (`/api/auth/forgot-password-request` & `/api/auth/reset-password`) using email OTP verification codes.
-- **Blacklist & Unsubscribe Management**: Dynamic blacklist filtering (Email and Phone opt-outs) protecting recipient privacy and regulatory compliance.
+### 1. 🔑 Enterprise Security & Authentication Infrastructure
+- **JWT Session Authentication**: Secure operator sign-in enforced by JSON Web Token (JWT) authorization headers, encrypted passwords (bcrypt), and session persistence.
+- **Granular Role-Based Access Control (RBAC)**: Enforces strict permissions across `admin`, `campaign_manager`, and `audience` user roles on both backend FastAPI routes and frontend layout gates.
+- **Self-Service Password Recovery & One-Time OTP Access**: Instant self-service password reset flow (`/api/auth/forgot-password-request` & `/api/auth/reset-password`) using dynamic email verification codes, enabling quick emergency access when users forget passwords and need immediate portal entry.
+- **Dynamic Channel Opt-Out Filtering**: Blacklist and preferred-channel filtering ensuring recipient data privacy and regulatory compliance.
 
 ### 2. 🤖 AI Intelligence, Copywriting & RAG Knowledge Engine
 - **Groq LLM Core & Tone Adaptations**: Powered by Groq's `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` models. Supports 4 tone presets (*Urgent Emergency*, *Formal Advisory*, *Empathetic Support*, *Informative Announcement*), target length selection, key point expansion, and 3-variant AI subject line generation.
@@ -624,7 +624,7 @@ npm run dev
 
 - **Admin Account**: `admin@example.com`
 - **Password**: `AdminPassword123!`
-- **2FA OTP Verification**: Sent directly to user's email inbox upon login request (or logged to backend server console when running in test/mock mode).
+- **2FA OTP Verification**: Dynamic verification codes for password recovery sent directly to user's email inbox.
 
 ---
 
@@ -652,11 +652,9 @@ $env:PYTHONPATH="backend"; .\venv\Scripts\pytest backend\tests\
 
 ## 🗺️ Product Roadmap & Enterprise Features
 
-- [x] **Milestone 1**: Core platform architecture, JWT authentication, simulated 2FA OTP, dynamic audience segmentation, template management, campaign wizard, and maker-checker approval queue.
+- [x] **Milestone 1**: Core platform architecture, JWT authentication, dynamic audience segmentation, template management, campaign wizard, and maker-checker approval queue.
 - [x] **Milestone 2**: 23-language Neural Indic Speech Engine, AI Visual Poster Studio with binary streaming, real-time WebSocket staff chat, district sentiment map, and RAG citizen support desk.
 - [x] **Milestone 3**: IVR Automated Voice Calling integration for low-literacy rural emergency broadcasts (Twilio Voice REST API & TwiML integration with Polly TTS).
-- [ ] **Milestone 4**: Social Media Auto-Publishing (X/Twitter, Facebook, LinkedIn API gateways).
-- [ ] **Milestone 5**: Enterprise Multi-Tenant White-Labeling with custom domain routing.
 
 ---
 

@@ -293,7 +293,7 @@ export default function Feedback({ user, backendUrl, headers, _unreadRepliesCoun
       loadSubmittedFeedback();
     } else if (activeSubTab === 'emergency' || activeSubTab === 'queries') {
       loadEmergencyContacts();
-    } else if (activeSubTab === 'proposed_campaigns' && isAudience) {
+    } else if (activeSubTab === 'propose' || activeSubTab === 'proposed_campaigns') {
       loadMyProposedCampaigns();
     } else if (activeSubTab === 'dashboard' && !isAudience) {
       loadCampaigns(); // Load all active/completed campaigns to let managers select one

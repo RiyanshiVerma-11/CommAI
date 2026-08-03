@@ -81,9 +81,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
       if (pending.length > 0) {
         if (selectedCamp) {
           const stillExists = pending.find(c => c.id === selectedCamp.id);
-          if (stillExists) {
-            setSelectedCamp(stillExists);
-          } else {
+          if (!stillExists) {
             setSelectedCamp(pending[0]);
           }
         } else {
@@ -97,7 +95,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, headers, selectedCamp, activeReviewTab]);
+  }, [backendUrl, headers, selectedCamp?.id, activeReviewTab]);
 
   const fetchSegmentsAndTemplates = useCallback(async () => {
     try {
@@ -119,7 +117,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
 
   // Fetch audit logs when campaign selection changes
   useEffect(() => {
-    if (!selectedCamp) {
+    if (!selectedCamp?.id) {
       setAuditLogs([]);
       return;
     }
@@ -141,7 +139,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
     setReviewNote('');
     setActionError('');
     setActionSuccess('');
-  }, [selectedCamp, backendUrl, headers]);
+  }, [selectedCamp?.id, backendUrl, headers]);
 
   const handleApprove = async () => {
     if (!selectedCamp) return;

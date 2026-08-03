@@ -1374,7 +1374,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
               </h3>
               <button 
                 onClick={() => setShowSosModal(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.4rem', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '1.5rem', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 &times;
               </button>
@@ -1393,7 +1393,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
 
             <form onSubmit={handleAnonymousSOSSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Incident Title / Safety Hazard *</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Incident Title / Safety Hazard *</label>
                 <input
                   type="text"
                   className="form-control"
@@ -1407,7 +1407,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Hazard Type</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Hazard Type</label>
                   <select
                     className="form-control"
                     value={sosType}
@@ -1423,7 +1423,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
                 </div>
 
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Location Coordinates</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Location Coordinates</label>
                   <button
                     type="button"
                     onClick={handleGrabSosLocation}
@@ -1438,7 +1438,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Latitude</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Latitude</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1449,7 +1449,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Longitude</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Longitude</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1462,7 +1462,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Landmark / Location Details *</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Landmark / Location Details *</label>
                 <input
                   type="text"
                   className="form-control"
@@ -1475,7 +1475,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Distress / Hazard Description *</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Distress / Hazard Description *</label>
                 <textarea
                   rows={3}
                   className="form-control"
@@ -1489,7 +1489,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Reporter Name (Optional)</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Reporter Name (Optional)</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1500,7 +1500,7 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8rem', color: '#cbd5e1' }}>Contact Phone (Optional)</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Contact Phone (Optional)</label>
                   <input
                     type="text"
                     className="form-control"

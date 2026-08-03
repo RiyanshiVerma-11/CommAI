@@ -563,7 +563,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
             <h4 style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '16px', color: 'hsl(var(--danger))' }}>Report Emergency Hazard</h4>
             <form onSubmit={handleSOSSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Incident Title / Topic</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Incident Title / Topic</label>
                 <input
                   type="text"
                   className="text-input"
@@ -576,7 +576,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Incident Type</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Incident Type</label>
                   <select
                     className="text-input"
                     value={reportType}
@@ -592,7 +592,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
                 </div>
 
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>GPS Location Share</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>GPS Location Share</label>
                   <button
                     type="button"
                     onClick={handleGrabLocation}
@@ -607,7 +607,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
 
               {/* Address Search Bar */}
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>🔍 Search Address or Landmark</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>🔍 Search Address or Landmark</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
@@ -631,7 +631,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
               {/* Interactive Leaflet Pin-Drop Map */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, color: '#ffffff' }}>
                     🗺️ Interactive Pin-Drop Map Picker <span style={{ color: 'hsl(var(--primary))', fontWeight: 400 }}>(Tap map to drop pin)</span>
                   </label>
                   <button
@@ -675,7 +675,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Latitude</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Latitude</label>
                   <input
                     type="text"
                     className="text-input"
@@ -690,7 +690,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Longitude</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Longitude</label>
                   <input
                     type="text"
                     className="text-input"
@@ -707,7 +707,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Location Name / Landmark</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Location Name / Landmark</label>
                 <input
                   type="text"
                   className="text-input"
@@ -719,7 +719,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Hazard / Distress Description</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Hazard / Distress Description</label>
                 <textarea
                   rows={3}
                   className="text-input"
@@ -732,7 +732,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Reporter Name</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Reporter Name</label>
                   <input
                     type="text"
                     className="text-input"
@@ -742,7 +742,7 @@ export default function SOSReports({ user, backendUrl, headers, setActiveTab }) 
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Contact Phone</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem', color: '#ffffff' }}>Contact Phone</label>
                   <input
                     type="text"
                     className="text-input"

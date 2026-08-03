@@ -3464,7 +3464,7 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     justify-content: space-between !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .header-date {

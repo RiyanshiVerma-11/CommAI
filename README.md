@@ -654,7 +654,7 @@ $env:PYTHONPATH="backend"; .\venv\Scripts\pytest backend\tests\
 
 - [x] **Milestone 1**: Core platform architecture, JWT authentication, simulated 2FA OTP, dynamic audience segmentation, template management, campaign wizard, and maker-checker approval queue.
 - [x] **Milestone 2**: 23-language Neural Indic Speech Engine, AI Visual Poster Studio with binary streaming, real-time WebSocket staff chat, district sentiment map, and RAG citizen support desk.
-- [ ] **Milestone 3**: IVR Automated Voice Calling integration for low-literacy rural emergency broadcasts.
+- [x] **Milestone 3**: IVR Automated Voice Calling integration for low-literacy rural emergency broadcasts (Twilio Voice REST API & TwiML integration with Polly TTS).
 - [ ] **Milestone 4**: Social Media Auto-Publishing (X/Twitter, Facebook, LinkedIn API gateways).
 - [ ] **Milestone 5**: Enterprise Multi-Tenant White-Labeling with custom domain routing.
 

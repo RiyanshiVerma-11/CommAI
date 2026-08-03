@@ -115,7 +115,7 @@ const Approvals = ({ user, backendUrl, headers }) => {
   useEffect(() => {
     fetchPendingCampaigns();
     fetchSegmentsAndTemplates();
-  }, [fetchSegmentsAndTemplates]);
+  }, [fetchPendingCampaigns, fetchSegmentsAndTemplates, activeReviewTab]);
 
   // Fetch audit logs when campaign selection changes
   useEffect(() => {

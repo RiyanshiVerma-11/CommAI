@@ -419,7 +419,7 @@ export default function Feedback({ user, backendUrl, headers, _unreadRepliesCoun
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       
       {/* Sub Tabs Navigation */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '12px' }}>
+      <div className="subtabs-scroll-container" style={{ display: 'flex', gap: '10px', marginBottom: '24px', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '14px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
         {isAudience ? (
           <>
             <button 

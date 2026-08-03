@@ -2370,12 +2370,29 @@ input[type=range]::-webkit-slider-runnable-track {
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
+.subtabs-scroll-container {
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+.subtabs-scroll-container .btn {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+.notification-container {
+  position: relative;
+  z-index: 99999;
+}
+
 .notification-drawer-card {
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
   width: 380px;
-  max-width: 90vw;
+  max-width: calc(100vw - 24px);
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -3880,9 +3897,15 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     transform-origin: bottom right;
   }
 
-  .approvals-grid {
+  .approvals-grid,
+  .grid-two-cols {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
+  }
+
+  .grid-two-cols > .glass-card {
+    grid-column: auto !important;
+    grid-row: auto !important;
   }
 
   .bottom-nav-label {

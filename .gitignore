@@ -10,6 +10,9 @@ env/
 .env.*.local
 settings.json
 backend/settings.json
+*-firebase-adminsdk-*.json
+service-account*.json
+*.json.key
 
 # SQLite Database files
 *.db

@@ -483,7 +483,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px', order: 1 }}>
+        <div className="grid-two-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px', order: 1 }}>
           {/* Recent Communications */}
           <GlassCard style={{ position: 'relative', overflow: 'hidden', padding: '28px', gridColumn: 2, gridRow: 1 }}>
             <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color-glass)', paddingBottom: '16px', marginBottom: '24px', fontWeight: '700', color: 'hsl(var(--text-primary))', letterSpacing: '-0.02em' }}>

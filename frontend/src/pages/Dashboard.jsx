@@ -554,7 +554,7 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
                         : '🚨'}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>{interpolateText(poster.title)}</h4>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'hsl(var(--text-primary))' }}>{interpolateText(poster.title)}</h4>
                       <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>{interpolateText(poster.description).slice(0, 70)}...</p>
                       {poster.created_at && <p style={{ margin: '5px 0 0', fontSize: '0.68rem', color: 'hsl(var(--text-muted))' }}>{formatAlertDateTime(poster.created_at)}</p>}
                       <button

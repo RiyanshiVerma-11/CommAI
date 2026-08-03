@@ -3882,6 +3882,15 @@ h1, h2, h3, h4, h5, h6, p, span, a, button, div {
     border-top: 1px solid rgba(79, 70, 229, 0.15);
     box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
   }
+  .notification-drawer-card {
+    position: fixed !important;
+    top: 64px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 9999999 !important;
+  }
 
   .floating-voice-cockpit {
     bottom: 74px !important;

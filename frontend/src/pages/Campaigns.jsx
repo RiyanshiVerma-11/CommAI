@@ -1676,7 +1676,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                             >
                               {camp.title}
                             </strong>
-                            {camp.review_remark && (
+                            {camp.review_remark && camp.status === 'rejected' && (
                               <div style={{
                                 marginTop: '6px',
                                 padding: '8px 12px',

@@ -7,7 +7,6 @@
 ### 🌐 Deployed Live Web Portal: [https://comm-ai-nine.vercel.app/](https://comm-ai-nine.vercel.app/)
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-CommAI-brightgreen?style=for-the-badge&logo=vercel)](https://comm-ai-nine.vercel.app/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
@@ -658,6 +657,6 @@ $env:PYTHONPATH="backend"; .\venv\Scripts\pytest backend\tests\
 
 ---
 
-## 📜 License & Acknowledgements
+## 📜 Acknowledgements
 
-This project is licensed under the **MIT License**. Built with passion using FastAPI, React, Groq AI, Microsoft Edge-TTS, and Google Translate.
+Built with passion using FastAPI, React, Groq AI, Microsoft Edge-TTS, and Google Translate.

@@ -1290,7 +1290,12 @@ function App() {
             <div className="notification-container" style={{ position: 'relative' }}>
               <button 
                 className="notification-bell-btn" 
-                onClick={() => setNotificationDrawerOpen(!notificationDrawerOpen)}
+                onClick={() => {
+                  if ('Notification' in window && Notification.permission !== 'granted') {
+                    Notification.requestPermission();
+                  }
+                  setNotificationDrawerOpen(!notificationDrawerOpen);
+                }}
                 title={`Notifications (${totalUnreadNotifications} Unread)`}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }}>

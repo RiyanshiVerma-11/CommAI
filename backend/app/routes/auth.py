@@ -230,10 +230,26 @@ def get_my_audience_profile(
     from app.routes.audience import deserialize_list
     aud = db.query(Audience).filter(Audience.email == current_user.email).first()
     if not aud:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audience profile record not found"
+        parts = (current_user.full_name or "Citizen User").strip().split(maxsplit=1)
+        f_name = parts[0] if parts else "Citizen"
+        l_name = parts[1] if len(parts) > 1 else "User"
+        aud = Audience(
+            first_name=f_name,
+            last_name=l_name,
+            email=current_user.email,
+            phone="",
+            preferred_languages='["English"]',
+            occupation="General Citizen",
+            age=30,
+            gender="Other",
+            state="National",
+            district="Central",
+            city="Metro",
+            preferred_channels='["WhatsApp"]'
         )
+        db.add(aud)
+        db.commit()
+        db.refresh(aud)
     return {
         "id": aud.id,
         "first_name": aud.first_name,

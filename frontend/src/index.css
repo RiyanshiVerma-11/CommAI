@@ -121,6 +121,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  overflow-wrap: break-word;
 }
 
 html,
@@ -4231,4 +4232,14 @@ div {
 
 .light-theme .custom-table tr:hover td {
   background: rgba(79, 70, 229, 0.04) !important;
+}
+
+/* Table metadata tag wrapping rule (Desktop vs Mobile) */
+@media (min-width: 769px) {
+  th.nowrap-cell,
+  td.nowrap-cell,
+  .table-tag,
+  .badge-cell {
+    white-space: nowrap;
+  }
 }

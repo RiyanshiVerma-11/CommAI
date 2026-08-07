@@ -225,13 +225,22 @@ def list_conversations(
     return result
 
 
+from app.auth import require_any_authenticated, require_manager_or_higher
+
 @router.get("/conversations/{audience_id}")
 def get_conversation_thread(
     audience_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(require_manager_or_higher),
+    current_user=Depends(require_any_authenticated),
 ):
     """Get the full conversation thread for a specific audience member."""
+    if current_user.role == "audience":
+        aud_check = db.query(Audience).filter(Audience.email == current_user.email).first()
+        if not aud_check or aud_check.id != audience_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You can only view your own conversation thread."
+            )
     messages = (
         db.query(CitizenMessage)
         .filter(CitizenMessage.audience_id == audience_id)

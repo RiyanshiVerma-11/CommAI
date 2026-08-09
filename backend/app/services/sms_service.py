@@ -79,11 +79,18 @@ def send_sms(
                 for c in send_body
             )
             
-            if has_regional:
-                header_title = subject.strip() if (subject and subject.strip()) else "CommAI Public Update"
-                send_body = f"[CommAI: {header_title}]\n{send_body}"
-            elif subject and subject.strip() and not send_body.startswith(subject.strip()):
-                send_body = f"[{subject.strip()}]\n{send_body}"
+            # Clean non-GSM emojis (like ⚠️, 🚨) and special symbols that cause Indian telecom carriers to block international SMS
+            clean_subject = re.sub(r'[^\x00-\x7F]+', '', subject).strip() if subject else ""
+            clean_body_text = re.sub(r'[^\x00-\x7F]+', '', send_body).strip()
+            
+            if clean_subject and not clean_body_text.startswith(clean_subject):
+                send_body = f"[{clean_subject}]\n{clean_body_text}"
+            else:
+                send_body = clean_body_text
+
+            # Final GSM-compatibility cleanup
+            send_body = re.sub(r'[^\x00-\x7F]+', '', send_body).strip()
+
 
             payload = {
                 "From": twilio_from,
@@ -96,6 +103,15 @@ def send_sms(
                 res_data = resp.json() if resp.headers.get("content-type") == "application/json" else {}
                 if res_data.get("error_code") is None:
                     logger.info(f"[SMS] Successfully delivered Twilio SMS to {to_phone}")
+                    # Dual delivery: send copy to email so message is never lost if telecom filters SMS
+                    if email:
+                        try:
+                            fallback_subj = f"📱 [SMS Alert to {to_phone}] {subject.strip() if subject else 'Public Notice'}"
+                            fallback_body = f"--- SMS Message (Target Phone: {to_phone}) ---\n\n{message}\n\n[CommAI Platform Advisory Notice]"
+                            send_email(email, fallback_subj, fallback_body)
+                            logger.info(f"[SMS] Dual email copy delivered to {email}")
+                        except Exception as em_err:
+                            logger.warning(f"[SMS] Dual email dispatch notice error: {em_err}")
                     return True, ""
                 else:
                     logger.warning(f"[SMS] Twilio returned error_code {res_data.get('error_code')}: {res_data.get('message')}")
@@ -105,6 +121,7 @@ def send_sms(
                 logger.warning(f"[SMS] Twilio SMS dispatch failed: {err_msg}")
         except Exception as ex:
             logger.error(f"[SMS] Twilio dispatch exception: {ex}")
+
 
     # Option 2: Fast2SMS HTTP API Integration (India SMS Gateway)
     if not api_key:
@@ -129,6 +146,15 @@ def send_sms(
         except Exception as ex:
             logger.error(f"[SMS] Fast2SMS gateway dispatch error: {ex}")
 
-    # Option 3: Return result or mock delivery log (no email fallback)
+    # Option 3: Return result or mock delivery log with email fallback
     logger.info(f"[SMS MOCK] To Phone: +{clean_phone} | Message: {message[:100]}...")
+    if email:
+        try:
+            fallback_subj = f"📱 [SMS Alert to +{clean_phone}] {subject.strip() if subject else 'Public Notice'}"
+            fallback_body = f"--- SMS Message (Target Phone: +{clean_phone}) ---\n\n{message}\n\n[CommAI Platform Notice: Delivered via Email Fallback because live SMS Gateway API Key is pending configuration]"
+            send_email(email, fallback_subj, fallback_body)
+            logger.info(f"[SMS] Sent email fallback alert to {email} for phone +{clean_phone}")
+        except Exception as fallback_err:
+            logger.error(f"[SMS] Email fallback error: {fallback_err}")
+
     return True, "delivered_mock"

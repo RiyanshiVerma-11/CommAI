@@ -217,6 +217,7 @@ def get_voice_language_config(lang: str = "Hindi") -> Tuple[str, str]:
 def generate_twiml(message: str, lang: str = "Hindi") -> str:
     """
     Generate TwiML XML instructions for Twilio Text-to-Speech playback.
+    Optimized for prominent campaign alert announcement and trial account keypress handling.
     """
     voice, lang_code = get_voice_language_config(lang)
     
@@ -226,18 +227,28 @@ def generate_twiml(message: str, lang: str = "Hindi") -> str:
         .replace(">", "&gt;")
         .replace('"', "&quot;")
         .replace("'", "&apos;")
+        .strip()
     )
+
+    alert_intro = "Attention! Official CommAI Emergency Public Notice." if lang_code.startswith("en") else "सावधान! आधिकारिक सार्वजनिक सुरक्षा चेतावनी।"
 
     twiml = (
         f'<?xml version="1.0" encoding="UTF-8"?>'
         f'<Response>'
-        f'<Pause length="1"/>'
+        f'<Pause length="5"/>'
+        f'<Say voice="{voice}" language="{lang_code}">{alert_intro} {clean_msg}</Say>'
+        f'<Gather numDigits="1" timeout="8">'
+        f'<Say voice="{voice}" language="{lang_code}">{clean_msg}</Say>'
+        f'</Gather>'
+        f'<Pause length="2"/>'
         f'<Say voice="{voice}" language="{lang_code}">{clean_msg}</Say>'
         f'<Pause length="1"/>'
         f'<Say voice="{voice}" language="{lang_code}">Thank you for listening. Goodbye.</Say>'
         f'</Response>'
     )
+
     return twiml
+
 
 
 def send_voice_call(to_phone: str, message: str, lang: str = "Hindi") -> Tuple[bool, str]:

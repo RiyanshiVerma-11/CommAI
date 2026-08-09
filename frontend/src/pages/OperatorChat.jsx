@@ -14,6 +14,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   const [attachedFile, setAttachedFile] = useState(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatListContainerRef = useRef(null);
 
   // Audio Chime Synthesis using Web Audio API
   const playMessageChime = useCallback(() => {
@@ -184,9 +185,11 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
     };
   }, [channel]);
 
-  // Auto-scroll to bottom on new message
+  // Scroll inner chat box container ONLY to bottom on new message (never auto-slide main page window)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatListContainerRef.current) {
+      chatListContainerRef.current.scrollTop = chatListContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSelectChannel = (chId) => {
@@ -303,13 +306,13 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   const getRoleBadge = (role) => {
     if (role === 'admin') {
       return (
-        <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.16)', color: 'hsl(270, 95%, 75%)', border: '1px solid rgba(168, 85, 247, 0.35)', fontSize: '0.7rem', padding: '2px 8px' }}>
+        <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.16)', color: 'hsl(270, 95%, 75%)', border: '1px solid rgba(168, 85, 247, 0.35)', fontSize: '0.68rem', padding: '1px 6px' }}>
           🛡️ ADMIN
         </span>
       );
     }
     return (
-      <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.16)', color: 'hsl(217, 91%, 70%)', border: '1px solid rgba(59, 130, 246, 0.35)', fontSize: '0.7rem', padding: '2px 8px' }}>
+      <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.16)', color: 'hsl(217, 91%, 70%)', border: '1px solid rgba(59, 130, 246, 0.35)', fontSize: '0.68rem', padding: '1px 6px' }}>
         👔 MANAGER
       </span>
     );
@@ -361,43 +364,43 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   const headerInfo = getHeaderInfo();
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '32px' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '0' }}>
       
       {/* Privacy & Scope Disclaimer Banner */}
       <div style={{
-        padding: '14px 18px',
-        borderRadius: '14px',
+        padding: '8px 14px',
+        borderRadius: '10px',
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.12) 100%)',
-        border: '1px solid rgba(168, 85, 247, 0.3)',
+        border: '1px solid rgba(168, 85, 247, 0.25)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '12px'
+        gap: '8px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ fontSize: '1.4rem' }}>🔒</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ fontSize: '1.1rem' }}>🔒</div>
           <div>
-            <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'hsl(var(--text-primary))' }}>
+            <div style={{ fontWeight: '700', fontSize: '0.88rem', color: 'hsl(var(--text-primary))' }}>
               Internal Staff & Operator Command Channel
             </div>
-            <div style={{ fontSize: '0.82rem', color: 'hsl(var(--text-secondary))', marginTop: '2px' }}>
-              Private communication workspace strictly between <strong>Admins</strong> and <strong>Campaign Managers</strong> with real-time WebSocket delivery and 1-on-1 private messaging.
+            <div style={{ fontSize: '0.76rem', color: 'hsl(var(--text-secondary))', marginTop: '1px' }}>
+              Private workspace for <strong>Admins</strong> & <strong>Campaign Managers</strong> with 1-on-1 DMs.
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-            ⚡ Continuous Dispatch Sync Active (3s)
+          <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }}></span>
+            ⚡ Continuous Sync (3s)
           </span>
         </div>
       </div>
 
       {/* Channel & Private DM Switcher */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', letterSpacing: '0.05em', marginRight: '4px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'hsl(var(--text-muted))', letterSpacing: '0.05em', marginRight: '2px' }}>
             Channels:
           </span>
           {publicChannels.map(ch => (
@@ -406,14 +409,14 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
               type="button"
               onClick={() => handleSelectChannel(ch.id)}
               style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
+                padding: '4px 12px',
+                borderRadius: '8px',
                 border: channel === ch.id ? '1px solid hsl(var(--primary))' : '1px solid var(--border-color-glass)',
                 background: channel === ch.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(99, 102, 241, 0.06)',
                 color: channel === ch.id ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
                 fontWeight: channel === ch.id ? '700' : '500',
                 cursor: 'pointer',
-                fontSize: '0.86rem',
+                fontSize: '0.8rem',
                 transition: 'all 0.2s ease'
               }}
             >
@@ -424,37 +427,36 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
 
         {/* Private Direct Messages with Staff Section */}
         {otherStaff.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(99, 102, 241, 0.06))', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.18)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '700', textTransform: 'uppercase', color: 'hsl(270, 95%, 75%)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                🔒 Private Staff DMs ({otherStaff.length}):
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(99, 102, 241, 0.06))', padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.18)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: '700', textTransform: 'uppercase', color: 'hsl(270, 95%, 75%)', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                🔒 Private DMs ({otherStaff.length}):
               </span>
               
               {/* Search Filter Input Bar */}
-              <div style={{ position: 'relative', minWidth: '220px' }}>
+              <div style={{ position: 'relative', minWidth: '180px' }}>
                 <input
                   type="text"
-                  placeholder="🔍 Search staff (e.g. Ramesh, Palak)..."
+                  placeholder="🔍 Search staff..."
                   value={staffSearchQuery}
                   onChange={(e) => setStaffSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '6px 12px 6px 28px',
-                    borderRadius: '8px',
+                    padding: '3px 10px 3px 24px',
+                    borderRadius: '6px',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
                     background: 'rgba(139, 92, 246, 0.08)',
                     color: 'hsl(var(--text-primary))',
-                    fontSize: '0.82rem',
-                    outline: 'none',
-                    transition: 'border 0.2s ease'
+                    fontSize: '0.78rem',
+                    outline: 'none'
                   }}
                 />
-                <span style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, fontSize: '0.8rem' }}>🔍</span>
+                <span style={{ position: 'absolute', left: '6px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6, fontSize: '0.75rem' }}>🔍</span>
                 {staffSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setStaffSearchQuery('')}
-                    style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', fontSize: '0.75rem' }}
+                    style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', fontSize: '0.7rem' }}
                   >
                     ✕
                   </button>
@@ -462,10 +464,10 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
               {filteredStaff.length === 0 ? (
-                <span style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', fontStyle: 'italic', padding: '4px 0' }}>
-                  No staff members found matching "{staffSearchQuery}"
+                <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontStyle: 'italic' }}>
+                  No staff matching "{staffSearchQuery}"
                 </span>
               ) : (
                 filteredStaff.map(staff => {
@@ -477,21 +479,21 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
                       type="button"
                       onClick={() => handleStartDm(staff)}
                       style={{
-                        padding: '6px 14px',
-                        borderRadius: '20px',
+                        padding: '3px 10px',
+                        borderRadius: '16px',
                         border: isSelected ? '1px solid rgba(236, 72, 153, 0.8)' : '1px solid rgba(255, 255, 255, 0.08)',
                         background: isSelected ? 'rgba(236, 72, 153, 0.2)' : 'rgba(139, 92, 246, 0.06)',
                         color: isSelected ? '#ec4899' : 'hsl(var(--text-secondary))',
                         fontWeight: isSelected ? '700' : '500',
                         cursor: 'pointer',
-                        fontSize: '0.82rem',
+                        fontSize: '0.78rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '4px',
                         transition: 'all 0.2s ease'
                       }}
                     >
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: staff.role === 'admin' ? '#a855f7' : '#3b82f6', display: 'inline-block' }} />
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: staff.role === 'admin' ? '#a855f7' : '#3b82f6', display: 'inline-block' }} />
                       <span>{staff.full_name} ({staff.role === 'admin' ? 'Admin' : 'Manager'})</span>
                     </button>
                   );
@@ -503,11 +505,11 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
       </div>
 
       {/* Main Chat Box Container */}
-      <GlassCard style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '580px', overflow: 'hidden' }}>
+      <GlassCard style={{ padding: '0', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 240px)', minHeight: '380px', maxHeight: '510px', overflow: 'hidden' }}>
         
         {/* Chat Header Bar */}
         <div style={{
-          padding: '16px 20px',
+          padding: '10px 16px',
           borderBottom: '1px solid var(--border-color-glass)',
           background: channel.startsWith('dm:') ? 'linear-gradient(90deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)' : 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(6, 182, 212, 0.08) 100%)',
           display: 'flex',
@@ -515,15 +517,15 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
           alignItems: 'center'
         }}>
           <div>
-            <div style={{ fontWeight: '700', fontSize: '1rem', color: 'hsl(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontWeight: '700', fontSize: '0.92rem', color: 'hsl(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>{headerInfo.label}</span>
-              {channel.startswith?.('dm:') || channel.startsWith('dm:') ? (
-                <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.2)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.4)', fontSize: '0.72rem' }}>
+              {channel.startsWith('dm:') ? (
+                <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.2)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.4)', fontSize: '0.7rem' }}>
                   PRIVATE DM
                 </span>
               ) : null}
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.76rem', color: 'hsl(var(--text-secondary))', marginTop: '1px' }}>
               {headerInfo.desc}
             </div>
           </div>
@@ -531,29 +533,29 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
             type="button"
             className="pill-chip"
             onClick={() => fetchMessages(true)}
-            style={{ fontSize: '0.78rem', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.06)' }}
+            style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(255, 255, 255, 0.06)' }}
           >
             🔄 Sync Chat
           </button>
         </div>
 
         {/* Messages List Area */}
-        <div style={{ flexGrow: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div ref={chatListContainerRef} style={{ flexGrow: 1, padding: '14px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'hsl(var(--text-muted))' }}>
+            <div style={{ textAlign: 'center', padding: '30px', color: 'hsl(var(--text-muted))', fontSize: '0.85rem' }}>
               Loading operator messages...
             </div>
           ) : error ? (
-            <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', color: 'hsl(var(--danger))', fontSize: '0.9rem' }}>
+            <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', color: 'hsl(var(--danger))', fontSize: '0.85rem' }}>
               ⚠️ {error}
             </div>
           ) : messages.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'hsl(var(--text-muted))' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.5 }}>💬</div>
-              <div style={{ fontWeight: '600', fontSize: '1rem', color: 'hsl(var(--text-primary))' }}>
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'hsl(var(--text-muted))' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5 }}>💬</div>
+              <div style={{ fontWeight: '600', fontSize: '0.92rem', color: 'hsl(var(--text-primary))' }}>
                 {channel.startsWith('dm:') ? `No private messages with ${activeDmUser?.full_name || 'this staff member'} yet` : 'No messages in this channel yet'}
               </div>
-              <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Be the first operator to start the conversation!</div>
+              <div style={{ fontSize: '0.8rem', marginTop: '2px' }}>Be the first operator to start the conversation!</div>
             </div>
           ) : (
             messages.map((msg) => {
@@ -563,57 +565,57 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
                   key={msg.id}
                   style={{
                     display: 'flex',
-                    gap: '12px',
+                    gap: '10px',
                     alignItems: 'flex-start',
                     flexDirection: isSelf ? 'row-reverse' : 'row'
                   }}
                 >
                   {/* Sender Avatar */}
                   <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
                     background: msg.sender_role === 'admin' ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
                     color: '#fff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: '800',
-                    fontSize: '0.85rem',
+                    fontSize: '0.78rem',
                     flexShrink: 0,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
                   }}>
                     {getInitials(msg.sender_name)}
                   </div>
 
                   {/* Message Bubble Card */}
                   <div style={{
-                    maxWidth: '75%',
+                    maxWidth: '80%',
                     background: isSelf ? 'rgba(59, 130, 246, 0.16)' : 'rgba(139, 92, 246, 0.07)',
                     border: `1px solid ${isSelf ? 'rgba(59, 130, 246, 0.35)' : 'var(--border-color-glass)'}`,
-                    borderRadius: isSelf ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                    padding: '12px 16px',
+                    borderRadius: isSelf ? '12px 2px 12px 12px' : '2px 12px 12px 12px',
+                    padding: '10px 14px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '6px'
+                    gap: '4px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: '700', fontSize: '0.88rem', color: 'hsl(var(--text-primary))' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: '700', fontSize: '0.82rem', color: 'hsl(var(--text-primary))' }}>
                         {msg.sender_name}
                       </span>
                       {getRoleBadge(msg.sender_role)}
-                      <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', marginLeft: 'auto' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', marginLeft: 'auto' }}>
                         {formatTimestamp(msg.created_at)}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '0.92rem', color: 'hsl(var(--text-primary))', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    <div style={{ fontSize: '0.88rem', color: 'hsl(var(--text-primary))', lineHeight: '1.45', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                       {msg.message}
                     </div>
 
                     {/* Delete action for owner or admin */}
                     {(isSelf || user?.role === 'admin') && (
-                      <div style={{ alignSelf: 'flex-end', marginTop: '4px' }}>
+                      <div style={{ alignSelf: 'flex-end', marginTop: '2px' }}>
                         <button
                           type="button"
                           onClick={() => handleDeleteMessage(msg.id)}
@@ -621,9 +623,9 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
                             background: 'none',
                             border: 'none',
                             color: 'hsl(var(--text-muted))',
-                            fontSize: '0.72rem',
+                            fontSize: '0.68rem',
                             cursor: 'pointer',
-                            padding: '2px 4px',
+                            padding: '1px 3px',
                             opacity: 0.7
                           }}
                           onMouseEnter={(e) => e.target.style.color = 'hsl(var(--danger))'}
@@ -642,8 +644,8 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
         </div>
 
         {/* Quick Operators Presets */}
-        <div style={{ padding: '8px 16px', background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%)', borderTop: '1px solid rgba(99, 102, 241, 0.12)', display: 'flex', gap: '8px', overflowX: 'auto', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', fontWeight: '600', flexShrink: 0 }}>Quick Actions:</span>
+        <div style={{ padding: '6px 14px', background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%)', borderTop: '1px solid rgba(99, 102, 241, 0.12)', display: 'flex', gap: '6px', overflowX: 'auto', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', fontWeight: '600', flexShrink: 0 }}>Quick Actions:</span>
           {[
             { label: '🚨 Shift Alert: Flood Warning', text: '🚨 Shift Alert: Heavy flood warning triggered. Please review Emergency Bulletins.' },
             { label: '✅ Campaign Approved', text: '✅ Campaign draft has been reviewed and approved for delivery.' },
@@ -655,7 +657,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
               type="button"
               className="pill-chip"
               onClick={() => setInputMsg(preset.text)}
-              style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap', flexShrink: 0 }}
+              style={{ fontSize: '0.72rem', padding: '3px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               {preset.label}
             </button>
@@ -664,14 +666,14 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
 
         {/* Attachment preview chip */}
         {attachedFile && (
-          <div style={{ padding: '6px 14px', background: 'rgba(99, 102, 241, 0.15)', borderTop: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#38bdf8' }}>
+          <div style={{ padding: '4px 12px', background: 'rgba(99, 102, 241, 0.15)', borderTop: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#38bdf8' }}>
             <span>📎 Attached File: <strong>{attachedFile.name}</strong></span>
             <button type="button" onClick={() => setAttachedFile(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕ Remove</button>
           </div>
         )}
 
         {/* Input Bar Form */}
-        <form onSubmit={handleSendMessage} style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.6))', borderTop: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <form onSubmit={handleSendMessage} style={{ padding: '10px 14px', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.6))', borderTop: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             type="file"
             ref={fileInputRef}
@@ -682,7 +684,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
             type="button"
             className="btn btn-ghost"
             onClick={() => fileInputRef.current?.click()}
-            style={{ fontSize: '1.2rem', padding: '8px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+            style={{ fontSize: '1.1rem', padding: '6px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
             title="Attach image or document"
           >
             📎
@@ -693,13 +695,13 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
             placeholder={activeDmUser ? `Private DM with ${activeDmUser.full_name}...` : `Message #${headerInfo.label.split(' ')[0]} (Admins & Managers)...`}
             value={inputMsg}
             onChange={(e) => setInputMsg(e.target.value)}
-            style={{ borderRadius: '10px', padding: '12px 16px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', flex: 1 }}
+            style={{ borderRadius: '8px', padding: '8px 12px', fontSize: '0.85rem', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', flex: 1 }}
           />
           <button
             type="submit"
             className="btn btn-primary"
             disabled={(!inputMsg.trim() && !attachedFile) || sending}
-            style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+            style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
           >
             {sending ? 'Sending...' : 'Send 🚀'}
           </button>

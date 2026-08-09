@@ -23,7 +23,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
   useEffect(() => {
     if (!isManagerOrAdmin || !wakeWordEnabled || isOpen) {
       if (wakeWordRecognitionRef.current) {
-        try { wakeWordRecognitionRef.current.stop(); } catch (e) {}
+        try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
       }
       return;
     }
@@ -33,7 +33,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 992;
     if (isMobile) {
       if (wakeWordRecognitionRef.current) {
-        try { wakeWordRecognitionRef.current.stop(); } catch (e) {}
+        try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
       }
       return;
     }
@@ -54,7 +54,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
             const text = event.results[i][0].transcript.toLowerCase();
             const hasWakeWord = /\b(hey\s+|ok\s+|hello\s+)?jarvis(\s+ai)?\b/i.test(text);
             if (hasWakeWord) {
-              try { recognition.stop(); } catch (e) {}
+              try { recognition.abort(); } catch (e) {}
               // Wake word detected! Open Cockpit hands-free
               setIsOpen(true);
               const greeting = "Hello admin, what do you want to do?";
@@ -67,9 +67,13 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
         recognition.onerror = () => {};
         recognition.onend = () => {
-          if (isActive && wakeWordEnabled && !isOpen) {
+          // Don't restart wake-word if Co-Pilot mic is actively using SpeechRecognition (Chrome allows only one instance)
+          if (isActive && wakeWordEnabled && !isOpen && !window.__commai_copilot_mic_active) {
             setTimeout(() => {
-              try { recognition.start(); } catch (e) {}
+              // Re-check before actually restarting
+              if (isActive && !window.__commai_copilot_mic_active) {
+                try { recognition.start(); } catch (e) {}
+              }
             }, 1000);
           }
         };
@@ -84,7 +88,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     return () => {
       isActive = false;
       if (wakeWordRecognitionRef.current) {
-        try { wakeWordRecognitionRef.current.stop(); } catch (e) {}
+        try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
       }
     };
   }, [wakeWordEnabled, isOpen, isManagerOrAdmin]);
@@ -97,13 +101,28 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       setStatusMessage('🔇 Muted — Manual Dashboard Edit Detected');
     };
 
+    const handleStopAll = () => {
+      stopSpeaking();
+      if (wakeWordRecognitionRef.current) {
+        try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
+        wakeWordRecognitionRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (e) {}
+      }
+      setIsListening(false);
+    };
+
     window.addEventListener('commai_silence_jarvis', handleSilence);
+    window.addEventListener('commai_stop_all_speech', handleStopAll);
 
     const handleGlobalInputInteraction = (e) => {
       const target = e.target;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
         const isInsideCockpit = target.closest && target.closest('#jarvis-cockpit-modal');
-        if (!isInsideCockpit) {
+        // Don't silence when the Co-Pilot mic textarea is being voice-filled
+        const isCoPilotMicTarget = target.getAttribute && target.getAttribute('data-copilot-mic') === 'true';
+        if (!isInsideCockpit && !isCoPilotMicTarget) {
           handleSilence();
         }
       }
@@ -114,6 +133,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
     return () => {
       window.removeEventListener('commai_silence_jarvis', handleSilence);
+      window.removeEventListener('commai_stop_all_speech', handleStopAll);
       window.removeEventListener('focusin', handleGlobalInputInteraction);
       window.removeEventListener('input', handleGlobalInputInteraction);
     };
@@ -268,11 +288,8 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
   // Speech Recognition Start/Stop
   const startListening = () => {
-    // DO NOT start microphone while speech synthesis is actively speaking!
-    if (isTtsSpeakingRef.current) {
-      console.log('[Jarvis Voice] Speech synthesis is active. Delaying mic listening.');
-      return;
-    }
+    // Stop any ongoing speech synthesis immediately so user can dictate
+    stopSpeaking();
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -307,34 +324,35 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         }
 
         let currentTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
 
-        // Echo feedback suppression: ignore transcripts that echo Jarvis's own TTS output
+        const trimmed = currentTranscript.trim();
+        if (!trimmed) return;
+
+        // Echo feedback suppression: only suppress if TTS stopped less than 1.5s ago AND input is long verbatim overlap
         const timeSinceTTS = Date.now() - lastSpokeTimestampRef.current;
         const cleanSpoken = (lastSpokenTextRef.current || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-        const cleanCaptured = currentTranscript.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+        const cleanCaptured = trimmed.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
 
-        if (cleanSpoken && cleanCaptured) {
+        if (timeSinceTTS < 1500 && cleanSpoken && cleanCaptured && cleanCaptured.length > 15) {
           const spokenWords = new Set(cleanSpoken.split(/\s+/).filter(w => w.length > 2));
           const capturedWords = cleanCaptured.split(/\s+/).filter(w => w.length > 2);
           const overlap = capturedWords.filter(w => spokenWords.has(w));
 
-          if (
-            cleanSpoken.includes(cleanCaptured) ||
-            cleanCaptured.includes(cleanSpoken) ||
-            (overlap.length >= 1 && timeSinceTTS < 6000) ||
-            (timeSinceTTS < 4000 && cleanCaptured.length < 50)
-          ) {
+          const isSubstringMatch = cleanSpoken.includes(cleanCaptured);
+          const isHighOverlap = capturedWords.length > 0 && (overlap.length / capturedWords.length) > 0.7;
+
+          if (isSubstringMatch || isHighOverlap) {
             console.log('[Jarvis Voice] Echo feedback suppressed:', cleanCaptured);
             return;
           }
         }
 
-        lastCapturedTranscript = currentTranscript;
-        setTranscript(currentTranscript);
-        setStatusMessage(`🎙️ "${currentTranscript.trim()}"`);
+        lastCapturedTranscript = trimmed;
+        setTranscript(trimmed);
+        setStatusMessage(`🎙️ Listening: "${trimmed}"`);
 
         // Reset silence timer on every new speech input fragment
         if (silenceTimerRef.current) {
@@ -343,10 +361,10 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
         // Wait for 1.8 seconds of natural silence after speaking before processing command
         silenceTimerRef.current = setTimeout(() => {
-          const trimmedText = lastCapturedTranscript.trim();
-          if (trimmedText && (trimmedText.length >= 3 || pendingConfirmation)) {
+          const finalPrompt = lastCapturedTranscript.trim();
+          if (finalPrompt && (finalPrompt.length >= 2 || pendingConfirmation)) {
             stopListening();
-            handleProcessVoiceCommand(trimmedText);
+            handleProcessVoiceCommand(finalPrompt);
           }
         }, 1800);
       };
@@ -874,10 +892,26 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                 </div>
               )}
 
-              {/* Transcript Display */}
-              {transcript && (
-                <div style={{ fontSize: '0.88rem', color: '#f1f5f9', fontStyle: 'italic', background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '8px' }}>
-                  "{transcript}"
+              {/* Live Dictation & Transcript Display */}
+              {(isListening || transcript) && (
+                <div 
+                  style={{ 
+                    fontSize: '0.88rem', 
+                    color: '#f1f5f9', 
+                    background: 'rgba(0,0,0,0.35)', 
+                    padding: '10px 14px', 
+                    borderRadius: '10px',
+                    border: isListening ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(139, 92, 246, 0.3)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {transcript ? (
+                    <span>🗣️ <strong style={{ color: '#60a5fa', fontWeight: 600 }}>"{transcript}"</strong></span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ animation: 'pulseGlowing 1s infinite', color: '#ef4444' }}>🔴</span> Speak now... (e.g. "Hello", "Create a new awareness campaign")
+                    </span>
+                  )}
                 </div>
               )}
             </div>

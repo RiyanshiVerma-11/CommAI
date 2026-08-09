@@ -105,6 +105,8 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
 
   // Speech Recognition (Microphone)
   const startListening = () => {
+    stopSpeaking(); // Cancel any active TTS playback so it doesn't feed back into mic
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
@@ -125,6 +127,8 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
       recognition.interimResults = true;
       recognition.continuous = false;
 
+      let lastCaptured = '';
+
       recognition.onstart = () => {
         setIsListening(true);
       };
@@ -134,7 +138,10 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
-        setInputValue(transcript);
+        if (transcript.trim()) {
+          lastCaptured = transcript;
+          setInputValue(transcript);
+        }
         if (event.results[0].isFinal && transcript.trim()) {
           setIsListening(false);
           handleProcessUserPrompt(transcript);
@@ -143,11 +150,16 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
 
       recognition.onerror = (e) => {
         console.warn("Speech recognition error:", e.error);
-        setIsListening(false);
+        if (e.error !== 'no-speech') {
+          setIsListening(false);
+        }
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        if (lastCaptured.trim() && !inputValue) {
+          setInputValue(lastCaptured.trim());
+        }
       };
 
       recognitionRef.current = recognition;

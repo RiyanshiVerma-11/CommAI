@@ -140,8 +140,10 @@ def dispatch_to_channel(
         if not audience.phone:
             return False, "No phone number on file for voice call", "voice"
         target_lang = getattr(audience, "preferred_language", "Hindi") or "Hindi"
-        success, error = send_voice_call(audience.phone, body, lang=target_lang)
+        voice_text = f"{subject}. {body}" if (subject and subject.strip() and not body.startswith(subject.strip())) else body
+        success, error = send_voice_call(audience.phone, voice_text, lang=target_lang)
         return success, error, "voice"
+
 
     elif channel == "push":
         # Check for per-recipient FCM token in custom_fields

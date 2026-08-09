@@ -307,7 +307,13 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
   }, [initialVoicePlan, clearInitialVoicePlan]);
 
   const [coPilotListening, setCoPilotListening] = useState(false);
+  const coPilotListeningRef = useRef(false);
   const coPilotRecognitionRef = useRef(null);
+  const coPilotSilenceTimerRef = useRef(null);
+
+  useEffect(() => {
+    coPilotListeningRef.current = coPilotListening;
+  }, [coPilotListening]);
 
   const formatIndianTime = (dateStr) => {
     if (!dateStr) return '';
@@ -387,46 +393,174 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     }
   };
 
-  const startCoPilotListening = () => {
+  const startCoPilotListening = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
       return;
     }
 
-    if (coPilotListening && coPilotRecognitionRef.current) {
-      try { coPilotRecognitionRef.current.stop(); } catch (e) {}
+    // Toggle off: if already listening, stop and return
+    if (coPilotListening) {
+      if (coPilotSilenceTimerRef.current) clearTimeout(coPilotSilenceTimerRef.current);
+      if (coPilotRecognitionRef.current) {
+        try { coPilotRecognitionRef.current.abort(); } catch (e) {}
+        coPilotRecognitionRef.current = null;
+      }
       setCoPilotListening(false);
+      coPilotListeningRef.current = false;
+      window.__commai_copilot_mic_active = false;
       return;
     }
 
+    setCoPilotError('');
+
+    // Step 1: Set global flag FIRST so wake-word listener won't restart and steal the mic
+    window.__commai_copilot_mic_active = true;
+
+    // Step 2: Kill Jarvis VoiceCommandCenter wake-word listener so it releases the mic hardware
+    window.dispatchEvent(new CustomEvent('commai_stop_all_speech'));
+
+    // Step 3: Verify mic permission exists (but do NOT hold the stream open — let WebSpeech manage it)
     try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-IN'; // Transcribe spoken voice cleanly into English text
-      recognition.interimResults = true;
-      recognition.continuous = false;
-
-      recognition.onstart = () => setCoPilotListening(true);
-      recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setCoPilotPrompt(transcript);
-        if (event.results[0].isFinal && transcript.trim()) {
-          setCoPilotListening(false);
-          handleGenerateCampaignPlan(transcript);
-        }
-      };
-      recognition.onerror = () => setCoPilotListening(false);
-      recognition.onend = () => setCoPilotListening(false);
-
-      coPilotRecognitionRef.current = recognition;
-      recognition.start();
-    } catch (err) {
-      console.error(err);
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Release immediately — we only needed to trigger the permission prompt
+        stream.getTracks().forEach(track => track.stop());
+      }
+    } catch (permErr) {
+      console.warn('[Co-Pilot Mic] Microphone permission denied:', permErr);
+      setCoPilotError('Microphone access denied. Please click the mic/lock icon near your browser address bar and select "Allow Microphone".');
       setCoPilotListening(false);
+      window.__commai_copilot_mic_active = false;
+      return;
     }
+
+    // Step 4: Longer delay to let the hardware mic fully release from Jarvis/getUserMedia before WebSpeech claims it
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    // Step 5: Set listening state BEFORE starting recognition so ref is up-to-date for onend restart logic
+    setCoPilotListening(true);
+    coPilotListeningRef.current = true;
+
+    // Step 6: Initialize WebSpeech SpeechRecognition with continuous auto-restart loop
+    const createAndStartRecognition = () => {
+      // Guard: if user toggled off while we were setting up, bail out
+      if (!coPilotListeningRef.current) {
+        setCoPilotListening(false);
+        window.__commai_copilot_mic_active = false;
+        return;
+      }
+
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = coPilotLang || 'en-IN';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+        recognition.maxAlternatives = 1;
+
+        let fullTranscript = '';
+        let isManualStop = false;
+
+        recognition.onstart = () => {
+          console.log('[Co-Pilot Mic] Recognition started, mic is live. Lang:', recognition.lang);
+        };
+
+        recognition.onaudiostart = () => {
+          console.log('[Co-Pilot Mic] Audio capture started — mic hardware is actively streaming audio.');
+        };
+
+        recognition.onresult = (event) => {
+          let currentTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+
+          console.log('[Co-Pilot Mic] onresult:', currentTranscript);
+
+          if (currentTranscript.trim()) {
+            fullTranscript = currentTranscript;
+            setCoPilotPrompt(currentTranscript);
+          }
+
+          // Reset silence timer on every new speech input fragment
+          if (coPilotSilenceTimerRef.current) {
+            clearTimeout(coPilotSilenceTimerRef.current);
+          }
+
+          // Wait for 2.5 seconds of natural silence after speaking before generating the campaign plan
+          coPilotSilenceTimerRef.current = setTimeout(() => {
+            const finalPrompt = fullTranscript.trim();
+            if (finalPrompt) {
+              isManualStop = true;
+              try { recognition.stop(); } catch (e) {}
+              coPilotRecognitionRef.current = null;
+              setCoPilotListening(false);
+              coPilotListeningRef.current = false;
+              window.__commai_copilot_mic_active = false;
+              handleGenerateCampaignPlan(finalPrompt);
+            }
+          }, 2500);
+        };
+
+        recognition.onerror = (event) => {
+          console.warn('[Co-Pilot Mic] Speech recognition error:', event.error, event.message);
+          if (event.error === 'no-speech') {
+            // Chrome fires this after ~5-8s of silence — ignore and let onend restart
+            return;
+          }
+          if (event.error === 'aborted') {
+            // Aborted intentionally (by us or browser), don't show error
+            return;
+          }
+          if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+            setCoPilotError('Microphone permission blocked. Please click the mic/lock icon in your browser address bar and allow Microphone access.');
+            setCoPilotListening(false);
+            coPilotListeningRef.current = false;
+            coPilotRecognitionRef.current = null;
+            window.__commai_copilot_mic_active = false;
+          } else if (event.error === 'audio-capture') {
+            setCoPilotError('No microphone detected. Please connect a microphone to your device.');
+            setCoPilotListening(false);
+            coPilotListeningRef.current = false;
+            coPilotRecognitionRef.current = null;
+            window.__commai_copilot_mic_active = false;
+          } else {
+            console.error('[Co-Pilot Mic] Unexpected error:', event.error);
+          }
+        };
+
+        recognition.onend = () => {
+          console.log('[Co-Pilot Mic] onend fired. isManualStop:', isManualStop, 'listeningRef:', coPilotListeningRef.current);
+          // If Chrome automatically closes recognition while user is still listening, create a fresh instance and restart
+          if (coPilotListeningRef.current && !isManualStop) {
+            setTimeout(() => {
+              if (coPilotListeningRef.current) {
+                console.log('[Co-Pilot Mic] Auto-restarting with fresh instance...');
+                createAndStartRecognition();
+              } else {
+                window.__commai_copilot_mic_active = false;
+              }
+            }, 300);
+          } else if (!coPilotListeningRef.current) {
+            window.__commai_copilot_mic_active = false;
+          }
+        };
+
+        coPilotRecognitionRef.current = recognition;
+        recognition.start();
+        console.log('[Co-Pilot Mic] recognition.start() called successfully.');
+      } catch (err) {
+        console.error('[Co-Pilot Mic] Exception starting recognition:', err);
+        setCoPilotListening(false);
+        coPilotListeningRef.current = false;
+        coPilotRecognitionRef.current = null;
+        window.__commai_copilot_mic_active = false;
+        setCoPilotError(`Microphone access error: ${err.message || 'Permission denied or browser restricted'}`);
+      }
+    };
+
+    createAndStartRecognition();
   };
 
   const handleRefineCampaignPlan = async (instructionText) => {
@@ -2083,6 +2217,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         </div>
                         <textarea
                           className="form-control"
+                          data-copilot-mic="true"
                           style={{ minHeight: '80px', fontSize: '0.88rem', resize: 'vertical', background: 'rgba(0,0,0,0.2)', border: coPilotListening ? '1px solid #ef4444' : '1px solid var(--input-border)' }}
                           placeholder={coPilotListening ? "Listening to your voice..." : "e.g. Draft an awareness campaign about a dengue vaccine drive in Ludhiana for students..."}
                           value={coPilotPrompt}

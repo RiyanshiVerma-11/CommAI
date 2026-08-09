@@ -154,6 +154,10 @@ def convert_md_to_docx(md_path, docx_path, title_text):
 if __name__ == "__main__":
     docs_dir = r"d:\Riyanshi\01_coding\projects\32 CommAI\docs"
     
+    ultimate_md = os.path.join(docs_dir, "COMM_AI_COMPLETE_ULTIMATE_SCRIPT.md")
+    ultimate_docx = os.path.join(docs_dir, "COMM_AI_COMPLETE_ULTIMATE_SCRIPT.docx")
+    convert_md_to_docx(ultimate_md, ultimate_docx, "CommAI - Master Presentation, Technical Architecture & Verbatim Teleprompter Script (0 to 1000)")
+
     teleprompter_md = os.path.join(docs_dir, "LIVE_DEMO_TELEPROMPTER_SCRIPT.md")
     teleprompter_docx = os.path.join(docs_dir, "LIVE_DEMO_TELEPROMPTER_SCRIPT.docx")
     convert_md_to_docx(teleprompter_md, teleprompter_docx, "CommAI - Live Video & Screen-Share Teleprompter Script")
@@ -161,3 +165,4 @@ if __name__ == "__main__":
     master_md = os.path.join(docs_dir, "COMM_AI_MASTER_DEMO_SCRIPT.md")
     master_docx = os.path.join(docs_dir, "COMM_AI_MASTER_DEMO_SCRIPT.docx")
     convert_md_to_docx(master_md, master_docx, "CommAI - Master 1-Hour Presentation & Technical Guide")
+

@@ -19,7 +19,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     return !sessionStorage.getItem('jarvis_mic_notice_shown');
   });
 
-  // Background Wake-Word listener effect
+  // Background Wake-Word listener effect ("Hey Jarvis" / "Hey Jarvis AI")
   useEffect(() => {
     if (!isManagerOrAdmin || !wakeWordEnabled || isOpen) {
       if (wakeWordRecognitionRef.current) {
@@ -28,10 +28,9 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       return;
     }
 
-    // Mobile browsers (Android Chrome / iOS Safari) play a hardware OS mic chime/beep on every speechRecognition.start().
-    // Disable continuous background wake-word polling on mobile to prevent repeating mic notification sounds.
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 992;
-    if (isMobile) {
+    // Mobile hardware mic chime suppression (only on mobile browsers)
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobileDevice) {
       if (wakeWordRecognitionRef.current) {
         try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
       }
@@ -42,8 +41,15 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     if (!SpeechRecognition) return;
 
     let isActive = true;
+
     const startWakeWordListener = () => {
+      if (!isActive || !wakeWordEnabled || isOpenRef.current || window.__commai_copilot_mic_active) return;
+
       try {
+        if (wakeWordRecognitionRef.current) {
+          try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
+        }
+
         const recognition = new SpeechRecognition();
         recognition.lang = localStorage.getItem('comm_speech_lang') || 'en-IN';
         recognition.continuous = true;
@@ -52,7 +58,12 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         recognition.onresult = (event) => {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const text = event.results[i][0].transcript.toLowerCase();
-            const hasWakeWord = /\b(hey\s+|ok\s+|hello\s+)?jarvis(\s+ai)?\b/i.test(text);
+            // Flexible, robust matching for "hey jarvis", "hey jarvis ai", "jarvis", "ok jarvis", "hi jarvis", etc.
+            const hasWakeWord = text.includes('jarvis') || 
+                                text.includes('jervis') || 
+                                text.includes('jarves') || 
+                                /\b(hey|ok|hello|hi)?\s*j[a|e]rv/i.test(text);
+
             if (hasWakeWord) {
               try { recognition.abort(); } catch (e) {}
               // Wake word detected! Open Cockpit hands-free
@@ -65,22 +76,26 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           }
         };
 
-        recognition.onerror = () => {};
+        recognition.onerror = (err) => {
+          console.log('[Jarvis Wake-Word] Recognition error:', err?.error);
+        };
+
         recognition.onend = () => {
-          // Don't restart wake-word if Co-Pilot mic is actively using SpeechRecognition (Chrome allows only one instance)
-          if (isActive && wakeWordEnabled && !isOpen && !window.__commai_copilot_mic_active) {
+          wakeWordRecognitionRef.current = null;
+          if (isActive && wakeWordEnabled && !isOpenRef.current && !window.__commai_copilot_mic_active) {
             setTimeout(() => {
-              // Re-check before actually restarting
-              if (isActive && !window.__commai_copilot_mic_active) {
-                try { recognition.start(); } catch (e) {}
+              if (isActive && !isOpenRef.current && !window.__commai_copilot_mic_active) {
+                startWakeWordListener();
               }
-            }, 1000);
+            }, 800);
           }
         };
 
         wakeWordRecognitionRef.current = recognition;
         recognition.start();
-      } catch (e) {}
+      } catch (e) {
+        console.error('[Jarvis Wake-Word] Failed to start:', e);
+      }
     };
 
     startWakeWordListener();
@@ -89,6 +104,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       isActive = false;
       if (wakeWordRecognitionRef.current) {
         try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
+        wakeWordRecognitionRef.current = null;
       }
     };
   }, [wakeWordEnabled, isOpen, isManagerOrAdmin]);
@@ -142,7 +158,11 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
   // Active command result state
   const [activeResult, setActiveResult] = useState(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
-  
+  // STALE-CLOSURE FIX: Mirror pendingConfirmation in a ref so that event-handler
+  // closures (recognition.onresult → handleProcessVoiceCommand) always read the
+  // live value, not the snapshot captured when speakAloud() was called.
+  const pendingConfirmationRef = useRef(null);
+
   // Interactive dropdown states
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
   const [selectedRecipients, setSelectedRecipients] = useState('All Citizens');
@@ -168,6 +188,11 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  // Keep pendingConfirmationRef in sync with state on every render
+  useEffect(() => {
+    pendingConfirmationRef.current = pendingConfirmation;
+  }, [pendingConfirmation]);
 
   const clearTtsPing = () => {
     if (ttsPingRef.current) {
@@ -230,15 +255,23 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       utterance.onstart = () => {
         setIsSpeaking(true);
         isTtsSpeakingRef.current = true;
-        // Periodic keep-alive for Chrome/Edge SpeechSynthesis 15-second audio engine bug
+        // FIX: Chrome/Edge 15-second TTS cutoff keepalive.
+        // CRITICAL: Do NOT call pause() here — it causes Chrome to re-emit onstart
+        // and repeat the utterance from the beginning (the double-speaking bug).
+        // Instead: only call resume() if Chrome has silently paused on its own.
+        // Interval is 14s — just under Chrome's 15s cutoff — so we never need to force-pause.
         ttsPingRef.current = setInterval(() => {
-          if (window.speechSynthesis && window.speechSynthesis.speaking) {
-            window.speechSynthesis.pause();
+          if (!window.speechSynthesis) { clearTtsPing(); return; }
+          if (window.speechSynthesis.paused) {
+            // Chrome paused it by itself (15s bug) — safe to resume
+            console.log('[Jarvis TTS] Chrome auto-paused detected — resuming');
             window.speechSynthesis.resume();
-          } else {
+          } else if (!window.speechSynthesis.speaking) {
+            // Speech ended naturally — clean up interval
             clearTtsPing();
           }
-        }, 3000);
+          // If speaking && !paused — do nothing. Let it speak uninterrupted.
+        }, 14000);
       };
 
       utterance.onend = () => triggerListenOnce();
@@ -410,12 +443,15 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     const isTargetedSend = cleanCmd.includes('send to') || cleanCmd.includes('send this to') || cleanCmd.includes('send message to');
     const isNewCommandIntent = ['create', 'launch', 'open', 'message', 'chat', 'navigate', 'search', 'show', 'find', 'go to'].some(w => cleanCmd.includes(w));
 
-    if (isNewCommandIntent && pendingConfirmation) {
+    // Always read from ref — not from state — to avoid stale closure bug
+    // (speakAloud captures handleProcessVoiceCommand before setPendingConfirmation re-renders)
+    if (isNewCommandIntent && pendingConfirmationRef.current) {
       setPendingConfirmation(null);
+      pendingConfirmationRef.current = null;
       setActiveResult(null);
     }
 
-    const activeCtx = isNewCommandIntent ? null : pendingConfirmation;
+    const activeCtx = isNewCommandIntent ? null : pendingConfirmationRef.current;
 
     if (activeCtx && !isTargetedSend) {
       const confirmWords = [
@@ -612,27 +648,26 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         <div
           style={{
             position: 'fixed',
-            top: '80px',
+            bottom: '80px',
             right: '24px',
-            zIndex: 99999,
-            width: '380px',
-            background: 'rgba(15, 23, 42, 0.95)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(139, 92, 246, 0.4)',
-            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(139, 92, 246, 0.3)',
+            zIndex: 9999,
+            maxWidth: '380px',
+            background: 'var(--chatbot-bg)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--chatbot-border)',
+            boxShadow: 'var(--chatbot-shadow)',
             borderRadius: '16px',
-            padding: '16px',
+            padding: '14px 16px',
             display: 'flex',
             flexDirection: 'column',
             gap: '10px',
-            animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            fontFamily: 'var(--font-body)'
+            color: 'hsl(var(--text-primary))'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '1.2rem' }}>🎙️</span>
-              <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'hsl(var(--text-primary))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Jarvis AI Voice Cockpit
               </span>
             </div>
@@ -641,14 +676,14 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                 setShowMicBanner(false);
                 sessionStorage.setItem('jarvis_mic_notice_shown', 'true');
               }}
-              style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ background: 'none', border: 'none', color: 'hsl(var(--text-muted))', cursor: 'pointer', fontSize: '0.9rem' }}
             >
               ✕
             </button>
           </div>
 
-          <p style={{ margin: 0, fontSize: '0.82rem', color: '#ffffff', lineHeight: '1.5' }}>
-            Make sure your <strong style={{ color: '#ffffff', fontWeight: 700 }}>microphone permission is allowed</strong> in the browser to use <strong style={{ color: '#ffffff', fontWeight: 700 }}>Jarvis AI</strong> hands-free (say <em style={{ color: '#ffffff' }}>"Hey Jarvis"</em> anytime)!
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.5' }}>
+            Make sure your <strong style={{ color: 'hsl(var(--text-primary))', fontWeight: 700 }}>microphone permission is allowed</strong> in the browser to use <strong style={{ color: 'hsl(var(--text-primary))', fontWeight: 700 }}>Jarvis AI</strong> hands-free (say <em style={{ color: 'hsl(var(--text-primary))' }}>"Hey Jarvis"</em> anytime)!
           </p>
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
@@ -693,9 +728,9 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
               style={{
                 padding: '8px 12px',
                 borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                background: 'var(--chatbot-btn-bg)',
+                color: 'hsl(var(--text-primary))',
+                border: '1px solid var(--chatbot-border)',
                 fontWeight: 600,
                 fontSize: '0.78rem',
                 cursor: 'pointer'
@@ -759,90 +794,93 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           id="jarvis-cockpit-modal"
           style={{
             position: 'absolute',
-            bottom: '72px',
-            right: '-68px',
-            width: '420px',
-            maxHeight: '620px',
-            borderRadius: '24px',
-            background: 'rgba(10, 14, 26, 0.95)',
+            bottom: '68px',
+            right: '0px',
+            width: '360px',
+            maxWidth: 'calc(100vw - 24px)',
+            maxHeight: 'min(520px, calc(100vh - 100px))',
+            borderRadius: '20px',
+            background: 'var(--chatbot-bg)',
             backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(139, 92, 246, 0.2)',
+            border: '2px solid #000000',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35), var(--chatbot-shadow)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            animation: 'cockpitSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            animation: 'cockpitSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            zIndex: 9999
           }}
         >
           {/* Header */}
           <div
             style={{
-              padding: '18px 20px',
-              background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2))',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '12px 16px',
+              background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.18), rgba(59, 130, 246, 0.18))',
+              borderBottom: '1px solid var(--chatbot-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '8px',
                   background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.1rem',
-                  boxShadow: '0 0 12px rgba(139, 92, 246, 0.5)'
+                  fontSize: '0.95rem',
+                  boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)'
                 }}
               >
                 🎙️
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#f8fafc' }}>
+                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'hsl(var(--text-primary))' }}>
                   CommAI Voice Cockpit
                 </h4>
-                <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: wakeWordEnabled ? '#22c55e' : '#64748b' }}></span>
+                <span style={{ fontSize: '0.68rem', color: 'hsl(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: wakeWordEnabled ? '#22c55e' : '#64748b' }}></span>
                   {wakeWordEnabled ? 'Wake-Word Active ("Hey Jarvis")' : 'Manager Mode • Manual Mic'}
                 </span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
                 onClick={() => setWakeWordEnabled(!wakeWordEnabled)}
                 style={{
-                  background: wakeWordEnabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                  border: wakeWordEnabled ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
-                  color: wakeWordEnabled ? '#4ade80' : '#94a3b8',
-                  padding: '4px 8px',
-                  borderRadius: '12px',
-                  fontSize: '0.68rem',
+                  background: wakeWordEnabled ? 'rgba(34, 197, 94, 0.15)' : 'var(--chatbot-btn-bg)',
+                  border: wakeWordEnabled ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid var(--chatbot-border)',
+                  color: wakeWordEnabled ? '#16a34a' : 'hsl(var(--text-muted))',
+                  padding: '3px 8px',
+                  borderRadius: '10px',
+                  fontSize: '0.65rem',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
                 title="Toggle Background Wake-Word Detection ('Hey Jarvis')"
               >
-                {wakeWordEnabled ? '👂 Wake-Word: ON' : '🔇 Wake-Word: OFF'}
+                {wakeWordEnabled ? '👂 Wake: ON' : '🔇 Wake: OFF'}
               </button>
 
               <button
                 onClick={() => setIsOpen(false)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: 'none',
-                  color: '#94a3b8',
-                  width: '28px',
-                  height: '28px',
+                  background: 'var(--chatbot-btn-bg)',
+                  border: '1px solid var(--chatbot-border)',
+                  color: 'hsl(var(--text-muted))',
+                  width: '26px',
+                  height: '26px',
                   borderRadius: '50%',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  fontSize: '0.8rem'
                 }}
               >
                 ✕
@@ -851,21 +889,21 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           </div>
 
           {/* Body Content */}
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+          <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
             
             {/* Status & Speech Visualization */}
             <div 
               style={{ 
-                background: 'rgba(255, 255, 255, 0.04)', 
-                border: '1px solid rgba(255, 255, 255, 0.08)', 
-                borderRadius: '16px', 
-                padding: '14px',
+                background: 'var(--chatbot-msg-bg)', 
+                border: '1px solid var(--chatbot-border)', 
+                borderRadius: '14px', 
+                padding: '10px 12px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '8px'
+                gap: '6px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#cbd5e1' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: 'hsl(var(--text-secondary))', fontWeight: 600 }}>
                 <span>{statusMessage}</span>
                 {isSpeaking && (
                   <span style={{ color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -897,23 +935,53 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                 <div 
                   style={{ 
                     fontSize: '0.88rem', 
-                    color: '#f1f5f9', 
-                    background: 'rgba(0,0,0,0.35)', 
+                    color: 'hsl(var(--text-primary))', 
+                    background: 'var(--chatbot-btn-bg)', 
                     padding: '10px 14px', 
                     borderRadius: '10px',
-                    border: isListening ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(139, 92, 246, 0.3)',
+                    border: isListening ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--chatbot-border)',
                     transition: 'all 0.2s ease'
                   }}
                 >
                   {transcript ? (
-                    <span>🗣️ <strong style={{ color: '#60a5fa', fontWeight: 600 }}>"{transcript}"</strong></span>
+                    <span>🗣️ <strong style={{ color: 'hsl(var(--primary))', fontWeight: 700 }}>"{transcript}"</strong></span>
                   ) : (
-                    <span style={{ color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: 'hsl(var(--text-muted))', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ animation: 'pulseGlowing 1s infinite', color: '#ef4444' }}>🔴</span> Speak now... (e.g. "Hello", "Create a new awareness campaign")
                     </span>
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Live State Indicator Bar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              borderRadius: '10px',
+              background: isSpeaking
+                ? 'rgba(139, 92, 246, 0.12)'
+                : isListening
+                  ? 'rgba(239, 68, 68, 0.1)'
+                  : 'var(--chatbot-msg-bg)',
+              border: isSpeaking
+                ? '1px solid rgba(139, 92, 246, 0.3)'
+                : isListening
+                  ? '1px solid rgba(239, 68, 68, 0.35)'
+                  : '1px solid var(--chatbot-border)',
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              color: isSpeaking ? '#8b5cf6' : isListening ? '#ef4444' : 'hsl(var(--text-muted))'
+            }}>
+              <span style={{ fontSize: '1rem' }}>
+                {isSpeaking ? '🔊' : isListening ? '🎙️' : '💤'}
+              </span>
+              <span>
+                {isSpeaking ? 'Jarvis is speaking — wait or mute' : isListening ? 'Mic active — speak your command' : 'Standby — tap mic or say "Hey Jarvis"'}
+              </span>
+              {loading && <span style={{ marginLeft: 'auto', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>⏳ Processing...</span>}
             </div>
 
             {/* Mic Controls */}
@@ -923,44 +991,53 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                   onClick={stopListening}
                   style={{
                     flex: 1,
-                    padding: '12px',
-                    borderRadius: '12px',
+                    padding: '13px 16px',
+                    borderRadius: '14px',
                     background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                     color: 'white',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
+                    border: '2px solid rgba(239, 68, 68, 0.4)',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.6)',
-                    animation: 'pulseGlowing 1.5s infinite ease-in-out'
+                    boxShadow: '0 4px 20px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.25)',
+                    animation: 'pulseGlowing 1.5s infinite ease-in-out',
+                    letterSpacing: '0.01em'
                   }}
                 >
-                  <span>🛑 Stop Recording</span>
+                  🛑 Stop Recording
                 </button>
               ) : (
                 <button
                   onClick={startListening}
+                  disabled={isSpeaking}
                   style={{
                     flex: 1,
-                    padding: '12px',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+                    padding: '13px 16px',
+                    borderRadius: '14px',
+                    background: isSpeaking
+                      ? '#9ca3af'
+                      : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                     color: 'white',
                     border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    cursor: isSpeaking ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    boxShadow: isSpeaking ? 'none' : '0 4px 16px rgba(34, 197, 94, 0.4)',
+                    opacity: isSpeaking ? 0.6 : 1,
+                    letterSpacing: '0.01em',
+                    transition: 'all 0.2s'
                   }}
+                  title={isSpeaking ? 'Wait for Jarvis to finish speaking first' : 'Start voice input'}
                 >
-                  <span>🎙️ Start Recording Command</span>
+                  🎤 {isSpeaking ? 'Wait for Jarvis...' : 'Speak Command'}
                 </button>
               )}
 
@@ -968,15 +1045,19 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
                 <button
                   onClick={stopSpeaking}
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: '#94a3b8',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '13px 18px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: 'white',
+                    border: '2px solid rgba(245, 158, 11, 0.4)',
                     cursor: 'pointer',
-                    fontSize: '0.85rem'
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    boxShadow: '0 4px 16px rgba(245, 158, 11, 0.4)',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
                   }}
-                  title="Mute AI Speech"
+                  title="Stop Jarvis speaking now"
                 >
                   🔇 Mute
                 </button>
@@ -984,53 +1065,62 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
             </div>
 
             {/* Voice Cockpit Command Prompts */}
-            {true && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#4ade80' }}>
-                  <span style={{ fontSize: '1.1rem' }}>🎙️</span>
-                  <span><strong>Hands-Free Wake Word Active:</strong> Just say <em>"Hey Jarvis"</em> or <em>"Hey Jarvis AI"</em> out loud anytime to open the Cockpit!</span>
-                </div>
-
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginTop: '4px' }}>
-                  💡 Try Spoken Manager Commands:
-                </span>
-                {[
-                  "Emergency! Flash flood warning for Assam, send immediately to all audiences",
-                  "Create an agricultural water drive campaign for Uttar Pradesh farmers",
-                  "Show me all pending approvals",
-                  "Find farmers in Gujarat above age 45"
-                ].map((samplePrompt, sIdx) => (
-                  <button
-                    key={sIdx}
-                    onClick={() => {
-                      setTranscript(samplePrompt);
-                      handleProcessVoiceCommand(samplePrompt);
-                    }}
-                    style={{
-                      textAlign: 'left',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      color: '#cbd5e1',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '0.78rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
-                      e.currentTarget.style.color = '#a78bfa';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                      e.currentTarget.style.color = '#cbd5e1';
-                    }}
-                  >
-                    🗣️ "{samplePrompt}"
-                  </button>
-                ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Wake Word Banner */}
+              <div style={{ background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'hsl(var(--text-primary))' }}>
+                <span style={{ fontSize: '1.1rem' }}>🎙️</span>
+                <span><strong style={{ color: '#16a34a' }}>Hands-Free:</strong> Say <em>"Hey Jarvis"</em> anytime to open!</span>
               </div>
-            )}
+
+              <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'hsl(var(--text-secondary))', marginTop: '2px', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                💡 Quick Command Chips — click to run:
+              </span>
+
+              {/* Color-coded command chips */}
+              {[
+                { prompt: 'Emergency! Flash flood warning for Assam, send immediately to all audiences', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', icon: '🚨' },
+                { prompt: 'Create an agricultural water drive campaign for Uttar Pradesh farmers',       color: '#22c55e', bg: 'rgba(34,197,94,0.1)',  border: 'rgba(34,197,94,0.3)',  icon: '🌾' },
+                { prompt: 'Show me all pending approvals',                                              color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', icon: '📋' },
+                { prompt: 'Open audience directory to see registered citizens',                         color: '#06b6d4', bg: 'rgba(6,182,212,0.1)',  border: 'rgba(6,182,212,0.3)',  icon: '👥' },
+                { prompt: 'Show audit trail logs for system activity',                                  color: '#ec4899', bg: 'rgba(236,72,153,0.1)', border: 'rgba(236,72,153,0.3)', icon: '📜' },
+                { prompt: 'Open operator staff chat and message the team',                              color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.3)', icon: '💬' }
+              ].map(({ prompt, color, bg, border, icon }, sIdx) => (
+                <button
+                  key={sIdx}
+                  onClick={() => {
+                    setTranscript(prompt);
+                    handleProcessVoiceCommand(prompt);
+                  }}
+                  style={{
+                    textAlign: 'left',
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    color: color,
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.77rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.18s ease',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.filter = 'brightness(1.12)';
+                    e.currentTarget.style.transform = 'translateX(2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.filter = 'none';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <span style={{ fontSize: '1rem', flexShrink: 0 }}>{icon}</span>
+                  <span>{prompt}</span>
+                </button>
+              ))}
+            </div>
 
           </div>
         </div>

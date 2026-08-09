@@ -1747,32 +1747,32 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
       </section>
 
       {/* ══════════════════════ FOOTER ══════════════════════ */}
-      <footer style={{ background: '#04060c', borderTop: `1px solid ${T.border}`, padding: '70px 40px 40px' }}>
+      <footer className="landing-footer" style={{ background: '#04060c', borderTop: `1px solid ${T.border}`, padding: '70px 40px 40px', color: '#ffffff' }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           {/* Main columns grid */}
           <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: 40, marginBottom: 50, textAlign: 'left' }}>
             {/* Column 1: Info */}
             <div>
               <button onClick={() => smoothScrollTo('hero')}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 18 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 18, color: '#ffffff' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.15)' }}>
                   <img src="/logo.jpeg" alt="CommAI Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>CommAI</span>
+                <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>CommAI</span>
               </button>
-              <p style={{ color: '#ffffff', fontSize: '0.86rem', lineHeight: 1.6, marginBottom: 20 }}>
+              <p style={{ color: '#ffffff', fontSize: '0.86rem', lineHeight: 1.6, marginBottom: 20, opacity: 0.95 }}>
                 Unified mass communication platform for e-governance agencies and NGOs. Deploy alerts, advisories, and surveys in 23 regional languages (22 Scheduled Indic + English).
               </p>
               {/* Service status */}
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 20, padding: '4px 12px' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-                <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>ALL SYSTEMS OPERATIONAL</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 20, padding: '4px 12px' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399' }}></span>
+                <span className="status-text" style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 700 }}>ALL SYSTEMS OPERATIONAL</span>
               </div>
             </div>
 
             {/* Column 2: Quick Links */}
             <div>
-              <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Platform</h4>
+              <h4 style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Platform</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[
                   { id: 'platform', label: 'Key Features' },
@@ -1782,7 +1782,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 ].map(link => (
                   <button key={link.id} onClick={() => smoothScrollTo(link.id)}
                     style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '0.84rem', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, textAlign: 'left', padding: 0, transition: 'color 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                    onMouseEnter={e => e.currentTarget.style.color = '#60a5fa'}
                     onMouseLeave={e => e.currentTarget.style.color = '#ffffff'}>
                     {link.label}
                   </button>
@@ -1792,12 +1792,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
 
             {/* Column 3: Tech Resources */}
             <div>
-              <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
+              <h4 style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Developer Tools</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {['API Documentation', 'Developer sandbox', 'Changelog', 'Integration Diagnostics'].map(link => (
                   <button key={link} type="button" onClick={() => setActiveResource(link)}
                     style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: '#ffffff', fontFamily: 'inherit', fontSize: '0.84rem', fontWeight: 500, cursor: 'pointer', transition: 'color 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                    onMouseEnter={e => e.currentTarget.style.color = '#60a5fa'}
                     onMouseLeave={e => e.currentTarget.style.color = '#ffffff'}>
                     {link}
                   </button>
@@ -1807,12 +1807,12 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
 
             {/* Column 4: Legal & Compliance */}
             <div>
-              <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Compliance</h4>
+              <h4 style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.9rem', marginBottom: 18, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Compliance</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {['DPDP Act Privacy Policy', 'Terms of Service', 'Maker-Checker Guidelines', 'Consent registers'].map(link => (
                   <button key={link} type="button" onClick={() => setActiveResource(link)}
                     style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: '#ffffff', fontFamily: 'inherit', fontSize: '0.84rem', fontWeight: 500, cursor: 'pointer', transition: 'color 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                    onMouseEnter={e => e.currentTarget.style.color = '#60a5fa'}
                     onMouseLeave={e => e.currentTarget.style.color = '#ffffff'}>
                     {link}
                   </button>
@@ -1822,7 +1822,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           </div>
 
           {/* Bottom row */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 30, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 30, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
             <span style={{ color: '#ffffff', fontSize: '0.82rem', fontWeight: 500 }}>
               © {new Date().getFullYear()} CommAI · National information awareness gateway initiative.
             </span>

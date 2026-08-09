@@ -109,11 +109,55 @@
   --card-hover-border: rgba(79, 70, 229, 0.35);
   --nav-active-bg: rgba(79, 70, 229, 0.08);
   --nav-active-border: rgba(79, 70, 229, 0.25);
-  --chatbot-bg: rgba(255, 255, 255, 0.95);
-  --chatbot-border: rgba(79, 70, 229, 0.1);
-  --chatbot-msg-bg: rgba(79, 70, 229, 0.05);
-  --chatbot-btn-bg: rgba(79, 70, 229, 0.06);
-  --chatbot-shadow: 0 20px 50px rgba(79, 70, 229, 0.12);
+  --chatbot-bg: #ffffff;
+  --chatbot-border: rgba(79, 70, 229, 0.15);
+  --chatbot-msg-bg: #f8fafc;
+  --chatbot-btn-bg: #f1f5f9;
+  --chatbot-shadow: 0 20px 50px rgba(15, 23, 42, 0.12), 0 0 30px rgba(79, 70, 229, 0.08);
+}
+
+/* Explicit Overrides for Floating Chatbot & Voice Cockpit Modals */
+#jarvis-cockpit-modal {
+  border: 2px solid #000000 !important;
+}
+
+.light-theme .floating-chatbot-widget > div[style*="position: absolute"] {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a !important;
+}
+
+.light-theme #jarvis-cockpit-modal {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a !important;
+}
+
+.light-theme .floating-chatbot-widget h4,
+.light-theme #jarvis-cockpit-modal h4 {
+  color: #0f172a !important;
+}
+
+.light-theme .floating-chatbot-widget p,
+.light-theme #jarvis-cockpit-modal p {
+  color: #334155 !important;
+}
+
+.light-theme .floating-chatbot-widget select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.light-theme .floating-chatbot-widget input {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(79, 70, 229, 0.2) !important;
+}
+
+.light-theme .floating-chatbot-widget input::placeholder {
+  color: #64748b !important;
 }
 
 /* Base resets */
@@ -3535,6 +3579,8 @@ div {
     white-space: normal !important;
   }
 
+
+
   /* App Workspace Mobile Overrides */
   .header {
     padding: 0 12px !important;
@@ -4242,4 +4288,85 @@ div {
   .badge-cell {
     white-space: nowrap;
   }
+}
+
+/* Landing Page Footer High-Contrast Visibility Enforcement (Global Root Level) */
+footer.landing-footer,
+.landing-footer,
+html.light-theme footer.landing-footer,
+html.light-theme .landing-footer,
+.light-theme footer.landing-footer,
+.light-theme .landing-footer {
+  background-color: #04060c !important;
+  background: #04060c !important;
+  color: #ffffff !important;
+}
+
+footer.landing-footer *,
+.landing-footer *,
+html.light-theme footer.landing-footer *,
+html.light-theme .landing-footer *,
+.light-theme footer.landing-footer *,
+.light-theme .landing-footer * {
+  box-sizing: border-box;
+}
+
+footer.landing-footer h4,
+footer.landing-footer p,
+footer.landing-footer span:not(.status-text),
+footer.landing-footer button,
+footer.landing-footer a,
+.landing-footer h4,
+.landing-footer p,
+.landing-footer span:not(.status-text),
+.landing-footer button,
+.landing-footer a,
+html.light-theme footer.landing-footer h4,
+html.light-theme footer.landing-footer p,
+html.light-theme footer.landing-footer span:not(.status-text),
+html.light-theme footer.landing-footer button,
+html.light-theme footer.landing-footer a,
+html.light-theme .landing-footer h4,
+html.light-theme .landing-footer p,
+html.light-theme .landing-footer span:not(.status-text),
+html.light-theme .landing-footer button,
+html.light-theme .landing-footer a,
+.light-theme footer.landing-footer h4,
+.light-theme footer.landing-footer p,
+.light-theme footer.landing-footer span:not(.status-text),
+.light-theme footer.landing-footer button,
+.light-theme footer.landing-footer a,
+.light-theme .landing-footer h4,
+.light-theme .landing-footer p,
+.light-theme .landing-footer span:not(.status-text),
+.light-theme .landing-footer button,
+.light-theme .landing-footer a {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  fill: #ffffff !important;
+}
+
+footer.landing-footer button:hover,
+footer.landing-footer a:hover,
+.landing-footer button:hover,
+.landing-footer a:hover,
+html.light-theme footer.landing-footer button:hover,
+html.light-theme footer.landing-footer a:hover,
+html.light-theme .landing-footer button:hover,
+html.light-theme .landing-footer a:hover,
+.light-theme footer.landing-footer button:hover,
+.light-theme footer.landing-footer a:hover,
+.light-theme .landing-footer button:hover,
+.light-theme .landing-footer a:hover {
+  color: #60a5fa !important;
+}
+
+footer.landing-footer .status-text,
+.landing-footer .status-text,
+html.light-theme footer.landing-footer .status-text,
+html.light-theme .landing-footer .status-text,
+.light-theme footer.landing-footer .status-text,
+.light-theme .landing-footer .status-text {
+  color: #34d399 !important;
+  opacity: 1 !important;
 }

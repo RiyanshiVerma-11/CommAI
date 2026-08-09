@@ -1534,6 +1534,7 @@ function App() {
         token={token} 
         onAutoCreateCampaign={handleAutoCreateCampaign} 
         setActiveTab={setActiveTab}
+        onExecuteVoiceCommand={handleExecuteVoiceCommand}
       />
       <VoiceCommandCenter
         user={user}

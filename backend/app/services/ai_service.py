@@ -1073,7 +1073,7 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "OUTPUT JSON SCHEMA:\n"
         "{\n"
         "  \"action\": \"String - One of: emergency_broadcast, create_campaign, send_alert, navigate, search_audience, approve_campaign, generate_poster, analytics_brief\",\n"
-        "  \"navigation_target\": \"String - One of: campaigns, audiences, emergency_inbox, approvals, dashboard, poster_studio, sentiment_map, templates, citizen_conversations, operator_chat, support_queries, live_bulletins\",\n"
+        "  \"navigation_target\": \"String - One of: campaigns, audiences, users, emergency_inbox, approvals, dashboard, poster_studio, sentiment_map, templates, citizen_conversations, operator_chat, support_queries, live_bulletins, sos_reports, feedback, fact_shield, managers, audit_logs, settings\",\n"
         "  \"target_channel\": \"String - Public channel for operator chat e.g. 'general', 'emergency', 'campaigns'\",\n"
         "  \"target_manager\": \"String - Name of specific manager for private DM chat e.g. 'Yashvi', 'Mahesh Sharma' if specified\",\n"
         "  \"message_text\": \"String - Extracted chat message text to send or pre-fill in input box if user dictated a message\",\n"
@@ -1109,7 +1109,29 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
         "13. LOCATION PROMPTING RULE: If the user requests a campaign or emergency alert but does NOT specify a target state or location in their spoken command or context, set 'location_selected' to 'Unspecified' and make 'spoken_response' explicitly ask: 'Which state or location would you like to target for this alert?'\n"
         "14. FOLLOW-UP PROMPT RULE: For campaign creation and emergency broadcast actions, set 'spoken_response' to EXACTLY: 'Do you want to edit, or should I proceed?'. Keep spoken responses concise with zero conversational filler or markdown.\n"
         "15. NAVIGATION ONLY RULE: For navigation-only commands (e.g. 'show me approvals', 'open sentiment map', 'navigate to dashboard', 'find farmers in Gujarat') where the user is NOT composing a message/campaign or initiating a broadcast, ALWAYS set 'requires_confirmation' to false.\n"
-        "16. NAVIGATION RULES: Templates='templates', Bulletins='live_bulletins', Emergency Inbox='emergency_inbox', Poster Studio='poster_studio', Support Queries='support_queries'.\n"
+        "16. NAVIGATION RULES — navigation_target MUST be one of these exact strings:\n"
+        "    campaigns, audiences, users, emergency_inbox, approvals, dashboard, poster_studio,\n"
+        "    sentiment_map, templates, citizen_conversations, operator_chat, support_queries,\n"
+        "    live_bulletins, sos_reports, feedback, fact_shield, managers, audit_logs, settings.\n"
+        "    Mapping guide:\n"
+        "    - 'audience directory' or 'audience list' or 'citizen list' → 'users'\n"
+        "    - 'audit logs' or 'audit trail' or 'system logs' → 'audit_logs'\n"
+        "    - 'campaign managers' or 'managers directory' or 'staff list' → 'managers'\n"
+        "    - 'campaign feedback' or 'citizen feedback' → 'feedback'\n"
+        "    - 'sos reports' or 'sos alerts' or 'distress signals' → 'sos_reports'\n"
+        "    - 'fact shield' or 'fact check' or 'rumor control' → 'fact_shield'\n"
+        "    - 'settings' or 'preferences' or 'profile' → 'settings'\n"
+        "    - 'templates' or 'message templates' → 'templates'\n"
+        "    - 'live bulletins' or 'bulletins' or 'published' → 'live_bulletins'\n"
+        "    - 'approvals' or 'pending approvals' or 'review queue' → 'approvals'\n"
+        "    - 'poster' or 'poster studio' or 'design poster' → 'poster_studio'\n"
+        "    - 'citizen chat' or 'rag chat' or 'citizen ai' → 'citizen_conversations'\n"
+        "    - 'support queries' or 'help desk' or 'citizen support' → 'support_queries'\n"
+        "    - 'emergency inbox' or 'emergency messages' → 'emergency_inbox'\n"
+        "    - 'operator chat' or 'staff chat' or 'team chat' → 'operator_chat'\n"
+        "    - 'sentiment map' or 'sentiment alarms' → 'sentiment_map'\n"
+        "    - 'audience segments' or 'audience groups' → 'audiences'\n"
+        "    - 'dashboard' or 'home' or 'overview' → 'dashboard'\n"
         "17. CAMPAIGN GENERATION RULE: When action is 'create_campaign' or 'emergency_broadcast', NEVER repeat the user's raw spoken prompt (e.g. 'create me a campaign on health awareness') as the title, objective, description, subject, or body. Generate a clean professional Campaign Title (e.g. 'Public Health & Wellness Drive 2026'), Campaign Objective (e.g. 'Promote preventive healthcare guidelines, sanitation, and health services'), Email Subject (e.g. 'Health Advisory: Guidelines for Prevention & Wellness'), and detailed 3-4 sentence message body copy with {{first_name}} placeholders.\n"
     )
 
@@ -1471,12 +1493,82 @@ def process_voice_command(prompt: str, user_role: str = "campaign_manager", user
                     "suggestions": ["Verify recipient list before launching", "Add local helpline number"]
                 }
             }
-        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower:
+        elif "audience" in prompt_lower or "farmer" in prompt_lower or "segment" in prompt_lower or "citizen group" in prompt_lower:
             result_json = {
                 "action": "search_audience",
                 "navigation_target": "audiences",
                 "spoken_response": f"Opening Audience & Segments for {location}, {display_name}.",
                 "title": "Audience Search",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "audience director" in prompt_lower or "citizen list" in prompt_lower or "citizen director" in prompt_lower or "user list" in prompt_lower or "registered user" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "users",
+                "spoken_response": f"Opening Audience Directory for you, {display_name}. Here are all registered citizens.",
+                "title": "Audience Directory",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "audit" in prompt_lower or "audit log" in prompt_lower or "system log" in prompt_lower or "activity log" in prompt_lower or "audit trail" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "audit_logs",
+                "spoken_response": f"Opening Audit Trail Logs for you, {display_name}. Here is the full system activity history.",
+                "title": "Audit Logs",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "manager" in prompt_lower and ("director" in prompt_lower or "list" in prompt_lower or "all manager" in prompt_lower or "campaign manager" in prompt_lower):
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "managers",
+                "spoken_response": f"Opening Campaign Managers Directory for you, {display_name}.",
+                "title": "Managers Directory",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "sos" in prompt_lower or "distress" in prompt_lower or "sos report" in prompt_lower or "sos alert" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "sos_reports",
+                "spoken_response": f"Opening SOS Reports for you, {display_name}. Here are the active distress signals.",
+                "title": "SOS Reports",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "feedback" in prompt_lower or "citizen feedback" in prompt_lower or "campaign feedback" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "feedback",
+                "spoken_response": f"Opening Campaign Feedback for you, {display_name}.",
+                "title": "Campaign Feedback",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "fact shield" in prompt_lower or "fact check" in prompt_lower or "rumor" in prompt_lower or "misinformation" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "fact_shield",
+                "spoken_response": f"Opening AI Fact Shield for you, {display_name}. Submit a rumor claim to generate a counter-campaign.",
+                "title": "AI Fact Shield",
+                "location_selected": location,
+                "recipients_selected": recipients,
+                "auto_trigger": False
+            }
+        elif "setting" in prompt_lower or "preference" in prompt_lower or "profile" in prompt_lower or "account" in prompt_lower:
+            result_json = {
+                "action": "navigate",
+                "navigation_target": "settings",
+                "spoken_response": f"Opening Settings for you, {display_name}.",
+                "title": "Settings",
                 "location_selected": location,
                 "recipients_selected": recipients,
                 "auto_trigger": False

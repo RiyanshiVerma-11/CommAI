@@ -16,7 +16,7 @@ const INDIAN_SPEECH_LANGUAGES = [
   { code: 'as-IN', label: '🇮🇳 Assamese (অসমীয়া)' }
 ];
 
-const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiveTab }) => {
+const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiveTab, onExecuteVoiceCommand }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -103,21 +103,37 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
     }
   };
 
+  const silenceTimerRef = useRef(null);
+
+  const stopListening = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+    window.__commai_copilot_mic_active = false;
+    setIsListening(false);
+  };
+
   // Speech Recognition (Microphone)
   const startListening = () => {
     stopSpeaking(); // Cancel any active TTS playback so it doesn't feed back into mic
 
+    // Silence background Jarvis wake-word listener so Chrome frees the microphone stream
+    window.dispatchEvent(new CustomEvent('commai_silence_jarvis'));
+    window.__commai_copilot_mic_active = true;
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      window.__commai_copilot_mic_active = false;
       return;
     }
 
     if (isListening && recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-      setIsListening(false);
+      stopListening();
       return;
     }
 
@@ -125,7 +141,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
       const recognition = new SpeechRecognition();
       recognition.lang = speechLang;
       recognition.interimResults = true;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       let lastCaptured = '';
 
@@ -135,37 +151,48 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
 
       recognition.onresult = (event) => {
         let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
-        if (transcript.trim()) {
-          lastCaptured = transcript;
-          setInputValue(transcript);
-        }
-        if (event.results[0].isFinal && transcript.trim()) {
-          setIsListening(false);
-          handleProcessUserPrompt(transcript);
+
+        const trimmed = transcript.trim();
+        if (trimmed) {
+          lastCaptured = trimmed;
+          setInputValue(trimmed);
+
+          // Reset silence timer on every new spoken phrase fragment
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+
+          // Automatically send after 1.6s of natural silence
+          silenceTimerRef.current = setTimeout(() => {
+            const finalPrompt = lastCaptured.trim();
+            if (finalPrompt) {
+              stopListening();
+              handleProcessUserPrompt(finalPrompt);
+            }
+          }, 1600);
         }
       };
 
       recognition.onerror = (e) => {
-        console.warn("Speech recognition error:", e.error);
+        console.warn("Chatbot speech recognition error:", e.error);
         if (e.error !== 'no-speech') {
-          setIsListening(false);
+          stopListening();
         }
       };
 
       recognition.onend = () => {
+        window.__commai_copilot_mic_active = false;
         setIsListening(false);
-        if (lastCaptured.trim() && !inputValue) {
-          setInputValue(lastCaptured.trim());
-        }
       };
 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (err) {
       console.error(err);
+      window.__commai_copilot_mic_active = false;
       setIsListening(false);
     }
   };
@@ -175,65 +202,75 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
 
     const textToSend = userText.trim();
     setInputValue('');
+    setMessages(prev => [...prev, { role: 'user', content: textToSend, timestamp: new Date() }]);
 
-    const lower = textToSend.toLowerCase();
-    const creationKeywords = [
-      'create', 'generate', 'build', 'make', 'launch', 'plan', 'design', 'draft', 'new', 'start',
-      'अभियान', 'बनाओ', 'बनाएं', 'तैयार', 'सृजन', 'क्रिएट', 'जेनरेट', 'बिल्ड', 'मेक', 'लॉन्च', 'प्लान', 'ड्राफ्ट', 'नया', 'नये'
-    ];
-    const campaignKeywords = [
-      'campaign', 'alert', 'bulletin', 'announcement', 'warning', 'drive', 'notice', 'message', 'flood',
-      'अभियान', 'चेतावनी', 'सूचना', 'अलर्ट', 'कैंपेन', 'कैम्पेन', 'फ्लड', 'बाढ़', 'इमरजेंसी', 'मैसेज', 'वार्निंग', 'नोटिस'
-    ];
-
-    const hasCreationKey = creationKeywords.some(k => textToSend.includes(k) || lower.includes(k));
-    const hasCampaignKey = campaignKeywords.some(k => textToSend.includes(k) || lower.includes(k));
-
-    const isCreateCampaignIntent = (hasCreationKey && hasCampaignKey) || (user?.role !== 'audience' && (hasCreationKey || hasCampaignKey));
-
-    // Check if operator wants auto-campaign generation
-    if (isCreateCampaignIntent && (user?.role === 'admin' || user?.role === 'campaign_manager') && onAutoCreateCampaign) {
+    // ----------------------------------------------------------------
+    // OPERATOR / ADMIN FLOW: route through the same AI intent engine
+    // as Jarvis (/api/ai/voice-command) so navigation, chat, approvals
+    // etc. all work — not just campaign creation.
+    // ----------------------------------------------------------------
+    if (user?.role === 'admin' || user?.role === 'campaign_manager') {
       setLoading(true);
-      setMessages(prev => [...prev, { role: 'user', content: textToSend, timestamp: new Date() }]);
-
       try {
-        const response = await fetch(`${backendUrl}/api/ai/plan`, {
+        const intentRes = await fetch(`${backendUrl}/api/ai/voice-command`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ prompt: textToSend, category: 'awareness_drive' })
+          body: JSON.stringify({
+            command: textToSend,
+            active_context: { active_tab: 'dashboard', navigation_target: 'dashboard' }
+          })
         });
-        const data = await response.json();
-        if (response.ok && !data.error) {
-          const aiReply = `🚀 I have auto-generated your campaign plan! Navigating you to the Campaign Planner Wizard right now...`;
-          setMessages(prev => [...prev, { role: 'assistant', content: aiReply, timestamp: new Date() }]);
-          speakText("Navigating to Campaign Planner. I have created the campaign draft for you!");
-          
-          setTimeout(() => {
-            onAutoCreateCampaign(data);
-          }, 600);
-        } else {
-          throw new Error(data.detail || data.error || 'Failed to generate campaign');
+
+        if (intentRes.ok) {
+          const intentData = await intentRes.json();
+          const action = intentData.action || '';
+
+          // Pure Q&A — no navigation needed, fall through to chat
+          const isQnA = action === 'answer_question' || action === 'general_chat' || action === 'faq';
+
+          if (!isQnA) {
+            // Campaign wizard actions — hand off to campaign planner
+            const isCampaignAction = ['emergency_broadcast', 'create_campaign', 'send_alert'].includes(action) || intentData.open_wizard;
+            if (isCampaignAction && onAutoCreateCampaign) {
+              const aiReply = `🚀 Campaign generated! Taking you to Campaign Planner now...`;
+              setMessages(prev => [...prev, { role: 'assistant', content: aiReply, timestamp: new Date() }]);
+              speakText('Navigating to Campaign Planner.');
+              setTimeout(() => { onAutoCreateCampaign(intentData); }, 600);
+              setLoading(false);
+              return;
+            }
+
+            // Navigation / operator actions — use the same router as Jarvis
+            if (onExecuteVoiceCommand) {
+              onExecuteVoiceCommand(intentData);
+            }
+
+            const reply = intentData.spoken_response
+              || `📍 Done! ${intentData.title || action.replace(/_/g, ' ')}. I've navigated you there.`;
+            setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date(), showFeedback: true }]);
+            speakText(reply);
+            setLoading(false);
+            return;
+          }
         }
+        // isQnA or intent call failed — fall through to standard chat below
       } catch (err) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error creating voice campaign: ${err.message}`, timestamp: new Date() }]);
+        console.warn('[ChatbotWidget] Intent engine error, falling back to chat:', err);
+        // fall through to standard chat
       } finally {
         setLoading(false);
       }
-      return;
     }
 
-    // Standard AI Assistant Chat flow
-    setMessages(prev => [...prev, { role: 'user', content: textToSend, timestamp: new Date() }]);
+    // ----------------------------------------------------------------
+    // STANDARD AI CHAT FLOW (Q&A, audience users, fallback)
+    // ----------------------------------------------------------------
     setLoading(true);
-
     try {
-      const history = messages.map(m => ({
-        role: m.role,
-        content: m.content
-      }));
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
 
       const res = await fetch(`${backendUrl}/api/ai/chat`, {
         method: 'POST',
@@ -248,17 +285,12 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
       });
 
       if (!res.ok) throw new Error('API communication error');
-
       const data = await res.json();
       setMessages(prev => [
         ...prev,
         { role: 'assistant', content: data.reply, timestamp: new Date(), showFeedback: true }
       ]);
-
-      // Speak back aloud if user was using mic
-      if (isListening) {
-        speakText(data.reply);
-      }
+      if (isListening) speakText(data.reply);
     } catch (err) {
       setMessages(prev => [
         ...prev,
@@ -595,7 +627,7 @@ const ChatbotWidget = ({ user, backendUrl, token, onAutoCreateCampaign, setActiv
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'rgba(8, 10, 15, 0.2)'
+                background: 'var(--chatbot-msg-bg)'
               }}
             >
               {/* Voice Microphone Button */}

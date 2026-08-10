@@ -69,6 +69,12 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
       if (contactsRes.ok) {
         contactsData = await contactsRes.json();
       }
+
+      const campaignsRes = await fetch(`${backendUrl}/api/campaigns/active-bulletins`, { headers });
+      let campaignsData = [];
+      if (campaignsRes.ok) {
+        campaignsData = await campaignsRes.json();
+      }
       
       const formattedPosters = postersData.map(p => ({
         id: p.id,
@@ -87,8 +93,17 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
         urgency: c.urgency || 'normal',
         created_at: c.created_at
       }));
+
+      const formattedCampaigns = campaignsData.map(c => ({
+        id: c.id,
+        type: 'campaign_broadcast',
+        title: c.campaign_type === 'emergency_alert' || c.urgency === 'critical' ? `🚨 ${c.title}` : c.title,
+        message: c.custom_body || c.description || c.title,
+        urgency: c.campaign_type === 'emergency_alert' ? 'critical' : (c.urgency || 'normal'),
+        created_at: c.created_at || c.dispatched_at || new Date().toISOString()
+      }));
       
-      const combined = [...formattedPosters, ...formattedContacts];
+      const combined = [...formattedCampaigns, ...formattedPosters, ...formattedContacts];
       combined.sort((a, b) => {
         const da = new Date(a.created_at);
         const db = new Date(b.created_at);

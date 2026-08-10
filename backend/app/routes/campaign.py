@@ -173,6 +173,23 @@ def list_campaigns(
     campaigns = db.query(Campaign).filter(Campaign.is_deleted == False).order_by(Campaign.created_at.desc()).all()
     return [format_campaign_response(c) for c in campaigns]
 
+@router.get("/active-bulletins", response_model=List[CampaignResponse])
+def list_active_bulletins(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_any_authenticated)
+):
+    """Retrieve all active, pending, or scheduled campaigns for the live broadcast bulletins feed."""
+    try:
+        from app.services.dispatcher import check_and_dispatch_scheduled_campaigns
+        check_and_dispatch_scheduled_campaigns()
+    except Exception as ex:
+        logger.error(f"[BULLETIN-LIST] Auto-scheduler check exception: {ex}")
+
+    campaigns = db.query(Campaign).filter(
+        Campaign.is_deleted == False
+    ).order_by(Campaign.created_at.desc()).all()
+    return [format_campaign_response(c) for c in campaigns]
+
 @router.get("/audit-logs/all", response_model=List[AuditLogResponse])
 def get_all_audit_logs(
     db: Session = Depends(get_db),

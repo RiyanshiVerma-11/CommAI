@@ -649,7 +649,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>🚨</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>1. Monitor Claims</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
-                    View panic reports flagged in incoming SMS/WhatsApp channels. Higher flame icons denote viral claims.
+                    View panic reports flagged in incoming SMS/Voice channels. Higher flame icons denote viral claims.
                   </p>
                 </div>
 
@@ -673,7 +673,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                   <div style={{ fontSize: '1.25rem', marginBottom: '8px' }}>📡</div>
                   <h4 style={{ margin: '0 0 6px', fontSize: '0.9rem', fontWeight: 600 }}>4. Multi-Channel Push</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
-                    Publish and broadcast verified alerts instantly to targeted citizens via WhatsApp, Telegram, SMS, and Email.
+                    Publish and broadcast verified alerts instantly to targeted citizens via Voice Call, Telegram, SMS, and Email.
                   </p>
                 </div>
               </div>

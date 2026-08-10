@@ -3051,7 +3051,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         </span>
                       ) : (
                         <span>
-                          {' '}Members with different preferred channels (e.g. WhatsApp/SMS) will be <strong>skipped</strong> for {selectedChannels.join(', ').toUpperCase()} unless you click <em>"+ Add Channel"</em> above or check <em>"Force Delivery"</em> below.
+                          {' '}Members with different preferred channels (e.g. Call/SMS) will be <strong>skipped</strong> for {selectedChannels.join(', ').toUpperCase()} unless you click <em>"+ Add Channel"</em> above or check <em>"Force Delivery"</em> below.
                         </span>
                       )}
                     </div>

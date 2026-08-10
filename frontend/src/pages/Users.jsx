@@ -46,7 +46,7 @@ const Users = ({ user: _currentUser, backendUrl, headers }) => {
 
   const AVAILABLE_CHANNELS = [
     { id: 'email', label: 'Email', icon: '📧' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+    { id: 'voice', label: 'Call', icon: '📞' },
     { id: 'telegram', label: 'Telegram', icon: '✈️' },
     { id: 'sms', label: 'SMS', icon: '📱' },
     { id: 'push', label: 'Web/Push', icon: '🔔' },
@@ -672,7 +672,7 @@ const Users = ({ user: _currentUser, backendUrl, headers }) => {
                     {profileModalUser.preferred_channels && profileModalUser.preferred_channels.length > 0 ? (
                       profileModalUser.preferred_channels.map(ch => (
                         <span key={ch} className={`channel-badge channel-badge-${ch.toLowerCase()}`}>
-                          {ch === 'email' ? '📧 Email' : ch === 'whatsapp' ? '💬 WhatsApp' : ch === 'telegram' ? '✈️ Telegram' : ch === 'sms' ? '📱 SMS' : '🔔 Push'}
+                          {ch === 'email' ? '📧 Email' : ch === 'voice' ? '📞 Call' : ch === 'telegram' ? '✈️ Telegram' : ch === 'sms' ? '📱 SMS' : '🔔 Push'}
                         </span>
                       ))
                     ) : (

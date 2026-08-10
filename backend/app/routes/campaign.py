@@ -212,6 +212,15 @@ def get_all_audit_logs(
         ))
     return results
 
+@router.get("/mine", response_model=List[CampaignResponse])
+def get_my_submitted_campaigns(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_any_authenticated)
+):
+    """Retrieve proposed campaigns submitted by the currently logged-in citizen."""
+    camps = db.query(Campaign).filter(Campaign.created_by == current_user.id, Campaign.is_deleted == False).order_by(Campaign.created_at.desc()).all()
+    return [format_campaign_response(c) for c in camps]
+
 @router.get("/{id}", response_model=CampaignResponse)
 def get_campaign(
     id: str,

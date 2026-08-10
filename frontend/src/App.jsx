@@ -1231,31 +1231,6 @@ function App() {
               {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
             <span className="header-date" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
-            {/* Global Multilingual Language Selector */}
-            <select
-              value={selectedLanguage}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              title="Persistent Portal Language"
-              style={{
-                background: 'rgba(99, 102, 241, 0.12)',
-                color: 'hsl(var(--text-primary))',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-                borderRadius: '8px',
-                padding: '5px 10px',
-                fontSize: '0.82rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                outline: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}
-            >
-              {["Hindi", "English", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"].map(lang => (
-                <option key={lang} value={lang} style={{ background: 'var(--input-bg)', color: 'hsl(var(--text-primary))' }}>
-                  🌐 {lang}
-                </option>
-              ))}
-            </select>
-            <span className="header-date" style={{ height: '14px', width: '1px', background: 'var(--border-color-glass)' }}></span>
             
             {/* Custom Theme Switch Pill */}
             <div 

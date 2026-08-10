@@ -15,7 +15,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
   const [editedCity, setEditedCity] = useState('');
   const [editedDistrict, setEditedDistrict] = useState('');
   const [editedState, setEditedState] = useState('');
-  const [selectedChannels, setSelectedChannels] = useState(['whatsapp', 'sms']);
+  const [selectedChannels, setSelectedChannels] = useState(['sms', 'email']);
 
   const selectRumor = useCallback((rumor) => {
     setSelectedRumor(rumor);
@@ -549,7 +549,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
                   📡 Broadcast Channels
                 </label>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  {['whatsapp', 'sms', 'email', 'telegram', 'push', 'website'].map(ch => (
+                  {['voice', 'sms', 'email', 'telegram', 'push', 'website'].map(ch => (
                     <button
                       key={ch}
                       onClick={() => toggleChannel(ch)}

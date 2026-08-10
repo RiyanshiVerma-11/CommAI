@@ -9,7 +9,7 @@ const Audiences = ({ user, backendUrl, headers }) => {
   // Constants seeded from config
   const languages = ["English", "Hindi", "Assamese", "Bengali", "Bodo", "Dogri", "Gujarati", "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", "Sindhi", "Tamil", "Telugu", "Urdu"];
   const occupations = ["Farmer", "Student", "Teacher", "Healthcare Worker", "NGO Worker", "Administrator", "General Public", "Business Owner"];
-  const channels = ["email", "sms", "voice", "whatsapp", "push", "website", "telegram"];
+  const channels = ["email", "sms", "voice", "push", "website", "telegram"];
 
   // --- 1. AUDIENCE LIST STATES ---
   const [audiences, setAudiences] = useState([]);

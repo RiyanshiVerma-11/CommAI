@@ -1115,7 +1115,7 @@ export default function Feedback({ user, backendUrl, headers, _unreadRepliesCoun
                   <div>
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Preferred Channels</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                      {['email', 'sms', 'whatsapp', 'telegram'].map(ch => (
+                      {['email', 'sms', 'voice', 'telegram'].map(ch => (
                         <label key={ch} style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                           <input
                             type="checkbox"

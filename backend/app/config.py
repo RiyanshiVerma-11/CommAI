@@ -37,11 +37,19 @@ class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
-    # --- SMS Gateway Configuration (Fast2SMS & Twilio) ---
+    # --- SMS Gateway Configuration (Twilio SMS) ---
     FAST2SMS_API_KEY: str = os.getenv("FAST2SMS_API_KEY", "")
     TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_PHONE_NUMBER: str = os.getenv("TWILIO_PHONE_NUMBER", "")
+
+    # --- WhatsApp Gateway Configuration (Twilio WhatsApp) ---
+    TWILIO_WHATSAPP_ACCOUNT_SID: str = os.getenv("TWILIO_WHATSAPP_ACCOUNT_SID", "")
+    TWILIO_WHATSAPP_AUTH_TOKEN: str = os.getenv("TWILIO_WHATSAPP_AUTH_TOKEN", "")
+    TWILIO_WHATSAPP_NUMBER: str = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+17372508034")
+    # Approved WhatsApp Content Template SID (HXxxx). Required for WhatsApp Business API accounts.
+    # Create a free-text template (body={{1}}) at console.twilio.com → Content Template Builder.
+    TWILIO_WHATSAPP_CONTENT_SID: str = os.getenv("TWILIO_WHATSAPP_CONTENT_SID", "")
 
     # --- Firebase FCM Configuration ---
     FCM_SERVICE_ACCOUNT_JSON: str = os.getenv("FCM_SERVICE_ACCOUNT_JSON", "")
@@ -94,7 +102,7 @@ class Settings:
     
     CATEGORIES = ["emergency", "awareness", "education", "announcement"]
     
-    CHANNELS = ["email", "sms", "whatsapp", "push", "website", "telegram"]
+    CHANNELS = ["email", "sms", "push", "website", "telegram"]
 
     def load_overrides(self):
         import json
@@ -129,6 +137,7 @@ class Settings:
                 self.ANTHROPIC_API_KEY = data.get("ANTHROPIC_API_KEY") or self.ANTHROPIC_API_KEY
                 self.DEFAULT_COUNTRY_CODE = data.get("DEFAULT_COUNTRY_CODE") or self.DEFAULT_COUNTRY_CODE
                 self.BACKEND_URL = data.get("BACKEND_URL") or self.BACKEND_URL
+                self.TWILIO_WHATSAPP_CONTENT_SID = data.get("TWILIO_WHATSAPP_CONTENT_SID") or self.TWILIO_WHATSAPP_CONTENT_SID
                 
                 cap_email = data.get("DAILY_CAP_EMAIL")
                 if cap_email is not None and cap_email != "":

@@ -598,7 +598,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
     { value: 'organizational_announcement', label: 'Organizational Announcement' }
   ];
 
-  const channelsList = ["email", "sms", "whatsapp", "push", "website", "telegram", "voice"];
+  const channelsList = ["email", "sms", "push", "website", "telegram", "voice"];
 
   const aiTones = [
     { value: 'formal', label: 'Formal' },
@@ -1472,7 +1472,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
       ? (selectedChannels.length > 0 ? selectedChannels[0] : 'email')
       : activeTpl.channel;
 
-    const isMobileChannel = ['sms', 'whatsapp', 'push', 'telegram'].includes(chType);
+    const isMobileChannel = ['sms', 'push', 'telegram'].includes(chType);
 
     if (chType === 'email') {
       return (
@@ -3584,7 +3584,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
                         let cost = 0;
                         selectedChannels.forEach(ch => {
                           if (ch === 'sms') cost += count * 0.02 * 83;
-                          else if (ch === 'whatsapp') cost += count * 0.04 * 83;
+                          // whatsapp removed
                         });
                         return cost.toFixed(2);
                       })()}

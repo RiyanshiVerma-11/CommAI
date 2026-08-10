@@ -340,7 +340,7 @@ const CitizenConversations = ({ user, backendUrl, headers }) => {
                           {m.content}
                         </div>
                         <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))', marginTop: '4px' }}>
-                          {m.isPending ? '⚡ Grok Indic AI processing...' : `${new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} ${isInbound ? '(Citizen)' : '(AI Assist)'}`}
+                          {m.isPending ? '⚡ Grok Indic AI processing...' : `${new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} ${isInbound ? '(Citizen)' : '(AI Assist)'}`}
                         </span>
                       </div>
                     );

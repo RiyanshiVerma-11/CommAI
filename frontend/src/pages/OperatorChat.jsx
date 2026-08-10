@@ -326,7 +326,7 @@ const OperatorChat = ({ user, backendUrl, headers, initialChannel, initialTarget
   const formatTimestamp = (ts) => {
     if (!ts) return '';
     const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) + ' · ' + date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
   };
 
   const otherStaff = staffMembers.filter(s => s.id !== user?.id);

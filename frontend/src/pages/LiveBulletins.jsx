@@ -397,7 +397,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
                   <span style={{ fontSize: '0.72rem', color: 'hsl(var(--text-muted))', fontWeight: '600' }}>
                     {(() => {
                       const d = new Date(b.created_at);
-                      return !isNaN(d.getTime()) ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                      return !isNaN(d.getTime()) ? d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '';
                     })()}
                   </span>
                 </div>

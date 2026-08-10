@@ -24,15 +24,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     if (!isManagerOrAdmin || !wakeWordEnabled || isOpen) {
       if (wakeWordRecognitionRef.current) {
         try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
-      }
-      return;
-    }
-
-    // Mobile hardware mic chime suppression (only on mobile browsers)
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobileDevice) {
-      if (wakeWordRecognitionRef.current) {
-        try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
+        wakeWordRecognitionRef.current = null;
       }
       return;
     }
@@ -41,6 +33,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
     if (!SpeechRecognition) return;
 
     let isActive = true;
+    let retryTimer = null;
 
     const startWakeWordListener = () => {
       if (!isActive || !wakeWordEnabled || isOpenRef.current || window.__commai_copilot_mic_active) return;
@@ -48,6 +41,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
       try {
         if (wakeWordRecognitionRef.current) {
           try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
+          wakeWordRecognitionRef.current = null;
         }
 
         const recognition = new SpeechRecognition();
@@ -66,6 +60,7 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
 
             if (hasWakeWord) {
               try { recognition.abort(); } catch (e) {}
+              wakeWordRecognitionRef.current = null;
               // Wake word detected! Open Cockpit hands-free
               setIsOpen(true);
               const greeting = "Hello admin, what do you want to do?";
@@ -77,13 +72,13 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         };
 
         recognition.onerror = (err) => {
-          console.log('[Jarvis Wake-Word] Recognition error:', err?.error);
+          console.log('[Jarvis Wake-Word] Recognition event error:', err?.error);
         };
 
         recognition.onend = () => {
           wakeWordRecognitionRef.current = null;
           if (isActive && wakeWordEnabled && !isOpenRef.current && !window.__commai_copilot_mic_active) {
-            setTimeout(() => {
+            retryTimer = setTimeout(() => {
               if (isActive && !isOpenRef.current && !window.__commai_copilot_mic_active) {
                 startWakeWordListener();
               }
@@ -94,14 +89,27 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
         wakeWordRecognitionRef.current = recognition;
         recognition.start();
       } catch (e) {
-        console.error('[Jarvis Wake-Word] Failed to start:', e);
+        console.warn('[Jarvis Wake-Word] Mic start delayed/busy, retrying in 1.2s:', e);
+        wakeWordRecognitionRef.current = null;
+        if (isActive && !isOpenRef.current && !window.__commai_copilot_mic_active) {
+          retryTimer = setTimeout(() => {
+            if (isActive && !isOpenRef.current && !window.__commai_copilot_mic_active) {
+              startWakeWordListener();
+            }
+          }, 1200);
+        }
       }
     };
 
-    startWakeWordListener();
+    // Small initial delay to ensure previous mic instance is fully freed by browser
+    const initTimer = setTimeout(() => {
+      startWakeWordListener();
+    }, 400);
 
     return () => {
       isActive = false;
+      if (initTimer) clearTimeout(initTimer);
+      if (retryTimer) clearTimeout(retryTimer);
       if (wakeWordRecognitionRef.current) {
         try { wakeWordRecognitionRef.current.abort(); } catch (e) {}
         wakeWordRecognitionRef.current = null;

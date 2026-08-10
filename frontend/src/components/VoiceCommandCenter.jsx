@@ -356,12 +356,17 @@ const VoiceCommandCenter = ({ user, backendUrl, token, activeTab, onExecuteVoice
           return;
         }
 
-        let currentTranscript = '';
+        let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = 0; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
+          const piece = event.results[i][0].transcript || '';
+          if (event.results[i].isFinal) {
+            finalTranscript += piece + ' ';
+          } else {
+            interimTranscript += piece;
+          }
         }
-
-        const trimmed = currentTranscript.trim();
+        const trimmed = (finalTranscript + ' ' + interimTranscript).replace(/\s+/g, ' ').trim();
         if (!trimmed) return;
 
         // Echo feedback suppression: only suppress if TTS stopped less than 1.5s ago AND input is long verbatim overlap

@@ -624,8 +624,8 @@ const Dashboard = ({ user, setActiveTab, backendUrl, headers, token, bulletinCou
               ) : (
                 <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'hsl(var(--danger) / 12%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: 'hsl(var(--danger))' }}>🚨</div>
               )}
-              <h3 style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{interpolateText(fullscreenPoster.title)}</h3>
-              <p style={{ color: 'hsl(var(--text-muted))', marginTop: '8px', fontSize: '0.88rem', textAlign: 'center', lineHeight: '1.4' }}>{interpolateText(fullscreenPoster.description)}</p>
+              <h3 style={{ color: '#ffffff', marginTop: '16px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}>{interpolateText(fullscreenPoster.title)}</h3>
+              <p style={{ color: '#ffffff', marginTop: '8px', fontSize: '0.92rem', textAlign: 'center', lineHeight: '1.5', fontWeight: 600 }}>{interpolateText(fullscreenPoster.description)}</p>
               <button 
                 onClick={() => setFullscreenPoster(null)}
                 style={{

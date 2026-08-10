@@ -400,7 +400,7 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
                   </span>
                 </div>
 
-                <p style={{ margin: '0 0 12px', fontSize: '0.85rem', lineHeight: '1.5', color: 'hsl(var(--text-secondary))' }}>
+                <p style={{ margin: '0 0 12px', fontSize: '0.92rem', lineHeight: '1.6', color: '#ffffff', fontWeight: 600 }}>
                   {interpolateText(b.message)}
                 </p>
 

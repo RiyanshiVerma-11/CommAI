@@ -560,21 +560,21 @@ const VoiceBulletinPlayer = ({
         </div>
 
         {(translatedText || text) && (
-          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              fontSize: '0.88rem',
+              fontSize: '0.92rem',
               fontWeight: 700,
               color: '#ffffff',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%)',
-              padding: '10px 14px',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(139, 92, 246, 0.3) 100%)',
+              padding: '12px 16px',
               borderRadius: '10px',
               borderLeft: '4px solid #818cf8',
-              border: '1px solid rgba(129, 140, 248, 0.3)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              lineHeight: '1.5',
+              border: '1px solid rgba(129, 140, 248, 0.45)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+              lineHeight: '1.6',
               letterSpacing: '0.01em'
             }}>
               {isPlaying && (
@@ -593,8 +593,8 @@ const VoiceBulletinPlayer = ({
                   ))}
                 </div>
               )}
-              <div style={{ overflowWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'normal' }}>
-                📖 <strong>Spoken Speech ({selectedLang.native || selectedLang.name}):</strong> <span style={{ fontWeight: 800, color: '#f8fafc' }}>"{translatedText || text}"</span>
+              <div style={{ overflowWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'normal', color: '#ffffff' }}>
+                📖 <strong style={{ color: '#ffffff' }}>Spoken Speech ({selectedLang.native || selectedLang.name}):</strong> <span style={{ fontWeight: 800, color: '#ffffff' }}>"{translatedText || text}"</span>
               </div>
             </div>
           </div>

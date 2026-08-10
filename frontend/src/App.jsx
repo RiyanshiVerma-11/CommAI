@@ -61,7 +61,8 @@ const getDynamicBackendUrl = () => {
       return `${currentProtocol}//${currentHost}:8001`;
     }
   }
-  return backendUrl || 'http://localhost:8001';
+  // Use explicit IPv4 127.0.0.1 to avoid Docker hijacking IPv6 localhost on port 8001
+  return backendUrl || 'http://127.0.0.1:8001';
 };
 
 const BACKEND_URL = getDynamicBackendUrl();

@@ -20,17 +20,17 @@ def call_llm(
     """
     providers = []
     
-    # 1. Grok (xAI Primary)
-    if getattr(settings, "GROK_API_KEY", None):
-        providers.append(("Grok", _call_grok_api))
-
-    # 2. Groq (Primary)
+    # 1. Groq (Primary Ultra-Fast <200ms)
     if getattr(settings, "GROQ_API_KEY", None):
         providers.append(("Groq", _call_groq_api))
         
-    # 3. Groq-Secondary (Fallback)
+    # 2. Groq-Secondary (Fallback)
     if getattr(settings, "GROQ_API_KEY_SECONDARY", None):
         providers.append(("Groq-Secondary", _call_groq_secondary_api))
+
+    # 3. Grok (xAI)
+    if getattr(settings, "GROK_API_KEY", None):
+        providers.append(("Grok", _call_grok_api))
 
     # 4. Google Gemini
     if getattr(settings, "GEMINI_API_KEY", None):
@@ -143,8 +143,8 @@ def _call_groq_api_with_key(key: str, system_prompt: str, user_content: str, tem
         "Content-Type": "application/json"
     }
     
-    # Try llama-3.3-70b-versatile first, fallback to llama-3.1-8b-instant if it fails
-    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    # Try ultra-fast llama-3.1-8b-instant first for instant <200ms responses, fallback to 70b
+    models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
     
     last_err = None
     for model in models:
@@ -231,3 +231,25 @@ def _call_anthropic_api(system_prompt: str, user_content: str, temperature: floa
     else:
         logger.warning(f"[AI-ROUTER] Anthropic API returned status {resp.status_code}: {resp.text}")
         raise Exception(f"Anthropic API returned code {resp.status_code}")
+
+
+def transcribe_audio_groq(audio_bytes: bytes, filename: str = "speech.webm") -> str | None:
+    """Transcribe audio binary using Groq Whisper API (whisper-large-v3-turbo)."""
+    groq_key = getattr(settings, "GROQ_API_KEY", None) or getattr(settings, "GROQ_API_KEY_SECONDARY", None)
+    if not groq_key:
+        logger.warning("[STT] No Groq API key configured for audio transcription.")
+        return None
+    try:
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+        headers = {"Authorization": f"Bearer {groq_key}"}
+        files = {"file": (filename, audio_bytes, "audio/webm")}
+        data = {"model": "whisper-large-v3-turbo", "language": "en"}
+        resp = requests.post(url, headers=headers, files=files, data=data, timeout=15)
+        if resp.status_code == 200:
+            result = resp.json()
+            return result.get("text", "").strip()
+        else:
+            logger.warning(f"[STT] Groq Whisper API status {resp.status_code}: {resp.text}")
+    except Exception as e:
+        logger.error(f"[STT] Failed to transcribe audio via Groq Whisper: {e}")
+    return None

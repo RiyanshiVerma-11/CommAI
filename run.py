@@ -85,7 +85,7 @@ def main():
     print("\n[LAUNCHER] Starting servers...")
     
     # Launch Backend (FastAPI on Port 8001)
-    backend_cmd = [python_exe, "-m", "uvicorn", "app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8001"]
+    backend_cmd = [python_exe, "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8001"]
     print(f"[LAUNCHER] Backend startup: {' '.join(backend_cmd)}")
     
     backend_process = subprocess.Popen(

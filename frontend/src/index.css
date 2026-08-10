@@ -3583,14 +3583,16 @@ div {
 
   /* App Workspace Mobile Overrides */
   .header {
-    padding: 0 12px !important;
-    height: 56px !important;
+    padding: 0 8px !important;
+    height: 52px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     width: 100% !important;
+    max-width: 100vw !important;
     box-sizing: border-box !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    gap: 4px !important;
   }
 
   .header-date {
@@ -3602,36 +3604,43 @@ div {
   }
 
   .header-right {
-    gap: 8px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .header-right select {
+    max-width: 80px !important;
+    font-size: 0.72rem !important;
+    padding: 3px 6px !important;
   }
 
   .theme-switch-pill {
-    width: 64px !important;
-    height: 28px !important;
+    width: 52px !important;
+    height: 26px !important;
   }
 
   .theme-switch-slider {
-    width: 22px !important;
-    height: 22px !important;
+    width: 20px !important;
+    height: 20px !important;
     top: 2px !important;
     left: 2px !important;
   }
 
   .theme-switch-pill.light .theme-switch-slider {
-    transform: translateX(36px) !important;
+    transform: translateX(26px) !important;
   }
 
   .theme-switch-icon {
-    width: 22px !important;
-    height: 22px !important;
+    width: 20px !important;
+    height: 20px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
   }
 
   .theme-switch-icon svg {
-    width: 12px !important;
-    height: 12px !important;
+    width: 11px !important;
+    height: 11px !important;
   }
 
   .header-breadcrumb-category,
@@ -3641,15 +3650,37 @@ div {
 
   .header-title,
   .header-breadcrumb-item {
-    font-size: 1.05rem !important;
+    font-size: 0.95rem !important;
     white-space: nowrap !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 110px !important;
+  }
+
+  html, body, #root, .app-container, .main-content {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
   .view-container {
-    padding: 12px !important;
+    padding: 12px 8px 140px 8px !important;
+    width: 100% !important;
     max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .schedule-btn-group {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .schedule-btn-group > button {
+    width: 100% !important;
+    font-size: 0.84rem !important;
+    padding: 10px !important;
+    white-space: normal !important;
   }
 
   /* Mobile Typography Scaling & Proportions */
@@ -4000,7 +4031,7 @@ div {
 
   /* Leave padding at the bottom of views so content isn't covered by bottom nav bar */
   .view-container {
-    padding-bottom: 84px !important;
+    padding-bottom: 140px !important;
   }
 }
 
@@ -4046,18 +4077,41 @@ div {
     z-index: 9999999 !important;
   }
 
+  .voice-cockpit-label,
+  .voice-cockpit-badge {
+    display: none !important;
+  }
+
+  .floating-voice-cockpit button {
+    padding: 0 !important;
+    width: 42px !important;
+    height: 42px !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+  }
+
   .floating-voice-cockpit {
     bottom: 74px !important;
-    right: 80px !important;
-    transform: scale(0.85);
-    transform-origin: bottom right;
+    right: 64px !important;
+    margin-bottom: 0 !important;
+    z-index: 99999 !important;
   }
 
   .floating-chatbot-widget {
     bottom: 74px !important;
     right: 12px !important;
-    transform: scale(0.88);
-    transform-origin: bottom right;
+    margin-bottom: 0 !important;
+    z-index: 99999 !important;
+  }
+
+  .role-selector-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .role-card {
+    padding: 8px 4px !important;
+    gap: 4px !important;
   }
 
   .approvals-grid,

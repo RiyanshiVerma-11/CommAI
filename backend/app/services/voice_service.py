@@ -189,29 +189,33 @@ def clean_phone_number(phone: str) -> str:
 
 def get_voice_language_config(lang: str = "Hindi") -> Tuple[str, str]:
     """
-    Map target language name to Twilio TTS Voice & Language specifiers.
+    Map all 23 supported target language names to Premium Female Neural Voice Call Tones.
     Returns (voice_name, language_code).
     """
     lang_lower = (lang or "").strip().lower()
 
-    if any(k in lang_lower for k in ["hindi", "hi"]):
-        return "Polly.Aditi", "hi-IN"
+    if any(k in lang_lower for k in ["telugu", "te"]):
+        return "Google.te-IN-Standard-A", "te-IN"
     elif any(k in lang_lower for k in ["tamil", "ta"]):
-        return "Polly.Aditi", "ta-IN"
-    elif any(k in lang_lower for k in ["telugu", "te"]):
-        return "Polly.Aditi", "te-IN"
+        return "Google.ta-IN-Standard-A", "ta-IN"
     elif any(k in lang_lower for k in ["marathi", "mr"]):
-        return "Polly.Aditi", "mr-IN"
-    elif any(k in lang_lower for k in ["bengali", "bn"]):
-        return "Polly.Aditi", "bn-IN"
+        return "Google.mr-IN-Standard-A", "mr-IN"
+    elif any(k in lang_lower for k in ["bengali", "bn", "assamese", "as", "manipuri", "mni"]):
+        return "Google.bn-IN-Standard-A", "bn-IN"
     elif any(k in lang_lower for k in ["gujarati", "gu"]):
-        return "Polly.Aditi", "gu-IN"
+        return "Google.gu-IN-Standard-A", "gu-IN"
     elif any(k in lang_lower for k in ["kannada", "kn"]):
-        return "Polly.Aditi", "kn-IN"
+        return "Google.kn-IN-Standard-A", "kn-IN"
     elif any(k in lang_lower for k in ["malayalam", "ml"]):
-        return "Polly.Aditi", "ml-IN"
+        return "Google.ml-IN-Standard-A", "ml-IN"
+    elif any(k in lang_lower for k in ["punjabi", "pa"]):
+        return "Google.pa-IN-Standard-A", "pa-IN"
+    elif any(k in lang_lower for k in ["urdu", "ur"]):
+        return "Google.ur-IN-Standard-A", "ur-IN"
+    elif any(k in lang_lower for k in ["hindi", "hi", "sanskrit", "sa", "bodo", "brx", "dogri", "doi", "maithili", "mai", "santali", "sat", "konkani", "kok", "kashmiri", "ks", "sindhi", "sd"]):
+        return "Polly.Aditi", "hi-IN"
     else:
-        return "Polly.Raveena", "en-IN"
+        return "Polly.Aditi", "en-IN"
 
 
 def generate_twiml(message: str, lang: str = "Hindi") -> str:

@@ -173,11 +173,29 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch(`${backendUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData
-      });
+      let response;
+      try {
+        response = await fetch(`${backendUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+      } catch (networkErr) {
+        // Fallback to localhost:8001 if primary URL fails
+        if (backendUrl !== 'http://localhost:8001' && backendUrl !== 'http://127.0.0.1:8001') {
+          try {
+            response = await fetch('http://127.0.0.1:8001/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: formData
+            });
+          } catch (fallbackErr) {
+            throw new Error(`Backend server is unreachable at ${backendUrl}. Please ensure FastAPI backend is running with '--host 0.0.0.0 --port 8001'.`);
+          }
+        } else {
+          throw new Error('Backend server is unreachable. Please ensure the backend server is running on port 8001.');
+        }
+      }
 
       const text = await response.text();
       let data = {};
@@ -472,136 +490,108 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
   return (
     <div className="app-container" style={{
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       width: '100vw',
-      height: '100vh',
-      padding: '24px',
+      minHeight: '100vh',
+      padding: '72px 16px 32px 16px',
+      boxSizing: 'border-box',
       overflowY: 'auto',
       position: 'relative'
     }}>
-      <button
-        onClick={() => {
-          setShowSosModal(true);
-          setSosModalError('');
-          setSosModalSuccess('');
-        }}
-        title="Report Emergency Safety Hazard / SOS Distress Call"
-        style={{
-          position: 'fixed',
-          top: '24px',
-          right: '80px',
-          background: 'rgba(239, 68, 68, 0.15)',
-          border: '1.5px solid rgba(239, 68, 68, 0.4)',
-          borderRadius: '24px',
-          padding: '0 16px',
-          height: '42px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-          color: '#ff4d4d',
-          boxShadow: '0 4px 14px rgba(239, 68, 68, 0.25)',
-          transition: 'all 0.2s ease',
-          zIndex: 9999,
-          fontWeight: 'bold',
-          fontSize: '0.85rem'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.04)';
-          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-        }}
-      >
-        <span style={{ display: 'inline-block', width: '8px', height: '8px', background: '#ff4d4d', borderRadius: '50%' }}></span>
-        🚨 Report Hazard (SOS)
-      </button>
+      {/* Top Header Bar */}
+      <header style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 20px',
+        zIndex: 100,
+        width: '100%',
+        boxSizing: 'border-box',
+        gap: '12px'
+      }}>
+        {onBackToLanding ? (
+          <span 
+            onClick={onBackToLanding}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              color: 'hsl(var(--text-secondary))',
+              cursor: 'pointer',
+              fontWeight: '600',
+              transition: 'var(--transition-fast)',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => e.target.style.color = 'hsl(var(--primary))'}
+            onMouseLeave={(e) => e.target.style.color = 'hsl(var(--text-secondary))'}
+          >
+            ← Back to Overview
+          </span>
+        ) : <div />}
 
-      {toggleTheme && (
-        <button
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          style={{
-            position: 'fixed',
-            top: '24px',
-            right: '24px',
-            background: 'var(--bg-glass, rgba(255, 255, 255, 0.08))',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            borderRadius: '50%',
-            width: '42px',
-            height: '42px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: 'hsl(var(--text-primary))',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
-            transition: 'all 0.2s ease',
-            zIndex: 9999
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          {theme === 'dark' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" />
-              <line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
-      )}
-      <GlassCard className="animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '36px', margin: 'auto' }}>
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          {onBackToLanding ? (
-            <span 
-              onClick={onBackToLanding}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '0.88rem',
-                color: 'hsl(var(--text-secondary))',
-                cursor: 'pointer',
-                fontWeight: '600',
-                transition: 'var(--transition-fast)'
-              }}
-              onMouseEnter={(e) => e.target.style.color = 'hsl(var(--primary))'}
-              onMouseLeave={(e) => e.target.style.color = 'hsl(var(--text-secondary))'}
-            >
-              ← Back to Overview
-            </span>
-          ) : <div />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+          <button
+            onClick={() => {
+              setShowSosModal(true);
+              setSosModalError('');
+              setSosModalSuccess('');
+            }}
+            title="Report Emergency Safety Hazard / SOS Distress Call"
+            style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1.5px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '24px',
+              padding: '6px 12px',
+              height: '36px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              color: '#ff4d4d',
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.25)',
+              transition: 'all 0.2s ease',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.04)';
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+            }}
+          >
+            <span style={{ display: 'inline-block', width: '7px', height: '7px', background: '#ff4d4d', borderRadius: '50%' }}></span>
+            🚨 Report Hazard (SOS)
+          </button>
 
           {toggleTheme && (
             <button
               onClick={toggleTheme}
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--border-color-glass)',
-                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid var(--border-color-glass, rgba(255, 255, 255, 0.15))',
+                borderRadius: '20px',
                 padding: '6px 12px',
+                height: '36px',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 color: 'hsl(var(--text-secondary))',
-                fontSize: '0.82rem',
+                fontSize: '0.8rem',
                 fontWeight: '600',
-                transition: 'var(--transition-fast)'
+                transition: 'var(--transition-fast)',
+                whiteSpace: 'nowrap'
               }}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
@@ -624,6 +614,9 @@ const Login = ({ onLoginSuccess, backendUrl, onBackToLanding, initialRegister, t
             </button>
           )}
         </div>
+      </header>
+
+      <GlassCard className="animate-fade-in" style={{ width: '100%', maxWidth: '440px', padding: '32px 24px', margin: 'auto' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', flexShrink: 0 }}>

@@ -356,5 +356,23 @@ def ai_voice_command(
     return result
 
 
+from fastapi import UploadFile, File
+
+@router.post("/stt")
+async def speech_to_text(file: UploadFile = File(...), current_user=Depends(require_any_authenticated)):
+    """Transcribe audio recording directly using Whisper STT API."""
+    from app.services.ai_provider import transcribe_audio_groq
+
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio recording file")
+
+    text = transcribe_audio_groq(audio_bytes, filename=file.filename or "speech.webm")
+    if not text:
+        return {"text": "", "error": "Speech transcription failed or no audio detected"}
+
+    return {"text": text}
+
+
 
 

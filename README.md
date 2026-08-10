@@ -653,7 +653,12 @@ $env:PYTHONPATH="backend"; .\venv\Scripts\pytest backend\tests\
 
 - [x] **Milestone 1**: Core platform architecture, JWT authentication, dynamic audience segmentation, template management, campaign wizard, and maker-checker approval queue.
 - [x] **Milestone 2**: 23-language Neural Indic Speech Engine, AI Visual Poster Studio with binary streaming, real-time WebSocket staff chat, district sentiment map, and RAG citizen support desk.
-- [x] **Milestone 3**: IVR Automated Voice Calling integration for low-literacy rural emergency broadcasts (Twilio Voice REST API & TwiML integration with Polly TTS).
+- [x] **Milestone 3 (Testing & Verification Phase)**: End-to-End Omnichannel Dispatch & Diagnostics Testing:
+  - 📩 **Email Dispatch Testing**: Verified Gmail SMTP App Password authentication, TLS transport, responsive HTML email templates, and CID inline attachments.
+  - 📱 **SMS Gateway Testing**: Validated Fast2SMS and Twilio SMS REST API integrations, DLT template checks, phone format prepending, and dispatch logging.
+  - ✈️ **Telegram Bot Testing**: Tested Telegram Bot API live broadcasting, channel SOS distress alert dispatches, and background polling/webhook listeners.
+  - 🔊 **Voice & IVR Call Testing**: Verified 23-language Neural Speech Synthesis (Edge-TTS & gTTS zero-downtime failover), audio streaming endpoints, and Twilio Voice / TwiML automated IVR calling for low-literacy rural emergency broadcasts.
+  - 🧪 **System Diagnostics & Pytest Suite**: Automated `/api/settings/` real-time latency checks for Groq, SMTP, WA, FCM, and executed end-to-end `pytest` unit/integration test suites.
 
 ---
 

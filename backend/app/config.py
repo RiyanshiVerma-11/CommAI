@@ -73,6 +73,7 @@ class Settings:
     DAILY_CAP_WHATSAPP: int = 5000
     DAILY_CAP_TELEGRAM: int = 5000
     DAILY_CAP_PUSH: int = 5000
+    DAILY_CAP_VOICE: int = 5000
 
     # --- External backend URL (for emails and hyperlinks) ---
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8001")
@@ -94,7 +95,7 @@ class Settings:
     
     CATEGORIES = ["emergency", "awareness", "education", "announcement"]
     
-    CHANNELS = ["email", "sms", "whatsapp", "push", "website", "telegram"]
+    CHANNELS = ["email", "sms", "whatsapp", "push", "website", "telegram", "voice"]
 
     def load_overrides(self):
         import json

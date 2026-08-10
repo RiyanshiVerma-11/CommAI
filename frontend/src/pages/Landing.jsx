@@ -33,7 +33,7 @@ const FOOTER_RESOURCES = {
   'Integration Diagnostics': {
     eyebrow: 'Developer tools',
     title: 'Integration Diagnostics',
-    body: 'Diagnostics are available to authorised operators in the platform settings. They check service connectivity and help validate SMTP, WhatsApp gateway, and AI service configuration.',
+    body: 'Diagnostics are available to authorised operators in the platform settings. They check service connectivity and help validate SMTP, SMS gateway, and AI service configuration.',
     details: ['Available after operator sign-in', 'Checks connection status and latency', 'Does not dispatch campaigns or messages'],
   },
   'DPDP Act Privacy Policy': {
@@ -237,7 +237,7 @@ const FEATURES = [
     ),
     accent: '#10b981', bg: '#ecfdf5',
     title: 'Omnichannel Mass Dispatch',
-    desc: 'Simultaneous, high-delivery message broadcasting across SMS, WhatsApp, Email (with CID attachments), Telegram, and Push notifications.',
+    desc: 'Simultaneous, high-delivery message broadcasting across SMS, Voice Call, Email (with CID attachments), Telegram, and Push notifications.',
   },
 ];
 
@@ -380,7 +380,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
   /* ── simulator ── */
   const [segment, setSegment]       = useState('farmers');
   const [lang, setLang]             = useState('Hindi');
-  const [channels, setChannels]     = useState(['sms', 'whatsapp']);
+  const [channels, setChannels]     = useState(['sms', 'voice']);
   const [simRunning, setSimRunning] = useState(false);
   const [simStep, setSimStep]       = useState(0);
   const [simResult, setSimResult]   = useState(null);
@@ -405,7 +405,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
 
   /* ── estimator ── */
   const [audienceSize, setAudienceSize] = useState(25000);
-  const [predCh, setPredCh] = useState({ email: true, sms: true, whatsapp: true, push: false, website: false });
+  const [predCh, setPredCh] = useState({ email: true, sms: true, voice: true, telegram: true, push: false, website: false });
   const activeChs = Object.values(predCh).filter(Boolean).length;
   const reachPct  = activeChs === 0 ? 0 : Math.min(97, 44 + activeChs * 10.6);
   const estReach  = Math.floor(audienceSize * reachPct / 100);
@@ -763,7 +763,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
             </h1>
 
             <p className="landing-hero-sub" style={{ fontSize:'1.1rem', color:T.textSec, lineHeight:1.65, marginBottom:36, maxWidth:520 }}>
-              CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, WhatsApp, SMS, and Push in 23 languages (22 Scheduled Indic + English).
+              CommAI helps government departments and NGOs plan, translate, and dispatch trusted campaigns—and trigger state-targeted emergency alerts—across Email, Voice Call, SMS, and Push in 23 languages (22 Scheduled Indic + English).
             </p>
 
             <div className="landing-hero-ctas" style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:48 }}>
@@ -841,7 +841,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   <div><div style={{ fontSize:'0.68rem', fontWeight:800, letterSpacing:'.1em', opacity:.82, textTransform:'uppercase', marginBottom:4 }}>Emergency command centre</div><div style={{ fontSize:'0.96rem', fontWeight:800 }}>Maharashtra flood advisory</div></div>
                   <div style={{ background:'rgba(255,255,255,.16)', border:'1px solid rgba(255,255,255,.28)', borderRadius:20, padding:'5px 9px', fontSize:'0.68rem', fontWeight:800, whiteSpace:'nowrap' }}>LIVE NOW</div>
                 </div>
-                <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>{['Email','WhatsApp','SMS','Push'].map(channel => <span key={channel} style={{ fontSize:'0.65rem', fontWeight:700, padding:'3px 7px', borderRadius:9, background:'rgba(255,255,255,.14)' }}>{channel}</span>)}</div>
+                <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>{['Email','SMS','Voice Call','Telegram','Push'].map(channel => <span key={channel} style={{ fontSize:'0.65rem', fontWeight:700, padding:'3px 7px', borderRadius:9, background:'rgba(255,255,255,.14)' }}>{channel}</span>)}</div>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                 <span style={{ fontWeight:800, fontSize:'0.95rem', color:T.text }}>Live Campaign Monitor</span>
@@ -851,7 +851,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 </span>
               </div>
               {[
-                { name:'Flood Alert — North region', pct:92, label:'18,400 citizens · SMS + WhatsApp', color:T.blue },
+                { name:'Flood Alert — North region', pct:92, label:'18,400 citizens · SMS + Voice Call', color:T.blue },
                 { name:'Farmer Subsidy Notice', pct:45, label:'4,500 farmers · Marathi · SMS', color:T.amber },
               ].map(row => (
                 <div key={row.name} style={{ background:T.bg, borderRadius:12, padding:16, marginBottom:12, border: `1px solid ${T.border}` }}>
@@ -873,7 +873,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   ))}
                 </div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'8px 16px' }}>
-                  {[['#3b82f6','WhatsApp 45%'],['#10b981','SMS 30%'],['#f59e0b','Email 15%'],['#ef4444','Push 10%']].map(([c,l])=>(
+                  {[['#3b82f6','Voice Call 45%'],['#10b981','SMS 30%'],['#f59e0b','Email 15%'],['#ef4444','Push 10%']].map(([c,l])=>(
                     <div key={l} style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.75rem', color:T.textSec, fontWeight:500 }}>
                       <span style={{ width:7, height:7, borderRadius:'50%', background:c, display:'inline-block' }}></span>{l}
                     </div>
@@ -1262,7 +1262,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 <span style={{ fontWeight:700, fontSize:'0.95rem', color:T.text }}>Delivery Channels</span>
               </div>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                {[['sms','SMS'],['whatsapp','WhatsApp'],['email','Email'],['push','Push App']].map(([k,l]) => {
+                {[['sms','SMS'],['voice','Voice Call'],['telegram','Telegram'],['email','Email'],['push','Push App']].map(([k,l]) => {
                   const on = channels.includes(k);
                   return (
                     <button key={k} onClick={() => toggleChannel(k)}
@@ -1310,7 +1310,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                 </p>
                 <div style={{ fontSize:'0.7rem', color: theme === 'dark' ? '#53bdeb' : '#34b7f1', textAlign:'right', marginTop:8, fontWeight: 550 }}>✓✓ Dispatched</div>
               </div>
-              <div style={{ fontSize:'0.75rem', color:T.textMuted }}>Sent via {channels.includes('whatsapp') ? 'WhatsApp API' : channels[0]?.toUpperCase() || 'SMS'} · {new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div>
+              <div style={{ fontSize:'0.75rem', color:T.textMuted }}>Sent via {channels.includes('voice') ? 'Voice Gateway' : channels[0]?.toUpperCase() || 'SMS'} · {new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div>
             </div>
 
             {/* Simulation result */}
@@ -1405,7 +1405,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   <ul style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.9rem', color: T.textSec }}>
                     <li><b>Dynamic Targeting:</b> Filter by crop (e.g. Rice, Cotton) and location.</li>
                     <li><b>Subsidies awareness:</b> Boost government program registrations.</li>
-                    <li><b>SMS & WhatsApp:</b> Delivers even to basic non-smartphone users.</li>
+                    <li><b>SMS & Voice Calls:</b> Delivers even to basic non-smartphone users.</li>
                   </ul>
                 </div>
               )}
@@ -1418,7 +1418,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   </p>
                   <ul style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.9rem', color: T.textSec }}>
                     <li><b>Polio & Vaccination Drives:</b> Scheduled micro-reminders to localized zipcodes.</li>
-                    <li><b>Multilingual Infographics:</b> Share nutritional guidelines on WhatsApp.</li>
+                    <li><b>Multilingual Voice Alerts:</b> Share health guidelines via automated calls.</li>
                     <li><b>Zero Spam:</b> Restricted templates prevent communication fatigue.</li>
                   </ul>
                 </div>
@@ -1432,7 +1432,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   </p>
                   <ul style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.9rem', color: T.textSec }}>
                     <li><b>State-specific targeting:</b> Only citizens in the selected state receive the alert.</li>
-                    <li><b>Four delivery channels:</b> Email, WhatsApp, SMS, and Push are selectable per broadcast.</li>
+                    <li><b>Four delivery channels:</b> Email, Voice Call, SMS, and Push are selectable per broadcast.</li>
                     <li><b>Real-time citizen response:</b> A live chime, visual popup, and saved emergency flyer appear on the audience dashboard.</li>
                   </ul>
                 </div>
@@ -1531,7 +1531,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
               <div>
                 <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:16, fontSize:'0.95rem' }}>Select Channels</div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  {[['email','✉️ Email Broadcast'],['sms','📱 SMS Direct'],['whatsapp','💬 WhatsApp Business'],['push','🔔 In-App Push'],['website','🌐 Gov Web Portal']].map(([k,l]) => (
+                  {[['email','✉️ Email Broadcast'],['sms','📱 SMS Direct'],['voice','📞 Voice Call'],['telegram','📢 Telegram Channel'],['push','🔔 In-App Push'],['website','🌐 Gov Web Portal']].map(([k,l]) => (
                     <label key={k}
                       style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:predCh[k] ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.02)', border:`1.5px solid ${predCh[k] ? '#3b82f6' : 'rgba(255,255,255,0.06)'}`, borderRadius:T.radiusSm, cursor:'pointer', fontSize:'0.88rem', color:predCh[k] ? '#93c5fd' : '#94a3b8', fontWeight:predCh[k] ? 700 : 500, transition:'all 0.2s' }}>
                       <input type="checkbox" checked={predCh[k]} onChange={() => setPredCh(p=>({...p,[k]:!p[k]}))} style={{ accentColor:'#3b82f6', width:15, height:15 }}/>
@@ -1692,10 +1692,10 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           {[
             { q: 'How accurate are the automated translations?', a: 'Translations are powered by domain-specific LLM models and optimized for regional contexts. For high-importance campaigns, operators can leverage our Built-in review editor to run a secondary manual check on all translations before dispatching.' },
             { q: 'Who can send a direct state emergency alert?', a: 'Only Campaign Managers and Administrators can launch the direct broadcast from the Geographic Sentiment Map. This verified emergency action bypasses the standard maker-checker campaign queue and is scoped to citizens in the selected state.' },
-            { q: 'How do citizens receive critical alerts?', a: 'Citizens in the targeted state receive the selected Email, WhatsApp, SMS, and Push deliveries. If they are currently connected, CommAI also presents a real-time chime and visual alert; the emergency flyer remains in their dashboard Alert Centre.' },
-            { q: 'What happens if a WhatsApp or SMS gateway fails?', a: 'CommAI utilizes an automated channel fallback queue. If a primary pathway (e.g. WhatsApp API) fails or experiences high latencies, the dispatcher routes the warning through secondary SMS or push relays based on recipient preferences.' },
+            { q: 'How do citizens receive critical alerts?', a: 'Citizens in the targeted state receive the selected Email, Voice Call, SMS, and Push deliveries. If they are currently connected, CommAI also presents a real-time chime and visual alert; the emergency flyer remains in their dashboard Alert Centre.' },
+            { q: 'What happens if a Voice or SMS gateway fails?', a: 'CommAI utilizes an automated channel fallback queue. If a primary pathway (e.g. Voice API) fails or experiences high latencies, the dispatcher routes the warning through secondary SMS or push relays based on recipient preferences.' },
             { q: 'Can we restrict the maximum number of daily messages?', a: 'Yes. Administrators can define safety caps in the Settings panel to limit the total volume of daily emails/texts. Once reached, scheduled campaigns are automatically paused to prevent gateway cost spikes.' },
-            { q: 'How is message delivery pricing calculated?', a: 'The estimator calculates potential expenditure based on typical local costs (SMS = $0.02, WhatsApp = $0.04). No billing happens on CommAI itself; operators hook up their own Twilio, SMTP, or WhatsApp Business API credentials.' }
+            { q: 'How is message delivery pricing calculated?', a: 'The estimator calculates potential expenditure based on typical local costs (SMS = $0.02, Voice Call = $0.04). No billing happens on CommAI itself; operators hook up their own Twilio, SMTP, or Voice API credentials.' }
           ].map((faq, idx) => {
             const isOpen = openFaqIndex === idx;
             return (

@@ -1619,26 +1619,30 @@ function App() {
             </div>
 
             <div style={{
-              background: 'rgba(0, 0, 0, 0.3)',
+              background: 'rgba(15, 23, 42, 0.95)',
               borderRadius: '12px',
               padding: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              lineHeight: '1.6',
-              fontSize: '1.05rem',
-              color: '#e2e8f0',
+              border: '1.5px solid rgba(255, 255, 255, 0.2)',
+              lineHeight: '1.7',
+              fontSize: '1.08rem',
+              color: '#ffffff',
+              fontWeight: 700,
               maxHeight: '240px',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
             }}>
-              {interpolateFrontendText(liveAlert.message)}
+              <span style={{ color: '#ffffff', fontWeight: 700 }}>
+                {interpolateFrontendText(liveAlert.message)}
+              </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#94a3b8' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: '#ffffff', fontWeight: 600 }}>
               <span style={{ display: 'inline-flex', gap: '2px', alignItems: 'center' }}>
                 <span className="speech-bar" style={{ width: '3px', height: '12px', background: '#ef4444', display: 'inline-block', animation: 'bounceBar 0.8s infinite ease-in-out' }}></span>
                 <span className="speech-bar" style={{ width: '3px', height: '18px', background: '#ef4444', display: 'inline-block', animation: 'bounceBar 0.8s infinite 0.2s ease-in-out' }}></span>
                 <span className="speech-bar" style={{ width: '3px', height: '10px', background: '#ef4444', display: 'inline-block', animation: 'bounceBar 0.8s infinite 0.4s ease-in-out' }}></span>
               </span>
-              <span>Reading message aloud...</span>
+              <span style={{ color: '#ffffff', fontWeight: 700 }}>Reading message aloud...</span>
             </div>
 
             <button

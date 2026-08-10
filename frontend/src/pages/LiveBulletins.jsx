@@ -294,13 +294,13 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
           <button
             onClick={toggleSound}
             style={{
-              padding: '8px 12px',
+              padding: '8px 14px',
               borderRadius: '8px',
-              border: '1px solid var(--border-color-glass)',
-              background: soundEnabled ? 'hsl(var(--primary) / 8%)' : 'rgba(255,255,255,0.03)',
-              color: 'black',
-              fontSize: '0.78rem',
-              fontWeight: '600',
+              border: '1.5px solid rgba(255, 255, 255, 0.2)',
+              background: soundEnabled ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.06)',
+              color: '#ffffff',
+              fontSize: '0.82rem',
+              fontWeight: '700',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -315,19 +315,21 @@ const LiveBulletins = ({ backendUrl, user, token }) => {
             value={filterUrgency}
             onChange={(e) => setFilterUrgency(e.target.value)}
             style={{
-              padding: '8px 12px',
+              padding: '8px 14px',
               borderRadius: '8px',
-              border: '1px solid var(--border-color-glass)',
-              background: '#0d101c',
-              color: 'white',
-              fontSize: '0.78rem',
-              fontWeight: '600'
+              border: '1.5px solid rgba(255, 255, 255, 0.25)',
+              background: '#0f172a',
+              color: '#ffffff',
+              fontSize: '0.82rem',
+              fontWeight: '700',
+              cursor: 'pointer',
+              outline: 'none'
             }}
           >
-            <option value="all">ALL BULLETINS</option>
-            <option value="critical">CRITICAL ALERTS</option>
-            <option value="urgent">URGENT BULLETINS</option>
-            <option value="normal">NORMAL ANNOUNCEMENTS</option>
+            <option value="all" style={{ background: '#0f172a', color: '#ffffff', fontWeight: '700' }}>ALL BULLETINS</option>
+            <option value="critical" style={{ background: '#0f172a', color: '#ff4d4d', fontWeight: '700' }}>CRITICAL ALERTS</option>
+            <option value="urgent" style={{ background: '#0f172a', color: '#fbbf24', fontWeight: '700' }}>URGENT BULLETINS</option>
+            <option value="normal" style={{ background: '#0f172a', color: '#60a5fa', fontWeight: '700' }}>NORMAL ANNOUNCEMENTS</option>
           </select>
         </div>
       </GlassCard>

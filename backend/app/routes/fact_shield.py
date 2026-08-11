@@ -89,8 +89,8 @@ def neutralize_rumor(
             detail="Cannot neutralize rumor without an official fact check refutation text. Please edit the rumor first."
         )
 
-    # 1. Resolve targeted channel preferences (defaults to WhatsApp & SMS)
-    dispatch_channels = payload.channels or ["whatsapp", "sms"]
+    # 1. Resolve targeted channel preferences (defaults to SMS & Email)
+    dispatch_channels = payload.channels or ["sms", "email"]
 
     # 2. Build geofenced segment filter criteria
     filter_rules = {"logic": "AND"}

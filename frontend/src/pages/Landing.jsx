@@ -1078,7 +1078,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
           <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               { n: '01', title: 'Detect & target', text: 'Open the Geographic Sentiment Map and select an affected state—or choose it directly from the state selector.', color: T.red },
-              { n: '02', title: 'Compose & deliver', text: 'Set urgency, generate an AI-backed emergency flyer, and dispatch through Email, WhatsApp, SMS, and Push.', color: T.amber },
+              { n: '02', title: 'Compose & deliver', text: 'Set urgency, generate an AI-backed emergency flyer, and dispatch through Email, SMS, Telegram, and Push.', color: T.amber },
               { n: '03', title: 'Alert citizens live', text: 'Connected citizens receive a critical chime and visual popup; the flyer stays in their Emergency Alerts centre.', color: T.blue },
             ].map(step => (
               <div key={step.n} style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 18, padding: 28, boxShadow: T.shadow }}>
@@ -1414,7 +1414,7 @@ export default function Landing({ onNavigateToLogin, onNavigateToRegister, theme
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, color: T.green, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Sector Spotlight: Healthcare</div>
                   <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: T.text, margin: '0 0 14px 0' }}>Immunization Campaigns & Health Alerts</h3>
                   <p style={{ fontSize: '0.96rem', color: T.textSec, lineHeight: 1.6, marginBottom: 20 }}>
-                    National health campaigns depend on local language reminders to maximize vaccine turnouts. Health coordinators schedule automated pushes and WhatsApp alerts to notify families of upcoming primary clinics and vaccination drives.
+                    National health campaigns depend on local language reminders to maximize vaccine turnouts. Health coordinators schedule automated pushes and SMS alerts to notify families of upcoming primary clinics and vaccination drives.
                   </p>
                   <ul style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.9rem', color: T.textSec }}>
                     <li><b>Polio & Vaccination Drives:</b> Scheduled micro-reminders to localized zipcodes.</li>

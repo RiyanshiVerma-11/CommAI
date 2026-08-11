@@ -679,7 +679,7 @@ const Settings = ({ user, backendUrl, headers }) => {
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: '600', marginBottom: '8px' }}>Preferred Delivery Channels</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {['email', 'sms', 'whatsapp', 'push', 'website', 'telegram'].map(channel => {
+                  {['email', 'sms', 'push', 'website', 'telegram'].map(channel => {
                     const isSelected = preferredChannels.includes(channel);
                     return (
                       <div

@@ -1012,7 +1012,7 @@ const Users = ({ user: _currentUser, backendUrl, headers }) => {
 
                         <div>
                           <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
-                            💬 WhatsApp Contact Number
+                            📱 Primary Mobile / SMS Number
                           </label>
                           <input
                             type="text"

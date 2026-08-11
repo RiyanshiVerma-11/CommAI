@@ -1106,18 +1106,36 @@ async def lifespan(app: FastAPI):
             {
                 "email": "riyanshi.verma.5356@gmail.com",
                 "password": "riya@1234",
-                "full_name": "Riya Verma",
+                "full_name": "Riyanshi Verma",
                 "role": "audience",
                 "organization": "General Public",
                 "designation": "Citizen Recipient",
-                "age": 19,
+                "age": 21,
                 "gender": "Female",
                 "occupation": "Student",
                 "state": "Delhi",
                 "district": "New Delhi",
                 "city": "New Delhi",
+                "phone": "9897157640",
                 "preferred_languages": ["English", "Hindi"],
-                "preferred_channels": ["email"]
+                "preferred_channels": ["email", "sms"]
+            },
+            {
+                "email": "riyanshi.verma.55@gmail.com",
+                "password": "riya@1234",
+                "full_name": "Riyanshi Verma",
+                "role": "audience",
+                "organization": "General Public",
+                "designation": "Citizen Recipient",
+                "age": 21,
+                "gender": "Female",
+                "occupation": "Student",
+                "state": "Delhi",
+                "district": "New Delhi",
+                "city": "New Delhi",
+                "phone": "9897157640",
+                "preferred_languages": ["English", "Hindi"],
+                "preferred_channels": ["email", "sms"]
             },
             {
                 "email": "nidhi140002@gmail.com",
@@ -1132,8 +1150,9 @@ async def lifespan(app: FastAPI):
                 "state": "Uttar Pradesh",
                 "district": "Lucknow",
                 "city": "Lucknow",
+                "phone": "9897157641",
                 "preferred_languages": ["English", "Hindi"],
-                "preferred_channels": ["email"]
+                "preferred_channels": ["email", "sms"]
             },
             {
                 "email": "mailtopalak0002@gmail.com",
@@ -1178,12 +1197,15 @@ async def lifespan(app: FastAPI):
                 
             if u_data["role"] == "audience":
                 existing_aud = db.query(Audience).filter(Audience.email == u_data["email"]).first()
+                target_phone = u_data.get("phone", "9897157640")
+                f_name = u_data["full_name"].split()[0]
+                l_name = u_data["full_name"].split()[1] if len(u_data["full_name"].split()) > 1 else ""
                 if not existing_aud:
                     new_aud = Audience(
-                        first_name=u_data["full_name"].split()[0],
-                        last_name=u_data["full_name"].split()[1] if len(u_data["full_name"].split()) > 1 else "",
+                        first_name=f_name,
+                        last_name=l_name,
                         email=u_data["email"],
-                        phone=str(random.randint(9100000000, 9199999999)),
+                        phone=target_phone,
                         preferred_languages=json.dumps(u_data["preferred_languages"]),
                         occupation=u_data["occupation"],
                         age=u_data["age"],
@@ -1197,12 +1219,42 @@ async def lifespan(app: FastAPI):
                     db.add(new_aud)
                     db.commit()
                 else:
+                    existing_aud.first_name = f_name
+                    existing_aud.last_name = l_name
+                    existing_aud.phone = target_phone
                     existing_aud.preferred_languages = json.dumps(u_data["preferred_languages"])
                     existing_aud.preferred_channels = json.dumps(u_data["preferred_channels"])
                     existing_aud.state = u_data["state"]
                     existing_aud.district = u_data["district"]
                     existing_aud.city = u_data["city"]
                     db.commit()
+
+        # Ensure segment for Riyanshi Verma exists and targets her profile directly
+        riyanshi_auds = db.query(Audience).filter(
+            or_(
+                Audience.email.in_(["riyanshi.verma.5356@gmail.com", "riyanshi.verma.55@gmail.com"]),
+                Audience.phone == "9897157640"
+            )
+        ).all()
+        if riyanshi_auds:
+            r_ids = [a.id for a in riyanshi_auds]
+            target_seg = db.query(Segment).filter(Segment.name == "Riyanshi Verma (Target)").first()
+            if not target_seg:
+                print("[SEEDING DATABASE] Creating 'Riyanshi Verma (Target)' segment...")
+                target_seg = Segment(
+                    name="Riyanshi Verma (Target)",
+                    description="Direct target segment for Riyanshi Verma",
+                    filter_criteria=json.dumps({"ids": r_ids}),
+                    is_dynamic=True,
+                    estimated_size=len(r_ids),
+                    last_refreshed=datetime.datetime.utcnow()
+                )
+                db.add(target_seg)
+                db.commit()
+            else:
+                target_seg.filter_criteria = json.dumps({"ids": r_ids})
+                target_seg.estimated_size = len(r_ids)
+                db.commit()
 
         # Always check and seed demo campaigns/audiences/segments/templates
         seed_demo_data(db)

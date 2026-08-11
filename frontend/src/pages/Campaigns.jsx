@@ -1627,7 +1627,7 @@ const Campaigns = ({ user, backendUrl, headers, setActiveTab, setAutofillPosterD
             <div className="email-dot yellow" style={{ width: '10px', height: '10px' }}></div>
             <div className="email-dot green" style={{ width: '10px', height: '10px' }}></div>
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>https://citizen.portal.gov.in</span>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>https://comm-ai-nine.vercel.app/</span>
         </div>
         <div className="email-content-wrapper" style={{ background: 'rgba(5, 7, 15, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div className="website-toast-mockup" style={{ margin: 0, width: '100%', border: '1px solid hsl(var(--primary) / 25%)', padding: '16px', borderRadius: '12px' }}>

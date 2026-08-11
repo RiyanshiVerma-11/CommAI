@@ -82,8 +82,9 @@ class Settings:
     DAILY_CAP_TELEGRAM: int = 5000
     DAILY_CAP_PUSH: int = 5000
 
-    # --- External backend URL (for emails and hyperlinks) ---
+    # --- External backend & frontend URLs (for emails, SMS, and hyperlinks) ---
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8001")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://comm-ai-nine.vercel.app")
 
     # Supported System Constants
     ROLES = ["admin", "campaign_manager", "audience"]

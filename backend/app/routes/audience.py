@@ -580,6 +580,15 @@ def build_segment_filter_query(filter_criteria: Dict[str, Any], query_obj):
         lower_dists = [d.lower() for d in districts if isinstance(d, str)]
         if lower_dists:
             filters.append(sqla_func.lower(Audience.district).in_(lower_dists))
+
+    # City List (case-insensitive)
+    cities = filter_criteria.get("cities") or filter_criteria.get("city")
+    if cities:
+        if isinstance(cities, str):
+            cities = [cities]
+        lower_cities = [c.lower() for c in cities if isinstance(c, str)]
+        if lower_cities:
+            filters.append(sqla_func.lower(Audience.city).in_(lower_cities))
         
     # Age constraints
     age_gte = filter_criteria.get("age_gte")

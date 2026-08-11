@@ -53,7 +53,7 @@ campaign_data = {
     "channel_preferences": ["email", "sms", "telegram"],
     "override_channel_preferences": True,
     "custom_subject": "Important Safety Advisory for {{first_name}}",
-    "custom_body": "Dear {{first_name}} {{last_name}}, this is an official community safety announcement from CommAI for residents of {{city}}. Stay safe!",
+    "custom_body": "Dear {{first_name}} {{last_name}}, this is an official community safety announcement from CommAI for residents of {{city}}. Stay safe! Access portal: https://comm-ai-nine.vercel.app/",
 }
 
 r = requests.post(f"{BASE}/api/campaigns", json=campaign_data, headers=headers)

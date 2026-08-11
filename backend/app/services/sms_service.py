@@ -69,27 +69,16 @@ def send_sms(
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             to_phone = f"+{clean_phone}"
             
-            # Format SMS body with clean GSM-compatible header to ensure Indian carrier DLT delivery
+            # Format SMS body with clean header, stripping only high-plane emojis while preserving non-ASCII text & regional scripts
             send_body = message.strip() if message else ""
             
-            # Check if text contains Dravidian regional scripts (Telugu, Tamil, Kannada, Malayalam)
-            has_regional = any(
-                (0x0B80 <= ord(c) <= 0x0BFF) or (0x0C00 <= ord(c) <= 0x0C7F) or 
-                (0x0C80 <= ord(c) <= 0x0CFF) or (0x0D00 <= ord(c) <= 0x0D7F)
-                for c in send_body
-            )
-            
-            # Clean non-GSM emojis (like ⚠️, 🚨) and special symbols that cause Indian telecom carriers to block international SMS
-            clean_subject = re.sub(r'[^\x00-\x7F]+', '', subject).strip() if subject else ""
-            clean_body_text = re.sub(r'[^\x00-\x7F]+', '', send_body).strip()
+            clean_subject = re.sub(r'[\U00010000-\U0010ffff\u2600-\u26FF\u2700-\u27BF]+', '', subject).strip() if subject else ""
+            clean_body_text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u26FF\u2700-\u27BF]+', '', send_body).strip()
             
             if clean_subject and not clean_body_text.startswith(clean_subject):
                 send_body = f"[{clean_subject}]\n{clean_body_text}"
             else:
                 send_body = clean_body_text
-
-            # Final GSM-compatibility cleanup
-            send_body = re.sub(r'[^\x00-\x7F]+', '', send_body).strip()
 
 
             payload = {
@@ -107,7 +96,7 @@ def send_sms(
                     if email:
                         try:
                             fallback_subj = f"📱 [SMS Alert to {to_phone}] {subject.strip() if subject else 'Public Notice'}"
-                            fallback_body = f"--- SMS Message (Target Phone: {to_phone}) ---\n\n{message}\n\n[CommAI Platform Advisory Notice]"
+                            fallback_body = f"--- SMS Message (Target Phone: {to_phone}) ---\n\n{message}\n\n[CommAI Live Portal: https://comm-ai-nine.vercel.app/]"
                             send_email(email, fallback_subj, fallback_body)
                             logger.info(f"[SMS] Dual email copy delivered to {email}")
                         except Exception as em_err:
@@ -151,7 +140,7 @@ def send_sms(
     if email:
         try:
             fallback_subj = f"📱 [SMS Alert to +{clean_phone}] {subject.strip() if subject else 'Public Notice'}"
-            fallback_body = f"--- SMS Message (Target Phone: +{clean_phone}) ---\n\n{message}\n\n[CommAI Platform Notice: Delivered via Email Fallback because live SMS Gateway API Key is pending configuration]"
+            fallback_body = f"--- SMS Message (Target Phone: +{clean_phone}) ---\n\n{message}\n\n[CommAI Live Portal: https://comm-ai-nine.vercel.app/]"
             send_email(email, fallback_subj, fallback_body)
             logger.info(f"[SMS] Sent email fallback alert to {email} for phone +{clean_phone}")
         except Exception as fallback_err:

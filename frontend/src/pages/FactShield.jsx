@@ -48,18 +48,21 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
 
       setRumors(data);
       
-      // Auto-select first rumor if none selected, or sync selected one
+      // Auto-select first rumor if none selected, or update selected rumor ID reference without resetting active form edits
       if (data.length > 0) {
-        if (!selectedRumor) {
-          selectRumor(data[0]);
-        } else {
-          const updatedSelected = data.find(r => r.id === selectedRumor.id);
-          if (updatedSelected) {
-            selectRumor(updatedSelected);
+        setSelectedRumor(prev => {
+          if (!prev) {
+            const first = data[0];
+            setEditedFactCheck(first.official_fact_check || '');
+            setEditedCity(first.city || '');
+            setEditedDistrict(first.district || '');
+            setEditedState(first.state || '');
+            return first;
           } else {
-            selectRumor(data[0]);
+            const updated = data.find(r => r.id === prev.id);
+            return updated || data[0];
           }
-        }
+        });
       } else {
         setSelectedRumor(null);
       }
@@ -69,7 +72,7 @@ const FactShield = ({ _user, backendUrl, headers, setActiveTab }) => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, headers, filterStatus, search, selectedRumor, selectedRumor?.id]);
+  }, [backendUrl, headers, filterStatus, search]);
 
   useEffect(() => {
     fetchRumors();

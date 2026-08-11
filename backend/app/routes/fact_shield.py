@@ -142,6 +142,20 @@ def neutralize_rumor(
     # Calculate reach
     target_count, reach_count = calculate_reach(db, segment.id, dispatch_channels, override_channel_preferences=False)
 
+    # Fallback to broader reach if specific city filter yields 0 matches in current audience database
+    if target_count == 0:
+        if rumor.district and "cities" in filter_rules:
+            filter_rules = {"districts": [rumor.district], "logic": "AND"}
+            segment.filter_criteria = json.dumps(filter_rules)
+            db.commit()
+            target_count, reach_count = calculate_reach(db, segment.id, dispatch_channels, override_channel_preferences=False)
+
+        if target_count == 0:
+            filter_rules = {"logic": "AND"}
+            segment.filter_criteria = json.dumps(filter_rules)
+            db.commit()
+            target_count, reach_count = calculate_reach(db, segment.id, dispatch_channels, override_channel_preferences=False)
+
     # 5. Create emergency campaign
     campaign = Campaign(
         title=f"🛡️ Fact Shield: {rumor.claim_summary[:40]}",
